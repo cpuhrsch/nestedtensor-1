@@ -226,23 +226,23 @@ def lstm_forward(self, input, hx=None):
 
 orig_interpolate = torch.nn.functional.interpolate
 
+def _interpolate(input: torch.Tensor, size: int, scale_factor: float, mode: str, align_corners: bool) -> torch.Tensor:
+    # TODO: Document this
+    squeeze_after = False
+    if input.dim() == 3:
+        input = input.unsqueeze(0)
+        squeeze_after = True
+    result = orig_interpolate(input, size,
+                              scale_factor, mode, align_corners)
+    if squeeze_after:
+        result = result.squeeze(0)
+    return result
+
 
 def interpolate(input, size=None, scale_factor=None, mode='nearest',
                 align_corners=None):
     if utils.find_nested_tensor_dispatch_key(input) is None:
         return orig_interpolate(input, size, scale_factor, mode, align_corners)
-
-    def _interpolate(input: torch.Tensor, size: int, scale_factor: float, mode: str, align_corners: bool) -> torch.Tensor:
-        # TODO: Document this
-        squeeze_after = False
-        if input.dim() == 3:
-            input = input.unsqueeze(0)
-            squeeze_after = True
-        result = orig_interpolate(input, size,
-                                  scale_factor, mode, align_corners)
-        if squeeze_after:
-            result = result.squeeze(0)
-        return result
 
     tf = utils.tensorwise(unbind_args=[1, 'size'])(_interpolate)
     return tf(input, size, scale_factor, mode, align_corners)
