@@ -1,5 +1,6 @@
 #include <jit_list_apply.h>
 #include <python_list_nested_tensor.h>
+#include <python_buffer_nested_tensor.h>
 
 namespace torch {
 namespace nested_tensor {
