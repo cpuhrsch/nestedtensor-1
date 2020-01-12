@@ -1,6 +1,7 @@
 #pragma once
 #include <buffer_nested_tensor.h>
 #include <list_nested_tensor.h>
+#include <torch/custom_class.h>
 // NOTE: Causes linktime error for requested symbol as_function
 // #include <torch/csrc/jit/script/python_sugared_value.h>
 // NOTE: torch/csrc/tensor/python_tensor.h can't be found and will raise compile
@@ -18,7 +19,7 @@ static inline Result data_map(
   return data.map<Result>(fn, fn);
 }
 
-struct THPNestedTensor {
+struct THPNestedTensor : torch::jit::CustomClassHolder {
   THPNestedTensor() = delete;
   THPNestedTensor(_BufferNestedTensor data) : _data(data) {}
   THPNestedTensor(_ListNestedTensor data) : _data(data) {}
