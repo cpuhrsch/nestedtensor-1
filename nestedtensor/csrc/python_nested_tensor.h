@@ -20,7 +20,7 @@ static inline Result data_map(
 }
 
 struct THPNestedTensor : torch::jit::CustomClassHolder {
-  THPNestedTensor() = delete;
+  THPNestedTensor() : _data(_BufferNestedTensor()) {}
   THPNestedTensor(_BufferNestedTensor data) : _data(data) {}
   THPNestedTensor(_ListNestedTensor data) : _data(data) {}
   at::Tensor get_buffer() {

@@ -7,7 +7,7 @@ namespace nested_tensor {
 // Make _structure initialization lazy?
 struct TORCH_API _BufferNestedTensor {
   // TODO: Deal with default initialization
-  _BufferNestedTensor() = delete;
+  _BufferNestedTensor();
   _BufferNestedTensor(torch::autograd::Variable buffer, SizeNode nested_size);
   _BufferNestedTensor(
       torch::autograd::Variable buffer,

@@ -130,6 +130,9 @@ _BufferNestedTensor _BufferNestedTensor::grad() {
       grad_buffer, _nested_size, _nested_stride, grad_tensor_node);
 }
 
+_BufferNestedTensor::_BufferNestedTensor()
+    : _BufferNestedTensor(at::ones({}), SizeNode()) {}
+
 _BufferNestedTensor::_BufferNestedTensor(
     torch::autograd::Variable buffer,
     SizeNode nested_size)

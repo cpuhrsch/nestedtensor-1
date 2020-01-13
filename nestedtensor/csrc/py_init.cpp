@@ -33,6 +33,7 @@ namespace {
 // torch::jit::class_<torch::nested_tensor::THPNestedTensor>(m, "NestedTensor")
 static auto my_jit_class =
     torch::jit::class_<torch::nested_tensor::THPNestedTensor>("NestedTensor")
+    .def(torch::jit::init<>())
         // .def_property_readonly(
         //     "dtype", &torch::nested_tensor::THPNestedTensor::getDtype)
         // .def_property_readonly(
@@ -118,14 +119,15 @@ static auto my_jit_class =
 // .def("to_tensor", &torch::nested_tensor::THPNestedTensor::to_tensor)
 // .def("__str__", &torch::nested_tensor::THPNestedTensor::str)
 // .def("__repr__", &torch::nested_tensor::THPNestedTensor::str);
-// PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-//   // NOTE: This is a private function until it is feature complete
-//   m.def("_jit_tensorwise", &torch::nested_tensor::jit_tensorwise);
-//   m.def("as_nested_tensor", &torch::nested_tensor::as_nested_tensor);
-//   m.def("nested_tensor", &torch::nested_tensor::nested_tensor);
-// }
-//
 
 } // namespace
 } // namespace jit
 } // namespace torch
+
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+//   // NOTE: This is a private function until it is feature complete
+//   m.def("_jit_tensorwise", &torch::nested_tensor::jit_tensorwise);
+//   m.def("as_nested_tensor", &torch::nested_tensor::as_nested_tensor);
+//   m.def("nested_tensor", &torch::nested_tensor::nested_tensor);
+}
+//
