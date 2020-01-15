@@ -67,7 +67,7 @@ class NestedSize(object):
         return self._nested_size == other._nested_size
 
     def __iter__(self):
-        if isinstance(self._nested_size[0], list):
+        if len(self._nested_size) == 0 or isinstance(self._nested_size[0], list):
             return iter(NestedSize(t) for t in self._nested_size)
         else:
             return iter(list(self._nested_size))
@@ -206,6 +206,8 @@ class NestedTensor(object):
         if dim is not None:
             return self.size()[dim]
         all_sizes = tuple(t.size() for t in self.unbind())
+        if len(all_sizes) == 0:
+            return ()
 
         def compare_sizes(size, other_size):
             result_size = list(size)

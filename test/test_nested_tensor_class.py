@@ -5,10 +5,16 @@ import sys
 import torch
 import nestedtensor
 import unittest
-from unittest import TestCase
+from utils import TestCase
 import random
 
 import utils
+
+# Given arguments to a constructor iterator over results for
+# as_nested_tensor and nested_tensor constructors.
+def _iter_constructors(*args, **kwargs):
+    yield nestedtensor.as_nested_tensor(*args, **kwargs)
+    yield nestedtensor.nested_tensor(*args, **kwargs)
 
 class TestNestedTensor(TestCase):
 
@@ -28,7 +34,7 @@ class TestNestedTensor(TestCase):
         for i in range(num_tensors):
             tensors[i].mul_(i + 2)
         for i in range(num_tensors):
-            self.assertTrue((tensors[i] != nested_tensor.unbind()[i]).all())
+            self.assertNotEqual(tensors[i], nested_tensor.unbind()[i])
         self.assertRaises(
             ValueError, lambda: nestedtensor.nested_tensor(torch.tensor([3.0])))
         self.assertRaises(ValueError, lambda: nestedtensor.nested_tensor(
@@ -94,6 +100,19 @@ class TestNestedTensor(TestCase):
         self.assertTrue(not (a1 != a2).any())
         self.assertTrue(not (a1 == a3).any())
 
+    def test_dim(self):
+        for a1 in _iter_constructors([]):
+            self.assertEqual(a1.dim(), 1)
+        for a1 in _iter_constructors([torch.tensor(3.)]):
+            self.assertEqual(a1.dim(), 1)
+        for a1 in _iter_constructors([torch.tensor([1, 2, 3, 4])]):
+            self.assertEqual(a1.dim(), 2)
+        for a1 in _iter_constructors([
+            [torch.tensor([1, 2, 3, 4])],
+            [torch.tensor([5, 6, 7, 8]), torch.tensor([9, 0, 0, 0])]
+            ]):
+            self.assertEqual(a1.dim(), 3)
+
     def test_nested_dim(self):
         nt = nestedtensor.nested_tensor([torch.tensor(3)])
         for i in range(2, 5):
@@ -105,24 +124,29 @@ class TestNestedTensor(TestCase):
         b = torch.tensor([7, 8])
         nt = nestedtensor.nested_tensor([a, b])
         a1, b1 = nt.unbind()
-        self.assertTrue((a == a1).all())
-        self.assertTrue((b == b1).all())
+        self.assertEqual(a, a1)
+        self.assertEqual(b, b1)
 
         a = utils.gen_float_tensor(1, (2, 3)).add_(1)
         nt = nestedtensor.nested_tensor([a])
-        self.assertTrue((a == nt.unbind()[0]).all())
+        self.assertEqual(a, nt.unbind()[0])
 
     def test_size(self):
-        a1 = nestedtensor.nested_tensor([[torch.rand(1, 8),
+        a = nestedtensor.nested_tensor([])
+        self.assertEqual(a.size(), ())
+
+        a = nestedtensor.nested_tensor([[torch.rand(1, 8),
                                    torch.rand(3, 8)],
                                   [torch.rand(7, 8)]])
-        a2 = nestedtensor.nested_tensor([torch.rand(1, 2),
+        self.assertEqual(a.size(), (2, None, None, 8))
+        
+        a = nestedtensor.nested_tensor([torch.rand(1, 2),
                                   torch.rand(1, 8)])
-        a3 = nestedtensor.nested_tensor([torch.rand(3, 4),
+        self.assertEqual(a.size(), (2, 1, None))
+        
+        a = nestedtensor.nested_tensor([torch.rand(3, 4),
                                   torch.rand(5, 4)])
-        self.assertTrue(a1.size() == (2, None, None, 8))
-        self.assertTrue(a2.size() == (2, 1, None))
-        self.assertTrue(a3.size() == (2, None, 4))
+        self.assertEqual(a.size(), (2, None, 4))
 
     def test_to(self):
         tensors = [torch.randn(1, 8),
@@ -131,7 +155,7 @@ class TestNestedTensor(TestCase):
         a1 = nestedtensor.nested_tensor(tensors)
         a2 = a1.to(torch.int64)
         for a, b in zip(tensors, a2.unbind()):
-            self.assertTrue((a.to(torch.int64) == b).all())
+            self.assertEqual(a.to(torch.int64), b)
 
 class TestContiguous(TestCase):
     def test_contiguous(self):
@@ -141,7 +165,7 @@ class TestContiguous(TestCase):
             nt = nestedtensor.nested_tensor(data)
             self.assertTrue(nt.is_contiguous())
             # buf = nt.flatten()
-            self.assertTrue((nt == nt).all())
+            self.assertEqual(nt, nt)
             a = nt + nt
         nt.cos_()
         nt.cos()
