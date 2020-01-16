@@ -33,7 +33,7 @@ namespace {
 // torch::jit::class_<torch::nested_tensor::THPNestedTensor>(m, "NestedTensor")
 static auto my_jit_class =
     torch::jit::class_<torch::nested_tensor::THPNestedTensor>("NestedTensor")
-    .def(torch::jit::init<>())
+        .def(torch::jit::init<>())
         // .def_property_readonly(
         //     "dtype", &torch::nested_tensor::THPNestedTensor::getDtype)
         // .def_property_readonly(
@@ -43,12 +43,12 @@ static auto my_jit_class =
         // .def_property_readonly(
         //     "requires_grad",
         //     &torch::nested_tensor::THPNestedTensor::requires_grad)
-        // .def("__len__", &torch::nested_tensor::THPNestedTensor::len)
+        .def("__len__", &torch::nested_tensor::THPNestedTensor::len)
+        .def(
+            "element_size",
+            &torch::nested_tensor::THPNestedTensor::element_size)
+        // .def("nested_size", &torch::nested_tensor::THPNestedTensor::nested_size)
         // .def(
-        //     "element_size",
-        //     &torch::nested_tensor::THPNestedTensor::element_size)
-        // .def("nested_size",
-        // &torch::nested_tensor::THPNestedTensor::nested_size) .def(
         //     "nested_stride",
         //     &torch::nested_tensor::THPNestedTensor::nested_stride)
         // .def(
@@ -104,30 +104,30 @@ static auto my_jit_class =
         // .def(
         //     "requires_grad_",
         //     &torch::nested_tensor::THPNestedTensor::requires_grad_)
-        .def("numel", &torch::nested_tensor::THPNestedTensor::numel);
-// .def_property_readonly(
-//     "grad", &torch::nested_tensor::THPNestedTensor::grad)
-// .def("detach", &torch::nested_tensor::THPNestedTensor::detach)
-// .def("dim", &torch::nested_tensor::THPNestedTensor::dim)
-// .def("pin_memory", &torch::nested_tensor::THPNestedTensor::pin_memory)
-// .def("nested_dim", &torch::nested_tensor::THPNestedTensor::nested_dim)
-// .def("is_pinned", &torch::nested_tensor::THPNestedTensor::is_pinned)
-// .def(
-//     "is_contiguous",
-//     &torch::nested_tensor::THPNestedTensor::is_contiguous)
-// .def("get_buffer", &torch::nested_tensor::THPNestedTensor::get_buffer)
-// .def("to_tensor", &torch::nested_tensor::THPNestedTensor::to_tensor)
-// .def("__str__", &torch::nested_tensor::THPNestedTensor::str)
-// .def("__repr__", &torch::nested_tensor::THPNestedTensor::str);
+        .def("numel", &torch::nested_tensor::THPNestedTensor::numel)
+        // .def_property_readonly(
+        //     "grad", &torch::nested_tensor::THPNestedTensor::grad)
+        // .def("detach", &torch::nested_tensor::THPNestedTensor::detach)
+        // .def("dim", &torch::nested_tensor::THPNestedTensor::dim)
+        // .def("pin_memory", &torch::nested_tensor::THPNestedTensor::pin_memory)
+        // .def("nested_dim", &torch::nested_tensor::THPNestedTensor::nested_dim)
+        // .def("is_pinned", &torch::nested_tensor::THPNestedTensor::is_pinned)
+        // .def(
+        //     "is_contiguous",
+        //     &torch::nested_tensor::THPNestedTensor::is_contiguous)
+        // .def("get_buffer", &torch::nested_tensor::THPNestedTensor::get_buffer)
+        // .def("to_tensor", &torch::nested_tensor::THPNestedTensor::to_tensor)
+        .def("__str__", &torch::nested_tensor::THPNestedTensor::str)
+        .def("__repr__", &torch::nested_tensor::THPNestedTensor::str);
 
 } // namespace
 } // namespace jit
 } // namespace torch
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-//   // NOTE: This is a private function until it is feature complete
-//   m.def("_jit_tensorwise", &torch::nested_tensor::jit_tensorwise);
-//   m.def("as_nested_tensor", &torch::nested_tensor::as_nested_tensor);
-//   m.def("nested_tensor", &torch::nested_tensor::nested_tensor);
+  //   // NOTE: This is a private function until it is feature complete
+  //   m.def("_jit_tensorwise", &torch::nested_tensor::jit_tensorwise);
+  //   m.def("as_nested_tensor", &torch::nested_tensor::as_nested_tensor);
+  //   m.def("nested_tensor", &torch::nested_tensor::nested_tensor);
 }
 //

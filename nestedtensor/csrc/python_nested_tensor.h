@@ -40,14 +40,8 @@ struct THPNestedTensor : torch::jit::CustomClassHolder {
   c10::either<_ListNestedTensor, _BufferNestedTensor> data() {
     return _data;
   }
-  pybind11::object nested_size() {
-    return wrap_nested_node(data_map<SizeNode>(
-        _data, [](auto data) { return data.nested_size(); }));
-  }
-  pybind11::object nested_stride() {
-    return wrap_nested_node(data_map<SizeNode>(
-        _data, [](auto data) { return data.nested_stride(); }));
-  }
+  pybind11::object nested_size();
+  pybind11::object nested_stride();
   THPNestedTensor requires_grad_(pybind11::bool_ requires_grad) {
     return THPNestedTensor(
         data_map<THPNestedTensor>(_data, [&requires_grad](auto data) {
