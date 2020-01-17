@@ -14,10 +14,11 @@ namespace torch {
 namespace nested_tensor {
 
 struct JITTHPSizeNode : torch::jit::CustomClassHolder {
-  JITTHPSizeNode() : JITTHPSizeNode(SizeNode(), "asdf") {}
-  JITTHPSizeNode(std::string name) : JITTHPSizeNode(SizeNode(), name) {}
-  JITTHPSizeNode(SizeNode size_node, std::string name)
-      : _size_node(size_node), _name(name) {}
+  JITTHPSizeNode() : _size_node(), _name("asdf") {}
+  // JITTHPSizeNode() : JITTHPSizeNode(SizeNode(), "asdf") {}
+  // JITTHPSizeNode(std::string name) : JITTHPSizeNode(SizeNode(), name) {}
+  // JITTHPSizeNode(SizeNode size_node, std::string name)
+  //     : _size_node(size_node), _name(name) {}
   int64_t len() {
     if (_size_node.is_leaf()) {
       return _size_node.size();
