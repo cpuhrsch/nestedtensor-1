@@ -1,5 +1,6 @@
 #include <creation.h>
 #include <jit_list_apply.h>
+#include <torch/custom_class.h>
 #include <torch/extension.h>
 
 // TODO: Add a field such as is_empty to _NestedNode?
@@ -20,6 +21,7 @@
 // NOTE: Implementations _ListNestedTensor and _BufferNestedTensor
 // return lists of lists of integers for nested_size and nested_stride
 // for now. It's up to the consumer to correct this if required.
+
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   py::class_<torch::nested_tensor::THPSizeNode>(m, "SizeNode")

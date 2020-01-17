@@ -1,6 +1,8 @@
 #pragma once
 #include <buffer_nested_tensor.h>
 #include <list_nested_tensor.h>
+#include <torch/custom_class.h>
+
 // NOTE: Causes linktime error for requested symbol as_function
 // #include <torch/csrc/jit/script/python_sugared_value.h>
 // NOTE: torch/csrc/tensor/python_tensor.h can't be found and will raise compile
@@ -10,6 +12,68 @@
 
 namespace torch {
 namespace nested_tensor {
+
+struct JITTHPSizeNode : torch::jit::CustomClassHolder {
+  JITTHPSizeNode() : JITTHPSizeNode(SizeNode(), "asdf") {}
+  JITTHPSizeNode(std::string name) : JITTHPSizeNode(SizeNode(), name) {}
+  JITTHPSizeNode(SizeNode size_node, std::string name)
+      : _size_node(size_node), _name(name) {}
+  int64_t len() {
+    if (_size_node.is_leaf()) {
+      return _size_node.size();
+    } else {
+      return _size_node.degree();
+    }
+  }
+  std::string str() {
+    return SizeNode___str__(_size_node, _name);
+  }
+  const SizeNode& get_size_node() {
+    return _size_node;
+  }
+  std::string get_name() {
+    return _name;
+  }
+
+ private:
+  SizeNode _size_node;
+  std::string _name;
+};
+} // namespace nested_tensor
+} // namespace torch
+
+namespace torch {
+namespace jit {
+namespace nestedtensor {
+
+static auto my_jit_class =
+    torch::jit::class_<torch::nested_tensor::JITTHPSizeNode>("JITSizeNode")
+        .def(torch::jit::init<>())
+        .def("__str__", &torch::nested_tensor::JITTHPSizeNode::str)
+        // .def(
+        //     "__iter__",
+        //     [](torch::nested_tensor::JITTHPSizeNode& self) {
+        //       return py::make_iterator(
+        //           self.get_elements().data(),
+        //           self.get_elements().data() + self.get_elements().size());
+        //     },
+        //     py::keep_alive<0, 1>())
+        // .def(
+        //     "__eq__",
+        //     [](torch::nested_tensor::JITTHPSizeNode& a,
+        //        torch::nested_tensor::JITTHPSizeNode& b) {
+        //       return a.get_size_node() == b.get_size_node();
+        //     })
+        .def("__repr__", &torch::nested_tensor::JITTHPSizeNode::str)
+        .def("__len__", &torch::nested_tensor::JITTHPSizeNode::len);
+
+}
+} // namespace jit
+} // namespace torch
+
+namespace torch {
+namespace nested_tensor {
+
 std::vector<py::object> unbind_THPSizeNode(
     SizeNode size_node,
     std::string name);
