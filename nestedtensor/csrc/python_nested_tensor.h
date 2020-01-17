@@ -14,11 +14,11 @@ namespace torch {
 namespace nested_tensor {
 
 struct JITTHPSizeNode : torch::jit::CustomClassHolder {
-  JITTHPSizeNode() : _size_node(), _name("asdf") {}
-  // JITTHPSizeNode() : JITTHPSizeNode(SizeNode(), "asdf") {}
-  // JITTHPSizeNode(std::string name) : JITTHPSizeNode(SizeNode(), name) {}
-  // JITTHPSizeNode(SizeNode size_node, std::string name)
-  //     : _size_node(size_node), _name(name) {}
+  // JITTHPSizeNode() : _size_node(), _name("asdf") {}
+  JITTHPSizeNode() : JITTHPSizeNode(SizeNode(), "asdf") {}
+  JITTHPSizeNode(std::string name) : JITTHPSizeNode(SizeNode(), name) {}
+  JITTHPSizeNode(SizeNode size_node, std::string name)
+      : _size_node(size_node), _name(name) {}
   int64_t len() {
     if (_size_node.is_leaf()) {
       return _size_node.size();
@@ -49,7 +49,8 @@ namespace nestedtensor {
 
 static auto my_jit_class =
     torch::jit::class_<torch::nested_tensor::JITTHPSizeNode>("JITSizeNode")
-        .def(torch::jit::init<>())
+        // .def(torch::jit::init<>())
+        .def(torch::jit::init<std::string>())
         .def("__str__", &torch::nested_tensor::JITTHPSizeNode::str)
         // .def(
         //     "__iter__",
