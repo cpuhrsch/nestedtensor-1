@@ -22,6 +22,36 @@
 // return lists of lists of integers for nested_size and nested_stride
 // for now. It's up to the consumer to correct this if required.
 
+namespace torch {
+namespace jit {
+namespace {
+
+static auto my_jit_class =
+    torch::jit::class_<torch::nested_tensor::JITTHPSizeNode>("JITSizeNode")
+        .def(torch::jit::init<std::string>())
+        .def("__str__", &torch::nested_tensor::JITTHPSizeNode::str)
+        // .def(
+        //     "__iter__",
+        //     [](torch::nested_tensor::JITTHPSizeNode& self) {
+        //       return py::make_iterator(
+        //           self.get_elements().data(),
+        //           self.get_elements().data() + self.get_elements().size());
+        //     },
+        //     py::keep_alive<0, 1>())
+        // .def(
+        //     "__eq__",
+        //     [](torch::nested_tensor::JITTHPSizeNode& a,
+        //        torch::nested_tensor::JITTHPSizeNode& b) {
+        //       return a.get_size_node() == b.get_size_node();
+        //     })
+        .def("unbind_nodes", &torch::nested_tensor::JITTHPSizeNode::unbind_nodes)
+        .def("unbind_sizes", &torch::nested_tensor::JITTHPSizeNode::unbind_sizes)
+        .def("__repr__", &torch::nested_tensor::JITTHPSizeNode::str)
+        .def("__len__", &torch::nested_tensor::JITTHPSizeNode::len);
+
+}
+} // namespace jit
+} // namespace torch
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   py::class_<torch::nested_tensor::THPSizeNode>(m, "SizeNode")

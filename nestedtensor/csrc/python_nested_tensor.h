@@ -35,42 +35,30 @@ struct JITTHPSizeNode : torch::jit::CustomClassHolder {
   std::string get_name() {
     return _name;
   }
+  std::vector<JITTHPSizeNode> unbind_nodes() {
+    std::vector<JITTHPSizeNode> result;
+    if (!_size_node.is_leaf()) {
+      for (size_t i = 0; i < _size_node.degree(); i++) {
+        result.push_back(JITTHPSizeNode(_size_node.children(i), _name));
+      }
+    }
+    return result;
+  }
+  std::vector<c10::List<int64_t>> unbind_sizes() {
+    std::vector<c10::List<int64_t>> result;
+    if (_size_node.is_leaf()) {
+      for (size_t i = 0; i < _size_node.size(); i++) {
+        result.push_back(_size_node.payload(i));
+      }
+    }
+    return result;
+  }
 
  private:
   SizeNode _size_node;
   std::string _name;
 };
 } // namespace nested_tensor
-} // namespace torch
-
-namespace torch {
-namespace jit {
-namespace nestedtensor {
-
-static auto my_jit_class =
-    torch::jit::class_<torch::nested_tensor::JITTHPSizeNode>("JITSizeNode")
-        // .def(torch::jit::init<>())
-        .def(torch::jit::init<std::string>())
-        .def("__str__", &torch::nested_tensor::JITTHPSizeNode::str)
-        // .def(
-        //     "__iter__",
-        //     [](torch::nested_tensor::JITTHPSizeNode& self) {
-        //       return py::make_iterator(
-        //           self.get_elements().data(),
-        //           self.get_elements().data() + self.get_elements().size());
-        //     },
-        //     py::keep_alive<0, 1>())
-        // .def(
-        //     "__eq__",
-        //     [](torch::nested_tensor::JITTHPSizeNode& a,
-        //        torch::nested_tensor::JITTHPSizeNode& b) {
-        //       return a.get_size_node() == b.get_size_node();
-        //     })
-        .def("__repr__", &torch::nested_tensor::JITTHPSizeNode::str)
-        .def("__len__", &torch::nested_tensor::JITTHPSizeNode::len);
-
-}
-} // namespace jit
 } // namespace torch
 
 namespace torch {
