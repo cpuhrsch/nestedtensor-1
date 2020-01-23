@@ -4,6 +4,7 @@ import numbers
 from . import nested
 from . import utils
 from nestedtensor import _C
+from . import batch
 
 def as_nested_tensor(data, dtype=None, device=None):
     # Simple wrapper around a nested list of Tensors.
@@ -42,3 +43,6 @@ def nested_tensor(data, dtype=None, device=None, requires_grad=False, pin_memory
         if pin_memory:
             result = result.pin_memory()
         return result
+
+def batch(data):
+    return batch.Batch(as_nested_tensor(data)._impl)
