@@ -19,6 +19,9 @@ TensorNode build_structure(
     at::Tensor buffer,
     SizeNode nested_size,
     SizeNode nested_stride) {
+  assert(nested_size.degree() > 0);
+  assert(nested_stride.degree() == nested_size.degree());
+  assert(nested_stride.height() == nested_size.height());
   c10::List<int64_t> split_sizes = flatten(
       map([](c10::List<int64_t> a,
              c10::List<int64_t> b) { return num_memory(a, b); },

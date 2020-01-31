@@ -55,30 +55,19 @@ struct _ListNestedTensor {
       bool retain_graph,
       bool create_graph) {
     apply(
-        [retain_graph, create_graph](at::Tensor tensor1, at::Tensor tensor2) -> void {
-          tensor1.backward(tensor2, retain_graph, create_graph);
-        },
+        [retain_graph, create_graph](at::Tensor tensor1, at::Tensor tensor2)
+            -> void { tensor1.backward(tensor2, retain_graph, create_graph); },
         _structure,
         gradient.get_structure());
   }
   int64_t __len__() {
-    if (nested_dim() == 1) {
-      return _structure.size();
-    } else {
-      return _structure.degree();
-    }
+    return _nested_size.degree();
   }
   at::Tensor to_tensor() {
     return stack(flatten(_structure).vec());
   }
   int64_t nested_dim() {
-    const TensorNode* start_structure = &_structure;
-    int64_t depth = 1;
-    while (!start_structure->is_leaf()) {
-      depth++;
-      start_structure = start_structure->children_data(0);
-    }
-    return depth;
+    return _structure.height();
   }
   at::ScalarType scalar_type() {
     return _first_variable.scalar_type();

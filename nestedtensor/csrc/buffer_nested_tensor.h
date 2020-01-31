@@ -30,11 +30,7 @@ struct TORCH_API _BufferNestedTensor {
     return _buffer.element_size();
   }
   int64_t __len__() {
-    if (nested_dim() == 1) {
-      return _nested_size.size();
-    } else {
-      return _nested_size.degree();
-    }
+    return _nested_size.degree();
   }
   at::ScalarType scalar_type() {
     return _buffer.scalar_type();
@@ -100,13 +96,7 @@ struct TORCH_API _BufferNestedTensor {
     return _structure;
   }
   int64_t nested_dim() {
-    const TensorNode* start_structure = &_structure;
-    int64_t depth = 1;
-    while (!start_structure->is_leaf()) {
-      depth++;
-      start_structure = start_structure->children_data(0);
-    }
-    return depth;
+    return _structure.height();
   }
   int64_t dim() {
     if (const auto& maybe_tensor = get_first_leaf(_structure)) {

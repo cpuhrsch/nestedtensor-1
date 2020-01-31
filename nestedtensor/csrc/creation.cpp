@@ -10,37 +10,28 @@ namespace nested_tensor {
 
 // TODO: Support for THPNestedTensor as part of given data.
 // TODO: Generalize this for SizeNodes
-c10::optional<c10::List<at::Tensor>> to_tensor_sequence(
+c10::optional<at::Tensor> to_tensor_sequence(
     const py::sequence& py_obj) {
-  bool result = true;
-  for (size_t i = 0; i < py_obj.size(); i++) {
-    auto payload = py_obj_to_ivalue(py_obj[i]);
-    if (!payload) {
-      result = false;
-      break;
-    }
-    result = result && (*payload).isTensor();
-  }
-  if (!result) {
+  auto payload = py_obj_to_ivalue(py_obj);
+  if (!payload) {
     return c10::nullopt;
   }
-  c10::List<at::Tensor> tensors;
-  tensors.resize(py_obj.size());
-  for (size_t i = 0; i < py_obj.size(); i++) {
-    c10::IValue payload = *py_obj_to_ivalue(py_obj[i]);
-    tensors[i] = payload.toTensor();
+  if (!(*payload).isTensor()) {
+    return c10::nullopt;
   }
-  return tensors;
+  return payload.toTensor();
 }
 
+// NOTE: py::sequence object asserts that this isn't just a Tensor.
+// TODO: Support for simple list of Tensors.
 TensorNode _get_tensor_structure(const py::sequence& py_obj) {
   // Empty list of Tensors
   if (py_obj.size() == 0) {
     return TensorNode();
   }
-  if (auto tensor_sequence = to_tensor_sequence(py_obj)) {
+  if (auto tensor = to_tensor(py_obj)) {
     // List of Tensors
-    return TensorNode(std::move(*tensor_sequence));
+    return TensorNode(*tensor);
   } else {
     // List of lists of Tensors
     std::vector<TensorNode> result;
