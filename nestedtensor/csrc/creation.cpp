@@ -8,43 +8,23 @@ namespace py = pybind11;
 namespace torch {
 namespace nested_tensor {
 
-// TODO: Support for THPNestedTensor as part of given data.
-// TODO: Generalize this for SizeNodes
-c10::optional<at::Tensor> to_tensor_sequence(
-    const py::sequence& py_obj) {
-  auto payload = py_obj_to_ivalue(py_obj);
-  if (!payload) {
-    return c10::nullopt;
-  }
-  if (!(*payload).isTensor()) {
-    return c10::nullopt;
-  }
-  return payload.toTensor();
-}
-
 // NOTE: py::sequence object asserts that this isn't just a Tensor.
 // TODO: Support for simple list of Tensors.
-TensorNode _get_tensor_structure(const py::sequence& py_obj) {
-  // Empty list of Tensors
-  if (py_obj.size() == 0) {
-    return TensorNode();
-  }
-  if (auto tensor = to_tensor(py_obj)) {
-    // List of Tensors
-    return TensorNode(*tensor);
-  } else {
-    // List of lists of Tensors
-    std::vector<TensorNode> result;
-    for (size_t i = 0; i < py_obj.size(); i++) {
-      py::sequence py_obj_i = py::sequence(py_obj[i]);
-      result.push_back(_get_tensor_structure(py_obj_i));
+NestedNode<c10::IValue> _get_structure(const py::sequence& py_obj) {
+  std::vector<NestedNode<c10::IValue>> result;
+  for (size_t i = 0; i < py_obj.size(); i++) {
+    if (py::is_instance<py::sequence>(py_object)) {
+      result.push_back(_get_structure(py_obj[i]));
+    } else {
+      result.push_back(py_obj_to_ivalue(py_obj[i]));
     }
-    return TensorNode(result);
   }
+  return NestedNode<c10::IValue>(result);
 }
 
 THPNestedTensor as_nested_tensor(py::sequence list) {
-  return THPNestedTensor(_ListNestedTensor(_get_tensor_structure(list)));
+  return THPNestedTensor(_ListNestedTensor(
+      map([](c10::IValue a) { return a.toTensor(); }, _get_structure(list))));
 }
 
 _BufferNestedTensor make_contiguous(TensorNode structure) {
