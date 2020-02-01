@@ -224,7 +224,7 @@ inline std::pair<int64_t, NestedNode<R>> _unflatten(
       index = std::get<0>(result_i);
       result.push_back(std::get<1>(result_i));
     }
-    return std::pair<int64_t, NestedNode<R>>(index, NestedNode<R>(result));
+    return std::pair<int64_t, NestedNode<R>>(index, NestedNode<R>(std::move(result)));
   }
 }
 

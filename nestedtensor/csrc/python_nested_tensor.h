@@ -35,9 +35,10 @@ struct THPNestedNode {
   }
 
   std::vector<py::object> unbind() {
+    assert(_size_node.height() > 0);
     std::vector<py::object> result;
     if (_size_node.height() == 1) {
-      for (size_t i = 0; i < _size_node.size(); i++) {
+      for (size_t i = 0; i < _size_node.degree(); i++) {
         result.push_back(
             torch::jit::toPyObject(_size_node.children(i).payload()));
       }

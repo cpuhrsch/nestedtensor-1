@@ -19,7 +19,7 @@ NestedNode<c10::IValue> _get_structure(const py::sequence& py_obj) {
       result.push_back(NestedNode<c10::IValue>(py_obj_to_ivalue(py_obj[i])));
     }
   }
-  return NestedNode<c10::IValue>(result);
+  return NestedNode<c10::IValue>(std::move(result));
 }
 
 THPNestedTensor as_nested_tensor(py::sequence list) {
