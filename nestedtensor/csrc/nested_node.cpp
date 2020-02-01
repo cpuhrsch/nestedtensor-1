@@ -34,6 +34,8 @@ int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride) {
       nested_size, nested_stride, fn, 0);
 }
 
+// TODO: Verify that the height of each child of a given node is the same
+// That means each entry is either a list or a node carrying a payload.
 bool _verify_variables(
     const torch::autograd::Variable& first_variable,
     const TensorNode nested_node) {
@@ -69,9 +71,13 @@ bool _verify_variables(
 
 std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
   std::vector<c10::optional<int64_t>> start;
-  c10::List<int64_t> first = *get_first_leaf(size_node);
-  for (int64_t i = 0; i < first.size(); i++) {
-    start[i] = first[i];
+  auto maybe_first = get_first_leaf(size_node);
+  if (!maybe_first) {
+    return start;
+  }
+  c10::List<int64_t> first = *maybe_first;
+  for (size_t i = 0; i < first.size(); i++) {
+    start.push_back(first[i]);
   }
   auto fn = [](c10::List<int64_t> size,
                std::vector<c10::optional<int64_t>> result) {

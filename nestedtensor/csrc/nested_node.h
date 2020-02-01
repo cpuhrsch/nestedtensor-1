@@ -31,6 +31,7 @@ struct NestedNode {
   inline size_t degree() const {
     return _children.size();
   }
+  //TODO: Make this actually the height (max length path)
   inline int64_t height() const {
     const NestedNode<T>* start_structure = this;
     int64_t height = 0;
@@ -198,14 +199,13 @@ template <typename A>
 inline c10::List<A> flatten(NestedNode<A> nested_node) {
   assert(nested_node.degree() > 0);
   c10::List<A> result;
-  for (size_t i = 0; i < nested_node.degree(); i++) {
-    if (nested_node.height() == 1) {
-      result.push_back(*nested_node.children(i).payload());
-    } else {
-      c10::List<A> tmp = flatten<A>(nested_node.children(i));
-      result.append(std::move(tmp));
-    }
+  if (nested_node.height() == 0) {
+    result.push_back(*nested_node.payload());
+    return result;
   }
+  for (size_t i = 0; i < nested_node.degree(); i++) {
+    result.append(flatten<A>(nested_node.children(i)));
+  i
   return result;
 }
 
@@ -224,7 +224,8 @@ inline std::pair<int64_t, NestedNode<R>> _unflatten(
       index = std::get<0>(result_i);
       result.push_back(std::get<1>(result_i));
     }
-    return std::pair<int64_t, NestedNode<R>>(index, NestedNode<R>(std::move(result)));
+    return std::pair<int64_t, NestedNode<R>>(
+        index, NestedNode<R>(std::move(result)));
   }
 }
 
