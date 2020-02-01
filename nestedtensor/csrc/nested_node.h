@@ -15,16 +15,12 @@ struct NestedNode {
   NestedNode() : _payload(c10::nullopt) {}
   NestedNode(std::vector<NestedNode<T>>&& children)
       : _children(std::move(children)), _payload(c10::nullopt) {}
-  // NestedNode(const NestedNode&) = delete;
-  NestedNode(NestedNode<T>&& other)
-      : _children(std::move(other._children)),
-        _payload(std::move(other._payload)) {}
   NestedNode(T payload) : _payload(payload) {}
   inline bool is_leaf() const {
     return _children.size() == 0;
   }
-  inline T& payload() {
-    return *_payload;
+  inline c10::optional<T> payload() const {
+    return _payload;
   }
   inline NestedNode<T> children(size_t i) const {
     return _children[i];
@@ -106,7 +102,7 @@ std::string NestedNode___str__(
   // result << "nested_tensor([";
   result << name << "([";
   if (nested_node.is_leaf()) {
-    result << payload_to_str(nested_node.payload(), tabs_);
+    result << payload_to_str(*nested_node.payload(), tabs_);
   } else {
     for (size_t i = 0; i < nested_node.degree(); i++) {
       if (i > 0) {
@@ -131,7 +127,7 @@ int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride);
 template <typename A, typename B = py::object>
 B wrap_nested_node(NestedNode<A> nested_node) {
   if (nested_node.is_leaf()) {
-    return B(py::cast(torch::jit::toPyObject(nested_node.payload())));
+    return B(py::cast(torch::jit::toPyObject(*nested_node.payload())));
   } else {
     std::vector<B> result;
     for (size_t i = 0; i < nested_node.degree(); i++) {
@@ -151,14 +147,11 @@ bool _verify_variables(
 
 template <typename A>
 inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
-  if (nested_node.is_leaf() && nested_node.degree() == 0) {
-    return c10::nullopt;
+  const NestedNode<A>* start = &nested_node;
+  while (!start->is_leaf()) {
+    start = start->children_data(0);
   }
-  NestedNode<A>& start = nested_node;
-  while (!start.is_leaf()) {
-    start = std::move(start.children(0));
-  }
-  return start.payload();
+  return start->payload();
 }
 
 template <class F, class A, class TypeList>
@@ -174,7 +167,7 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
       const NestedNode<Args>&... nested_node) {
     auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
     if (first_node.is_leaf()) {
-      return NestedNode<A>(std::forward<F>(fn)(nested_node.payload()...));
+      return NestedNode<A>(std::forward<F>(fn)(*nested_node.payload()...));
     } else {
       std::vector<NestedNode<A>> result;
       for (size_t i = 0; i < first_node.degree(); i++) {
@@ -207,7 +200,7 @@ inline c10::List<A> flatten(NestedNode<A> nested_node) {
   c10::List<A> result;
   for (size_t i = 0; i < nested_node.degree(); i++) {
     if (nested_node.height() == 1) {
-      result.push_back(nested_node.children(i).payload());
+      result.push_back(*nested_node.children(i).payload());
     } else {
       c10::List<A> tmp = flatten<A>(nested_node.children(i));
       result.append(std::move(tmp));
@@ -250,7 +243,7 @@ inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
   A result = ident;
   auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
   if (first_node.is_leaf()) {
-    result = fn(nested_node.payload()..., result);
+    result = fn(*nested_node.payload()..., result);
   } else {
     for (size_t i = 0; i < first_node.degree(); i++) {
       result = reduce<F, A, B...>(nested_node.children(i)..., fn, result);
@@ -261,10 +254,10 @@ inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
 
 // TODO: Assuming all NestedNodes have same shape.
 template <class F, class... A>
-inline void apply(F&& fn, NestedNode<A>&... nested_node) {
+inline void apply(F&& fn, NestedNode<A>... nested_node) {
   auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
   if (first_node.is_leaf()) {
-    std::forward<F>(fn)(nested_node.payload()...);
+    std::forward<F>(fn)(*nested_node.payload()...);
   } else {
     for (size_t i = 0; i < first_node.degree(); i++) {
       apply<F, A...>(std::forward<F>(fn), nested_node.children(i)...);
