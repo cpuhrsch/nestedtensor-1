@@ -83,6 +83,7 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
         result[i] = c10::nullopt;
       }
     }
+    return result;
   };
   auto result = reduce<
       decltype(fn),
@@ -91,10 +92,13 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
   std::vector<c10::optional<int64_t>> tmp(size_node.height() + 1, -1);
   walk(
       [&tmp](SizeNode n) {
-        if (tmp[n.height()] == -1) {
+        if (!tmp[n.height()]) {
+          return;
+        }
+        if (*tmp[n.height()] == -1) {
           tmp[n.height()] = n.degree();
         }
-        if (tmp[n.height()] != n.degree()) {
+        if (*tmp[n.height()] != n.degree()) {
           tmp[n.height()] = c10::nullopt;
         }
       },

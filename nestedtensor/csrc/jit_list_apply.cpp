@@ -72,7 +72,7 @@ static TensorNode apply_jit_function(
       result.push_back(
           apply_jit_function<F>(stack_template, tensor_node_i, local_args, fn));
     }
-    return TensorNode(result);
+    return TensorNode(std::move(result));
   }
 }
 

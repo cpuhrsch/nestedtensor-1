@@ -74,7 +74,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
               if (self.nested_dim() == 1) {
                 for (int64_t i = 0; i < self.len(); i++) {
                   result.push_back(torch::jit::toPyObject(
-                      self.data().right().get_structure().chilren(i).payload()));
+                      self.data().right().get_structure().children(i).payload()));
                 }
               } else {
                 std::vector<int64_t> split_sizes;
