@@ -23,7 +23,7 @@ at::Tensor run_function(Stack&& stack, Operation& fn) {
 
 // TODO: Assert that one arg must be a nestedtensor?
 template <class F>
-static IValueNode apply_jit_function(
+static TensorNode apply_jit_function(
     Stack& stack_template,
     const std::set<size_t>& tensor_node_i,
     const std::vector<TensorNode>& tensor_nodes,
@@ -41,7 +41,7 @@ static IValueNode apply_jit_function(
       size_t ni = 0;
       for (size_t i = 0; i < stack.size(); i++) {
         if (tensor_node_i.count(i)) {
-          stack[i] = tensor_nodes[ni].children(j).payload();
+          stack[i] = tensor_nodes[ni].children(i).payload();
           ni++;
         }
       }

@@ -69,7 +69,7 @@ bool _verify_variables(
 
 std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
   std::vector<c10::optional<int64_t>> start;
-  c10::List<int64_t> first = get_first_leaf(size_node);
+  c10::List<int64_t> first = *get_first_leaf(size_node);
   for (int64_t i = 0; i < first.size(); i++) {
     start[i] = first[i];
   }
@@ -84,50 +84,26 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
       }
     }
   };
-  result = reduce<
+  auto result = reduce<
       decltype(fn),
       std::vector<c10::optional<int64_t>>,
       c10::List<int64_t>>(size_node, fn, start);
-  // if (size_node.is_leaf()) {
-  //   result.push_back(size_node.size());
-  //   if (size_node.size() == 0) {
-  //     return result;
-  //   }
+  std::vector<c10::optional<int64_t>> tmp(size_node.height() + 1, -1);
+  walk(
+      [&tmp](SizeNode n) {
+        if (tmp[n.height()] == -1) {
+          tmp[n.height()] = n.degree();
+        }
+        if (tmp[n.height()] != n.degree()) {
+          tmp[n.height()] = c10::nullopt;
+        }
+      },
+      size_node);
+  for (size_t i = 0; i < result.size(); i++) {
+    tmp.push_back(result[i]);
+  }
 
-  //   for (const auto& size : size_node.payload(0)) {
-  //     result.push_back(size);
-  //   }
-
-  //   for (size_t j = 1; j < result.size(); j++) {
-  //     for (size_t i = 1; i < size_node.size(); i++) {
-  //       if (!result[j]) {
-  //         break;
-  //       }
-  //       if ((*(result[j])) != size_node.payload(i)[j - 1]) {
-  //         result[j] = c10::nullopt;
-  //       }
-  //     }
-  //   }
-  return result;
-  // }
-  // std::vector<c10::optional<int64_t>> result;
-  // result.push_back(size_node.degree());
-
-  // if (size_node.degree() > 0) {
-  //   for (const auto& size : construct_size(size_node.children(0))) {
-  //     result.push_back(size);
-  //   }
-  //   for (size_t i = 1; i < size_node.degree(); i++) {
-  //     auto size_node_i = construct_size(size_node.children(i));
-  //     for (size_t j = 1; j < result.size(); j++) {
-  //       if (result[j] && ((*result[j]) != size_node_i[j - 1])) {
-  //         result[j] = c10::nullopt;
-  //       }
-  //     }
-  //   }
-  // }
-
-  // return result;
+  return tmp;
 }
 
 } // namespace nested_tensor

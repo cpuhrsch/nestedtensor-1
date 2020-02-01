@@ -265,5 +265,18 @@ inline void apply(F&& fn, NestedNode<A>... nested_node) {
   }
 }
 
+// TODO: Assuming all NestedNodes have same shape.
+template <class F, class... A>
+inline void walk(F&& fn, NestedNode<A>... nested_node) {
+  auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
+  if (first_node.is_leaf()) {
+    std::forward<F>(fn)(nested_node...);
+  } else {
+    for (size_t i = 0; i < first_node.degree(); i++) {
+      walk<F, A...>(std::forward<F>(fn), nested_node.children(i)...);
+    }
+  }
+}
+
 } // namespace nested_tensor
 } // namespace torch
