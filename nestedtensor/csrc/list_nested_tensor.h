@@ -61,7 +61,7 @@ struct _ListNestedTensor {
         gradient.get_structure());
   }
   int64_t __len__() {
-    return _nested_size.degree();
+    return _structure.degree();
   }
   at::Tensor to_tensor() {
     return stack(flatten(_structure).vec());
@@ -99,7 +99,7 @@ struct _ListNestedTensor {
   bool is_contiguous() {
     return false;
   }
-  TensorNode get_structure() {
+  TensorNode& get_structure() {
     return _structure;
   }
   // TODO: Implement these and call into them isntead of implementing them

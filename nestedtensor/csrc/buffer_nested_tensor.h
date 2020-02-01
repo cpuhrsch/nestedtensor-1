@@ -126,7 +126,7 @@ struct TORCH_API _BufferNestedTensor {
   at::Tensor _buffer;
   const SizeNode _nested_size;
   const SizeNode _nested_stride;
-  const TensorNode _structure;
+  TensorNode _structure;
 };
 
 } // namespace nested_tensor

@@ -16,12 +16,9 @@ struct THPNestedNode {
   THPNestedNode(NestedNode<T> size_node, std::string name)
       : _size_node(size_node), _name(name) {}
   int64_t len() {
-    if (_size_node.is_leaf()) {
-      return _size_node.size();
-    } else {
-      return _size_node.degree();
-    }
+    return _size_node.height();
   }
+
   std::string str() {
     return NestedNode___str__(
         _size_node, _name, [](c10::IValue payload, const std::string& tabs) {
@@ -39,9 +36,10 @@ struct THPNestedNode {
 
   std::vector<py::object> unbind() {
     std::vector<py::object> result;
-    if (_size_node.is_leaf()) {
+    if (_size_node.height() == 1) {
       for (size_t i = 0; i < _size_node.size(); i++) {
-        result.push_back(torch::jit::toPyObject(_size_node.payload(i)));
+        result.push_back(
+            torch::jit::toPyObject(_size_node.children(i).payload()));
       }
     } else {
       for (size_t i = 0; i < _size_node.degree(); i++) {
