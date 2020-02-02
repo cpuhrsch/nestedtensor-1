@@ -10,26 +10,32 @@ namespace nested_tensor {
 
 // NOTE: py::sequence object asserts that this isn't just a Tensor.
 // TODO: Support for simple list of Tensors.
-NestedNode<c10::IValue> _get_structure(const py::sequence& py_obj) {
-  std::vector<NestedNode<c10::IValue>> result;
-  for (size_t i = 0; i < py_obj.size(); i++) {
-    if (py::isinstance<py::sequence>(py_obj[i])) {
-      result.push_back(_get_structure(py::sequence(py_obj[i])));
-    } else {
-      result.push_back(NestedNode<c10::IValue>(py_obj_to_ivalue(py_obj[i])));
+NestedNode<c10::IValue> _get_structure(const py::object& py_obj) {
+  if (py::isinstance<py::sequence>(py_obj)) {
+    std::vector<NestedNode<c10::IValue>> result;
+    auto py_seq = py::sequence(py_obj);
+    for (size_t i = 0; i < py_seq.size(); i++) {
+      result.push_back(_get_structure(py_seq[i]));
     }
+    return NestedNode<c10::IValue>(std::move(result));
+  } else {
+    return NestedNode<c10::IValue>(py_obj_to_ivalue(py_obj));
   }
-  return NestedNode<c10::IValue>(std::move(result));
 }
 
 THPNestedTensor as_nested_tensor(py::sequence list) {
-  return THPNestedTensor(_ListNestedTensor(
-      map([](c10::IValue a) { return a.toTensor(); }, _get_structure(list))));
+  return THPNestedTensor(_ListNestedTensor(map(
+      [](c10::IValue a) {
+        std::cout << "a: " << a << std::endl;
+        return a.toTensor();
+      },
+      _get_structure(list))));
 }
 
 _BufferNestedTensor make_contiguous(TensorNode structure) {
+  c10::List<at::Tensor> _tensors = flatten(structure);
   c10::List<at::Tensor> tensors;
-  for (const at::Tensor& tensor : flatten(structure)) {
+  for (const at::Tensor& tensor : _tensors) {
     tensors.emplace_back(tensor.reshape({-1}));
   }
   at::Tensor buffer;

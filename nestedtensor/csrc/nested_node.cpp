@@ -34,6 +34,24 @@ int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride) {
       nested_size, nested_stride, fn, 0);
 }
 
+bool _verify_shape(const TensorNode nested_node) {
+  if (nested_node.degree() == 0) {
+    return true;
+  }
+  int64_t first_height = nested_node.children(0).height();
+  for (size_t i = 0; i < nested_node.degree(); i++) {
+    if (first_height != nested_node.children(i).height()) {
+      return false;
+    }
+  }
+  for (size_t i = 0; i < nested_node.degree(); i++) {
+    if (!_verify_shape(nested_node.children(i))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // TODO: Verify that the height of each child of a given node is the same
 // That means each entry is either a list or a node carrying a payload.
 bool _verify_variables(
@@ -53,6 +71,12 @@ bool _verify_variables(
   //     dtype
   //     requires_grad
   //     is_pinned()
+  if (nested_node.height() == 0) {
+    return false;
+  }
+  if (!_verify_shape(nested_node)) {
+    return false;
+  }
   auto fn = [first_variable](at::Tensor variable, bool valid) {
     // TODO: Add more checks?
     valid = valid && (variable.dim() == first_variable.dim());

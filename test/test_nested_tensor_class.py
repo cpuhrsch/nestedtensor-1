@@ -40,10 +40,8 @@ class TestNestedTensor(TestCase):
             ValueError, lambda: nestedtensor.nested_tensor(torch.tensor([3.0])))
         self.assertRaises(ValueError, lambda: nestedtensor.nested_tensor(
             nestedtensor.nested_tensor([torch.tensor([3.0])])))
-        print("0")
-        self.assertRaises(TypeError, lambda: nestedtensor.nested_tensor(
+        self.assertRaises(RuntimeError, lambda: nestedtensor.nested_tensor(
             [torch.tensor([2.0]), nestedtensor.nested_tensor([torch.tensor([3.0])])]))
-        print("1")
         self.assertRaises(TypeError, lambda: nestedtensor.nested_tensor(4.0))
 
     def test_default_constructor(self):

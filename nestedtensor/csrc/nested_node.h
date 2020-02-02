@@ -12,10 +12,16 @@ namespace nested_tensor {
 // return a single value).
 template <typename T>
 struct NestedNode {
-  NestedNode() : _payload(c10::nullopt) {}
+  NestedNode() : _payload(c10::nullopt), _height(0) {}
   NestedNode(std::vector<NestedNode<T>>&& children)
-      : _children(std::move(children)), _payload(c10::nullopt) {}
-  NestedNode(T payload) : _payload(payload) {}
+      : _children(std::move(children)), _payload(c10::nullopt), _height(0) {
+    for (const auto& node : _children) {
+      if (node.height() + 1 > _height) {
+        _height = node.height() + 1;
+      }
+    }
+  }
+  NestedNode(T payload) : _payload(payload), _height(0) {}
   inline bool is_leaf() const {
     return _children.size() == 0;
   }
@@ -31,15 +37,9 @@ struct NestedNode {
   inline size_t degree() const {
     return _children.size();
   }
-  //TODO: Make this actually the height (max length path)
+  // TODO: Make this actually the height (max length path)
   inline int64_t height() const {
-    const NestedNode<T>* start_structure = this;
-    int64_t height = 0;
-    while (!start_structure->is_leaf()) {
-      height++;
-      start_structure = start_structure->children_data(0);
-    }
-    return height;
+    return _height;
   }
 
  private:
@@ -47,6 +47,7 @@ struct NestedNode {
   // TODO: Make this const?
   // _VariableNode _variable_node;
   c10::optional<T> _payload;
+  int64_t _height;
 };
 
 using TensorNode = NestedNode<at::Tensor>;
@@ -205,7 +206,7 @@ inline c10::List<A> flatten(NestedNode<A> nested_node) {
   }
   for (size_t i = 0; i < nested_node.degree(); i++) {
     result.append(flatten<A>(nested_node.children(i)));
-  i
+  }
   return result;
 }
 
