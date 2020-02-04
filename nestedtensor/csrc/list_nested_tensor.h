@@ -67,7 +67,7 @@ struct _ListNestedTensor {
     return stack(flatten(_structure).vec());
   }
   int64_t nested_dim() {
-    return _structure.height();
+    return _structure.height() ? _structure.height() : 1;
   }
   at::ScalarType scalar_type() {
     return _first_variable.scalar_type();

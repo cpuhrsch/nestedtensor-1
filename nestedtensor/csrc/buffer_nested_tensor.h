@@ -96,7 +96,7 @@ struct TORCH_API _BufferNestedTensor {
     return _structure;
   }
   int64_t nested_dim() {
-    return _structure.height();
+    return _structure.height() ? _structure.height() : 1;
   }
   int64_t dim() {
     if (const auto& maybe_tensor = get_first_leaf(_structure)) {

@@ -26,7 +26,6 @@ NestedNode<c10::IValue> _get_structure(const py::object& py_obj) {
 THPNestedTensor as_nested_tensor(py::sequence list) {
   return THPNestedTensor(_ListNestedTensor(map(
       [](c10::IValue a) {
-        std::cout << "a: " << a << std::endl;
         return a.toTensor();
       },
       _get_structure(list))));

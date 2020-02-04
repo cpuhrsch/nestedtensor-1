@@ -50,7 +50,7 @@ static TensorNode apply_jit_function(
     bool broadcastable = true;
     size_t num_children = 0;
     for (const auto& node : tensor_nodes) {
-      if (!node.is_leaf()) {
+      if (!node.has_payload()) {
         if (num_children > 0) {
           broadcastable = broadcastable && (num_children == node.degree());
         } else {
@@ -63,7 +63,7 @@ static TensorNode apply_jit_function(
     for (size_t i = 0; i < num_children; i++) {
       std::vector<TensorNode> local_args;
       for (const auto& node : tensor_nodes) {
-        if (node.is_leaf()) {
+        if (node.has_payload()) {
           local_args.push_back(node);
         } else {
           local_args.push_back(node.children(i));
@@ -258,8 +258,6 @@ py::cpp_function jit_tensorwise() {
       std::stringstream ss;
       ss << "FAIL! Can't find something for " << fn;
       TORCH_CHECK(false, ss.str());
-      TensorNode result;
-      return THPNestedTensor(_ListNestedTensor(result));
     });
   });
 }
