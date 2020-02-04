@@ -12,10 +12,10 @@ namespace nested_tensor {
 // TODO: Support for simple list of Tensors.
 NestedNode<c10::IValue> _get_structure(const py::object& py_obj) {
   if (py::isinstance<py::sequence>(py_obj)) {
-    std::vector<NestedNode<c10::IValue>> result;
+    std::vector<const NestedNode<c10::IValue>> result;
     auto py_seq = py::sequence(py_obj);
     for (size_t i = 0; i < py_seq.size(); i++) {
-      result.push_back(_get_structure(py_seq[i]));
+      result.emplace_back(_get_structure(py_seq[i]));
     }
     return NestedNode<c10::IValue>(std::move(result));
   } else {
@@ -31,7 +31,7 @@ THPNestedTensor as_nested_tensor(py::sequence list) {
       _get_structure(list))));
 }
 
-_BufferNestedTensor make_contiguous(TensorNode structure) {
+_BufferNestedTensor make_contiguous(const TensorNode structure) {
   c10::List<at::Tensor> _tensors = flatten(structure);
   c10::List<at::Tensor> tensors;
   for (const at::Tensor& tensor : _tensors) {

@@ -7,7 +7,7 @@ namespace nested_tensor {
 // TODO: Eventually allow construction from a list of _BufferNestedTensors.
 struct _ListNestedTensor {
   _ListNestedTensor() = delete;
-  _ListNestedTensor(TensorNode structure)
+  _ListNestedTensor(const TensorNode structure)
       : _structure(structure),
         _first_variable(
             get_first_leaf(_structure) ? *get_first_leaf(_structure)
@@ -108,7 +108,7 @@ struct _ListNestedTensor {
   // separately in Variable dispatch functions.
 
  private:
-  TensorNode _structure;
+  const TensorNode _structure;
   at::Tensor _first_variable;
 };
 } // namespace nested_tensor

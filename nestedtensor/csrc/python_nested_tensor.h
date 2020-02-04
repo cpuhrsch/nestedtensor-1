@@ -16,7 +16,7 @@ struct THPNestedNode {
   THPNestedNode(NestedNode<T> size_node, std::string name)
       : _size_node(size_node), _name(name) {}
   int64_t len() {
-    return _size_node.height();
+    return _size_node.degree();
   }
 
   std::string str() {
@@ -52,7 +52,7 @@ struct THPNestedNode {
   }
 
  private:
-  NestedNode<T> _size_node;
+  const NestedNode<T> _size_node;
   std::string _name;
 };
 

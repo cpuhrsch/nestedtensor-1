@@ -13,7 +13,7 @@ namespace nested_tensor {
 template <typename T>
 struct NestedNode {
   NestedNode() = delete;
-  NestedNode(std::vector<NestedNode<T>>&& children)
+  NestedNode(std::vector<const NestedNode<T>>&& children)
       : _children(std::move(children)), _height(0) {
     for (const auto& node : _children) {
       if (node.height() + 1 > _height) {
@@ -31,7 +31,7 @@ struct NestedNode {
     }
     return *_payload;
   }
-  inline NestedNode<T> children(size_t i) const {
+  inline const NestedNode<T>& children(size_t i) const {
     return _children[i];
   }
   inline const NestedNode<T>* children_data(size_t i) const {
@@ -45,7 +45,7 @@ struct NestedNode {
   }
 
  private:
-  const std::vector<NestedNode<T>> _children;
+  const std::vector<const NestedNode<T>> _children;
   c10::optional<T> _payload;
   int64_t _height;
 };
@@ -124,7 +124,9 @@ c10::optional<c10::IValue> py_obj_to_ivalue(py::object py_obj);
 
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride);
 
-int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride);
+int64_t size_node_memory(
+    const SizeNode nested_size,
+    const SizeNode nested_stride);
 
 template <typename A, typename B = py::object>
 B wrap_nested_node(NestedNode<A> nested_node) {
@@ -148,7 +150,7 @@ bool _verify_variables(
     const TensorNode nested_node);
 
 template <typename A>
-inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
+inline c10::optional<A> get_first_leaf(const NestedNode<A> nested_node) {
   const NestedNode<A>* start = &nested_node;
   while (!start->has_payload()) {
     if (start->degree() == 0) {
@@ -175,7 +177,7 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
     if (first_node.has_payload()) {
       return NestedNode<A>(std::forward<F>(fn)(nested_node.payload()...));
     } else {
-      std::vector<NestedNode<A>> result;
+      std::vector<const NestedNode<A>> result;
       for (size_t i = 0; i < first_node.degree(); i++) {
         result.emplace_back(
             function(std::forward<F>(fn), nested_node.children(i)...));
@@ -201,7 +203,7 @@ map(F&& fn, const NestedNode<B>&... nested_node) {
 }
 
 template <typename A>
-inline c10::List<A> flatten(NestedNode<A> nested_node) {
+inline c10::List<A> flatten(const NestedNode<A> nested_node) {
   assert(nested_node.degree() > 0);
   c10::List<A> result;
   if (nested_node.has_payload()) {
@@ -222,7 +224,7 @@ inline std::pair<int64_t, NestedNode<R>> _unflatten(
     return std::pair<int64_t, NestedNode<R>>(
         index + 1, NestedNode<R>(content[index]));
   } else {
-    std::vector<NestedNode<R>> result;
+    std::vector<const NestedNode<R>> result;
     for (size_t i = 0; i < structure.degree(); i++) {
       auto result_i = _unflatten<R, A>(structure.children(i), content, index);
       index = std::get<0>(result_i);
@@ -237,14 +239,16 @@ inline std::pair<int64_t, NestedNode<R>> _unflatten(
 // matter. This function uses structure and content to create a new NestedNode
 // with the same shape as structure and content distributed in-order
 template <class R, class A>
-inline NestedNode<R> unflatten(NestedNode<A> structure, c10::List<R> content) {
+inline NestedNode<R> unflatten(
+    const NestedNode<A>& structure,
+    const c10::List<R>& content) {
   auto _result = _unflatten<R, A>(structure, content, 0);
   return std::get<1>(_result);
 }
 
 // TODO: Assuming all NestedNodes have same shape.
 template <typename F, typename A, typename... B>
-inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
+inline A reduce(const NestedNode<B>&... nested_node, F fn, A ident) {
   A result = ident;
   auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
   if (first_node.has_payload()) {
@@ -259,7 +263,7 @@ inline A reduce(NestedNode<B>... nested_node, F fn, A ident) {
 
 // TODO: Assuming all NestedNodes have same shape.
 template <class F, class... A>
-inline void apply(F&& fn, NestedNode<A>... nested_node) {
+inline void apply(F&& fn, const NestedNode<A>&... nested_node) {
   auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
   if (first_node.has_payload()) {
     std::forward<F>(fn)(nested_node.payload()...);

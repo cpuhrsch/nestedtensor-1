@@ -30,8 +30,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def("__repr__", &THPSizeNode::str)
       .def("__len__", &THPSizeNode::len)
       .def("__eq__", [](THPSizeNode& a_, THPSizeNode& b_) {
-        SizeNode a = a_.get_node();
-        SizeNode b = b_.get_node();
+        const SizeNode& a = a_.get_node();
+        const SizeNode& b = b_.get_node();
         if (a.height() != b.height()) {
           return false;
         }

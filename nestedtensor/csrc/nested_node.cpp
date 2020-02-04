@@ -26,7 +26,9 @@ int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
   return size[0] * stride[0];
 }
 
-int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride) {
+int64_t size_node_memory(
+    const SizeNode& nested_size,
+    const SizeNode& nested_stride) {
   auto fn = [](c10::List<int64_t> size,
                c10::List<int64_t> stride,
                int64_t input) { return num_memory(size, stride) + input; };
@@ -34,7 +36,7 @@ int64_t size_node_memory(SizeNode nested_size, SizeNode nested_stride) {
       nested_size, nested_stride, fn, 0);
 }
 
-bool _verify_shape(const TensorNode nested_node) {
+bool _verify_shape(const TensorNode& nested_node) {
   if (nested_node.degree() == 0) {
     return true;
   }
@@ -105,7 +107,7 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
   }
   auto fn = [](c10::List<int64_t> size,
                std::vector<c10::optional<int64_t>> result) {
-    for (int64_t i = 0; i < size.size(); i++) {
+    for (size_t i = 0; i < size.size(); i++) {
       if (!result[i]) {
         continue;
       }

@@ -23,10 +23,10 @@ at::Tensor run_function(Stack&& stack, Operation& fn) {
 
 // TODO: Assert that one arg must be a nestedtensor?
 template <class F>
-static TensorNode apply_jit_function(
+static const TensorNode apply_jit_function(
     Stack& stack_template,
     const std::set<size_t>& tensor_node_i,
-    const std::vector<TensorNode>& tensor_nodes,
+    std::vector<const TensorNode>&& tensor_nodes,
     F& fn) {
   bool all_leaf = true;
   for (const auto& node : tensor_nodes) {
@@ -59,9 +59,9 @@ static TensorNode apply_jit_function(
       }
     }
     TORCH_CHECK(broadcastable, "Can't broadcast given nested tensors");
-    std::vector<TensorNode> result;
+    std::vector<const TensorNode> result;
     for (size_t i = 0; i < num_children; i++) {
-      std::vector<TensorNode> local_args;
+      std::vector<const TensorNode> local_args;
       for (const auto& node : tensor_nodes) {
         if (node.has_payload()) {
           local_args.push_back(node);
@@ -70,7 +70,7 @@ static TensorNode apply_jit_function(
         }
       }
       result.push_back(
-          apply_jit_function<F>(stack_template, tensor_node_i, local_args, fn));
+          apply_jit_function<F>(stack_template, tensor_node_i, std::move(local_args), fn));
     }
     return TensorNode(std::move(result));
   }
@@ -106,7 +106,7 @@ c10::optional<TensorNode> try_nested_node(
 }
 
 inline c10::optional<
-    std::tuple<Stack, std::set<size_t>, std::vector<TensorNode>>>
+    std::tuple<Stack, std::set<size_t>, std::vector<const TensorNode>>>
 my_createStackForSchema(
     const FunctionSchema& schema,
     const tuple_slice& args,
@@ -120,7 +120,7 @@ my_createStackForSchema(
   stack.reserve(schema.arguments().size());
 
   std::set<size_t> tensor_node_i;
-  std::vector<TensorNode> tensor_nodes;
+  std::vector<const TensorNode> tensor_nodes;
 
   if (self) {
     // NOTE: self cannot be a NestedTensor because it cannot be an ivalue.
@@ -209,7 +209,7 @@ py::cpp_function jit_tensorwise() {
               THPNestedTensor(_ListNestedTensor(apply_jit_function(
                   std::get<0>(*pack),
                   std::get<1>(*pack),
-                  std::get<2>(*pack),
+                  std::move(std::get<2>(*pack)),
                   operation)));
           return result;
         }
@@ -248,7 +248,7 @@ py::cpp_function jit_tensorwise() {
                 THPNestedTensor(_ListNestedTensor(apply_jit_function(
                     std::get<0>(*pack),
                     std::get<1>(*pack),
-                    std::get<2>(*pack),
+                    std::move(std::get<2>(*pack)),
                     operation)));
             return result;
           }
