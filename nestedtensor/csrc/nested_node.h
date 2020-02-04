@@ -129,7 +129,7 @@ int64_t size_node_memory(
     const SizeNode nested_stride);
 
 template <typename A, typename B = py::object>
-B wrap_nested_node(NestedNode<A> nested_node) {
+B wrap_nested_node(const NestedNode<A>& nested_node) {
   if (nested_node.has_payload()) {
     return B(py::cast(torch::jit::toPyObject(nested_node.payload())));
   } else {
@@ -147,10 +147,10 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node);
 
 bool _verify_variables(
     const torch::autograd::Variable& first_variable,
-    const TensorNode nested_node);
+    const TensorNode& nested_node);
 
 template <typename A>
-inline c10::optional<A> get_first_leaf(const NestedNode<A> nested_node) {
+inline c10::optional<A> get_first_leaf(const NestedNode<A>& nested_node) {
   const NestedNode<A>* start = &nested_node;
   while (!start->has_payload()) {
     if (start->degree() == 0) {
@@ -203,7 +203,7 @@ map(F&& fn, const NestedNode<B>&... nested_node) {
 }
 
 template <typename A>
-inline c10::List<A> flatten(const NestedNode<A> nested_node) {
+inline c10::List<A> flatten(const NestedNode<A>& nested_node) {
   assert(nested_node.degree() > 0);
   c10::List<A> result;
   if (nested_node.has_payload()) {

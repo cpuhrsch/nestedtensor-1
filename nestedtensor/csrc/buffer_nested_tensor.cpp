@@ -17,8 +17,8 @@ c10::List<int64_t> _cont_stride(c10::List<int64_t> size) {
 
 TensorNode build_structure(
     at::Tensor buffer,
-    const SizeNode nested_size,
-    const SizeNode nested_stride) {
+    const SizeNode& nested_size,
+    const SizeNode& nested_stride) {
   assert(nested_size.degree() > 0);
   assert(nested_stride.degree() == nested_size.degree());
   assert(nested_stride.height() == nested_size.height());
@@ -84,27 +84,28 @@ _BufferNestedTensor _BufferNestedTensor::grad() {
 }
 
 _BufferNestedTensor::_BufferNestedTensor(
-    torch::autograd::Variable buffer,
-    const SizeNode nested_size)
+    torch::autograd::Variable&& buffer,
+    const SizeNode&& nested_size)
     : _BufferNestedTensor(
           buffer,
           nested_size,
-          map([](c10::List<int64_t> size) { return _cont_stride(size); },
-              nested_size)) {}
+          std::move(
+              map([](c10::List<int64_t> size) { return _cont_stride(size); },
+                  nested_size))) {}
 _BufferNestedTensor::_BufferNestedTensor(
-    torch::autograd::Variable buffer,
-    const SizeNode nested_size,
-    const SizeNode nested_stride)
+    torch::autograd::Variable&& buffer,
+    const SizeNode&& nested_size,
+    const SizeNode&& nested_stride)
     : _BufferNestedTensor(
           buffer,
           nested_size,
           nested_stride,
-          build_structure(buffer, nested_size, nested_stride)) {}
+          std::move(build_structure(buffer, nested_size, nested_stride))) {}
 _BufferNestedTensor::_BufferNestedTensor(
-    torch::autograd::Variable buffer,
-    const SizeNode nested_size,
-    const SizeNode nested_stride,
-    const TensorNode structure)
+    torch::autograd::Variable&& buffer,
+    const SizeNode&& nested_size,
+    const SizeNode&& nested_stride,
+    const TensorNode&& structure)
     : _buffer(buffer),
       _nested_size(nested_size),
       _nested_stride(nested_stride),

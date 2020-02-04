@@ -24,11 +24,8 @@ NestedNode<c10::IValue> _get_structure(const py::object& py_obj) {
 }
 
 THPNestedTensor as_nested_tensor(py::sequence list) {
-  return THPNestedTensor(_ListNestedTensor(map(
-      [](c10::IValue a) {
-        return a.toTensor();
-      },
-      _get_structure(list))));
+  return THPNestedTensor(_ListNestedTensor(std::move(
+      map([](c10::IValue a) { return a.toTensor(); }, _get_structure(list)))));
 }
 
 _BufferNestedTensor make_contiguous(const TensorNode structure) {
@@ -44,9 +41,10 @@ _BufferNestedTensor make_contiguous(const TensorNode structure) {
     buffer = at::cat(tensors.vec(), 0);
   }
   return _BufferNestedTensor(
-      buffer,
-      map([](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
-          structure));
+      std::move(buffer),
+      std::move(map(
+          [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+          structure)));
 }
 
 } // namespace nested_tensor

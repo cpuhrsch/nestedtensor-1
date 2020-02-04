@@ -58,7 +58,7 @@ bool _verify_shape(const TensorNode& nested_node) {
 // That means each entry is either a list or a node carrying a payload.
 bool _verify_variables(
     const torch::autograd::Variable& first_variable,
-    const TensorNode nested_node) {
+    const TensorNode& nested_node) {
   // The attributes must match across all constiuents
   //
   // The NestedTensor's attributes then become that of its

@@ -73,8 +73,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             if (self.data().is_right()) {
               if (self.nested_dim() == 1) {
                 for (int64_t i = 0; i < self.len(); i++) {
-                  result.push_back(torch::jit::toPyObject(
-                      self.data().right().get_structure().children(i).payload()));
+                  result.push_back(torch::jit::toPyObject(self.data()
+                                                              .right()
+                                                              .get_structure()
+                                                              .children(i)
+                                                              .payload()));
                 }
               } else {
                 std::vector<int64_t> split_sizes;
@@ -90,9 +93,12 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 for (int64_t i = 0; i < self.len(); i++) {
                   result.push_back(py::cast(
                       THPNestedTensor(torch::nested_tensor::_BufferNestedTensor(
-                          buffers[i],
-                          self.data().right().nested_size().children(i),
-                          self.data().right().nested_stride().children(i)))));
+                          std::move(buffers[i]),
+                          std::move(
+                              self.data().right().nested_size().children(i)),
+                          std::move(
+                              self.data().right().nested_stride().children(
+                                  i))))));
                 }
               }
               return result;
@@ -106,9 +112,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
               }
             } else {
               for (int64_t i = 0; i < self.len(); i++) {
-                result.push_back(py::cast(
-                    THPNestedTensor(torch::nested_tensor::_ListNestedTensor(
-                        self.data().left().get_structure().children(i)))));
+                result.push_back(py::cast(THPNestedTensor(
+                    torch::nested_tensor::_ListNestedTensor(std::move(
+                        self.data().left().get_structure().children(i))))));
               }
             }
             return result;
