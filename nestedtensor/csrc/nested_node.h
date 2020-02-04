@@ -45,7 +45,7 @@ struct NestedNode {
   }
 
  private:
-  const std::vector<const NestedNode<T>> _children;
+  std::vector<const NestedNode<T>> _children;
   c10::optional<T> _payload;
   int64_t _height;
 };

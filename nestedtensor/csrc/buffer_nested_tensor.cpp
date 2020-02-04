@@ -89,9 +89,8 @@ _BufferNestedTensor::_BufferNestedTensor(
     : _BufferNestedTensor(
           buffer,
           nested_size,
-          std::move(
-              map([](c10::List<int64_t> size) { return _cont_stride(size); },
-                  nested_size))) {}
+          map([](c10::List<int64_t> size) { return _cont_stride(size); },
+              nested_size)) {}
 _BufferNestedTensor::_BufferNestedTensor(
     torch::autograd::Variable&& buffer,
     const SizeNode&& nested_size,
@@ -100,7 +99,7 @@ _BufferNestedTensor::_BufferNestedTensor(
           buffer,
           nested_size,
           nested_stride,
-          std::move(build_structure(buffer, nested_size, nested_stride))) {}
+          build_structure(buffer, nested_size, nested_stride)) {}
 _BufferNestedTensor::_BufferNestedTensor(
     torch::autograd::Variable&& buffer,
     const SizeNode&& nested_size,
