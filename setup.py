@@ -77,10 +77,7 @@ if os.getenv('PYTORCH_VERSION'):
 
 
 def get_extensions():
-    this_dir = os.path.dirname(os.path.abspath(__file__))
-    extensions_dir = os.path.join(this_dir, 'nestedtensor', 'csrc')
 
-    sources = glob.glob(os.path.join(extensions_dir, '*.cpp'))
     extension = CppExtension
 
     define_macros = []
@@ -102,9 +99,16 @@ def get_extensions():
     if sys.platform == 'win32':
         define_macros += [('nestedtensor_EXPORTS', None)]
 
-    sources = [os.path.join(extensions_dir, s) for s in sources]
+    this_dir = os.path.dirname(os.path.abspath(__file__))
+    extensions_dir = os.path.join(this_dir, 'nestedtensor', 'csrc')
+    utils_dir = os.path.join(extensions_dir, 'utils')
 
-    include_dirs = [extensions_dir]
+    extension_sources = set(os.path.join(extensions_dir, p) for p in glob.glob(os.path.join(extensions_dir, '*.cpp')))
+    utils_sources = set(os.path.join(utils_dir, p) for p in glob.glob(os.path.join(utils_dir, '*.cpp')))
+
+    sources = list(set(extension_sources) | set(utils_sources))
+
+    include_dirs = [extensions_dir, utils_dir]
 
     ext_modules = [
         extension(
@@ -150,7 +154,7 @@ setuptools.setup(
     ],
     zip_safe=True,
     cmdclass={'clean': clean,
-              'build_ext': BuildExtension.with_options(use_ninja=True)},
+              'build_ext': BuildExtension.with_options(use_ninja=os.environ.get('NT_USE_NINJA', False))},
     install_requires=requirements,
     ext_modules=get_extensions()
 )

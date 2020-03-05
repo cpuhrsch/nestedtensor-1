@@ -181,36 +181,15 @@ class NestedTensor(object):
         Returns a tuple of views. Results might not be contiguous.
         """
         # TODO: Design choice: Return zip_longest or zip?
-
-        dim = utils._wrap_dim(self, dim)
-        if self.nested_dim() == 1:
-            if dim == 0:
-                return self._impl.unbind()
-            tmp = tuple(t.unbind(dim - 1) for t in self._impl.unbind())
-        else:
-            if dim == 0:
-                return tuple(NestedTensor(t) for t in self._impl.unbind())
-            tmp = tuple(t.unbind(dim - 1) for t in self.unbind())
-        tmp = list(list(filter(lambda x: x is not None, t))
-                   for t in itertools.zip_longest(*tmp))
-        return tuple(nestedtensor.nested_tensor(e) for e in tmp)
+        return tuple(t if torch.is_tensor(t) else NestedTensor(t)
+                     for t in self._impl.unbind(dim))
 
     def to_tensor(self, dim=0):
         """
         Not necessarily a view.
         """
-        dim = utils._wrap_dim(self, dim)
-        # Convert entire NestedTensor into Tensor
-        if dim == 0:
-            if None in self.size():
-                raise ValueError("Shape not Tensor compliant")
-            return self._impl.to_tensor()
-        # If dim is bigger than nested_dim the NestedTensor is already
-        # of Tensor for dimensions bigger than the given.
-        if self.nested_dim() == 1:
-            return self
-        unbound = [t.to_tensor(dim=dim - 1) for t in self.unbind()]
-        return creation.nested_tensor(unbound)
+        result = self._impl.to_tensor(dim)
+        return result if torch.is_tensor(result) else NestedTensor(result)
 
     def __repr__(self):
         # TODO: This relies on the fact that repr is not implemented compliant with
@@ -294,8 +273,8 @@ class NestedTensor(object):
         element. These two tensors can be used to contruct a NestedTensor, however,
         nested_dim will be lost in this process."""
 
-        return masking.make_tensor_mask(self.to_list(), mask_dim)
+        return masking.to_tensor_mask(self, mask_dim)
 
     def to_padded_tensor(self, mask_dim=None, padding=-1):
-        tensor, mask = masking.make_tensor_mask(self.to_list(), mask_dim)
+        tensor, mask = masking.to_tensor_mask(self.to_list(), mask_dim)
         return tensor.masked_fill(~mask, padding)

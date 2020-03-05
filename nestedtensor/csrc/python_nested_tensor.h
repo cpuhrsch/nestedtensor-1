@@ -1,5 +1,7 @@
 #pragma once
 #include <nested_tensor.h>
+#include <py_utils.h>
+#include <utils/python_nested_node.h>
 // NOTE: Causes linktime error for requested symbol as_function
 // #include <torch/csrc/jit/script/python_sugared_value.h>
 // NOTE: torch/csrc/tensor/python_tensor.h can't be found and will raise compile
@@ -9,45 +11,6 @@
 
 namespace torch {
 namespace nested_tensor {
-
-template <typename T>
-struct THPNestedNode {
-  THPNestedNode(NestedNode<T> size_node, std::string name)
-      : _size_node(size_node), _name(name) {}
-  int64_t len() {
-    return _size_node.degree();
-  }
-  std::string str() {
-    return NestedNode___str__(
-        _size_node, _name, [](c10::IValue payload, const std::string& tabs) {
-          std::stringstream ss;
-          ss << tabs << payload;
-          return ss.str();
-        });
-  }
-  const NestedNode<T>& get_node() const {
-    return _size_node;
-  }
-  std::string get_name() {
-    return _name;
-  }
-
-  py::object unbind() {
-    std::vector<py::object> result;
-    for (const auto& child : _size_node.unbind()) {
-      if (child.height() == 0) {
-        result.push_back(wrap_nested_node(child));
-      } else {
-        result.push_back(py::cast(THPNestedNode<T>(child, _name)));
-      }
-    }
-    return py::cast(result);
-  }
-
- private:
-  NestedNode<T> _size_node;
-  std::string _name;
-};
 
 using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
 using THPIntegerNode = THPNestedNode<int64_t>;
@@ -86,16 +49,13 @@ struct THPNestedTensor {
   // TODO: Tensor-wise select
   // TODO: Tuple support
   pybind11::object getitem(int64_t key) {
-    py::object unbound_ = unbind();
-    py::sequence unbound = py::cast<py::sequence>(unbound_);
-    return unbound[key];
+    return unbind(0)[key];
   }
   pybind11::object getitem(py::slice key) {
-    py::object unbound_ = unbind();
-    py::sequence unbound = py::cast<py::sequence>(unbound_);
+    py::list unbound = py::cast(unbind(0));
     return unbound[key];
   }
-  pybind11::object unbind();
+  std::vector<pybind11::object> unbind(int64_t dim);
   THPIValueNode nested_size();
   THPIValueNode nested_stride();
   THPIValueNode nested_size(c10::optional<int64_t> index);
@@ -129,9 +89,7 @@ struct THPNestedTensor {
   int64_t numel() {
     return _data.numel();
   }
-  at::Tensor to_tensor() {
-    return _data.to_tensor();
-  }
+  py::object to_tensor(c10::optional<int64_t>);
   THPNestedTensor contiguous() {
     return _data.contiguous();
   }

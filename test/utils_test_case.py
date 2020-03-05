@@ -219,8 +219,9 @@ class TestCase(TestCaseBase):
             if x.requires_grad != y.requires_grad:
                 self.fail("Nested tensors requires grad properties don't match. {} != {}".format(x.requires_grad, y.requires_grad))
 
-            if not ignore_contiguity and x.is_contiguous() != y.is_contiguous():
-                self.fail("Nested tensors contiguity don't match. {} != {}".format(x.is_contiguous(), y.is_contiguous()))
+            # uncomment once nested_tensor([]).is_contiguous() == nested_tensor([], dtype=torch.float).is_contiguous()
+            #if not ignore_contiguity and x.is_contiguous() != y.is_contiguous():
+            #    self.fail("Nested tensors contiguity don't match. {} != {}".format(x.is_contiguous(), y.is_contiguous()))
 
             if x.element_size() != y.element_size():
                 self.fail("Nested tensors element sizes don't match. {} != {}".format(x.element_size(), y.element_size()))
@@ -231,7 +232,8 @@ class TestCase(TestCaseBase):
             if x.nested_size() != y.nested_size():
                 self.fail("Nested tensors nested sizes don't match. {} != {}".format(x.nested_size(), y.nested_size()))
 
-            if x.nested_stride() != y.nested_stride():
+            # If you ignore contiguity you should also ignore the striding
+            if not ignore_contiguity and x.nested_stride() != y.nested_stride():
                 self.fail("Nested tensors nested strides don't match. {} != {}".format(x.nested_stride(), y.nested_stride()))
             
             for x_, y_ in zip(x, y):
