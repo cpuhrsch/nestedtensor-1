@@ -59,21 +59,3 @@ struct type_caster<ST> {
 };
 } // namespace detail
 } // namespace pybind11
-
-namespace torch {
-namespace python_args {
-
-template <class T, class F>
-c10::optional<T> optional_lift(F& fn, c10::optional<py::object> obj) {
-  if (!obj) {
-    return c10::nullopt;
-  }
-  return fn(*obj);
-}
-
-at::Scalar to_scalar(py::object);
-
-at::ScalarType to_scalar_type(py::object);
-
-} // namespace python_args
-} // namespace torch

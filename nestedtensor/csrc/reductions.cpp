@@ -82,25 +82,12 @@ void add_full_reduction(
     F& fn) {
   auto tmp_fn =
       [&fn](THPNestedTensor self, c10::optional<ST> dtype) -> at::Tensor {
-    // c10::optional<at::ScalarType> opt_dtype =
-    //     torch::python_args::optional_lift<at::ScalarType>(
-    //         torch::python_args::to_scalar_type, dtype);
-    TensorNode result_node = map(
-        [&fn, &dtype](Tensor data) {
-          // if (dtype) {
-          //   return fn(data, (*dtype).scalar_type);
-          // } else {
-          return fn(data, c10::nullopt);
-          // }
-        },
-        self.data().get_structure());
+    TensorNode result_node =
+        map([&fn, &dtype](Tensor data) { return fn(data, dtype); },
+            self.data().get_structure());
     // Will be a list of 0-dim Tensors
     at::Tensor values = stack(flatten(result_node).vec());
-    // if (dtype) {
-    //   return fn(values, (*dtype).scalar_type);
-    // } else {
-    return fn(values, c10::nullopt);
-    // }
+    return fn(values, dtype);
   };
   // sum(Tensor input, *, ScalarType? dtype=None)
   m.def(name.c_str(), tmp_fn, py::arg("self"), py::arg("dtype") = nullptr);
