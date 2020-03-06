@@ -93,7 +93,7 @@ def get_max_size(obj, res=[1]):
     if isinstance(obj, torch.Tensor):
         # scalar
         if obj.dim() == 0 and obj.numel() == 1:
-            res = [1]
+            raise RuntimeError("Shouldn't get here")
         else:
             while len(obj.size()) > len(res):
                 res.append(0)
@@ -120,7 +120,10 @@ def get_tensor_mask(nt, shape):
             return tensor, mask
         else:
             if len(nt) == 0:
-                return [0], [0]
+                return torch.tensor([]), torch.tensor([])
+            # NestedTensor only contains scalars
+            elif nt.dim() == 1 and nt.nested_dim() == 1:
+                return nt.to_tensor(), torch.tensor([True])
             else:
                 for entry in nt:
                     tensor, mask = pad_nt(entry, shape)

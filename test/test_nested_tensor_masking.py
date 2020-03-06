@@ -2,17 +2,19 @@ import torch
 import nestedtensor as nt
 import unittest
 from utils import TestCase
+from utils import debug_on
 
 class TestTensorMask(TestCase):
     #
     # Group of tests to test to_tensor_mask() 
     #
+    @debug_on()
     def test_empty_nt(self):
         a = nt.nested_tensor([])
         tensor, mask = a.to_tensor_mask()
 
-        TestCase.assertEqual(self,  mask, torch.tensor(False))
-        TestCase.assertEqual(self,  tensor, torch.tensor([0]))
+        TestCase.assertEqual(self,  mask, torch.tensor([]))
+        TestCase.assertEqual(self,  tensor, torch.tensor([]))
 
         a = nt.nested_tensor([
             nt.nested_tensor([])
@@ -20,8 +22,8 @@ class TestTensorMask(TestCase):
 
         tensor, mask = a.to_tensor_mask()
 
-        TestCase.assertEqual(self, mask, torch.tensor(False))
-        TestCase.assertEqual(self, tensor, torch.tensor([[0]]))
+        TestCase.assertEqual(self, mask, torch.tensor([]))
+        TestCase.assertEqual(self, tensor, torch.tensor([[]]))
 
         a = nt.nested_tensor([
             nt.nested_tensor([]),
@@ -29,8 +31,8 @@ class TestTensorMask(TestCase):
         ])
 
         tensor, mask = a.to_tensor_mask()
-        TestCase.assertEqual(self, mask, torch.tensor(False))
-        TestCase.assertEqual(self, tensor, torch.tensor([[0], [0]]))
+        TestCase.assertEqual(self, mask, torch.tensor([]))
+        TestCase.assertEqual(self, tensor, torch.tensor([[], []]))
 
     #TODO once .to_list() bug fixed
     def test_empty_tensor(self):
