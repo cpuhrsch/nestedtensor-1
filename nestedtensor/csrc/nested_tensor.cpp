@@ -199,7 +199,7 @@ std::vector<int64_t> max_size(SizeNode nested_size) {
         return nested_size.payload().vec();
     }
     if (nested_size.degree() == 0) {
-        return std::vector<int64_t>();
+        return std::vector<int64_t>(0);
     }
     std::vector<int64_t> result;
     result.push_back(nested_size.degree());
@@ -239,12 +239,9 @@ TensorNode make_full(TensorNode input, std::vector<int64_t> size, int64_t level 
         // std::cout << "result_tensor: " << result_tensor;
         return TensorNode(std::move(result_tensor));
     }
-    if (input.degree() == 0) {
-        return input;
-    }
     TORCH_CHECK(input.degree() <= size[level], "Given input is wider than requested size.");
-    std::vector<TensorNode> unbound = input.unbind();
     std::vector<TensorNode> result;
+    std::vector<TensorNode> unbound = input.unbind();
     for (size_t i = 0; i < unbound.size(); i++) {
         result.push_back(make_full(unbound[i], size, level + 1));
     }
