@@ -194,6 +194,75 @@ NestedTensor NestedTensor::to_nested_tensor(c10::optional<int64_t> dim__) {
   return *this;
 }
 
+std::vector<int64_t> max_size(SizeNode nested_size) {
+    if (nested_size.is_leaf()) {
+        return nested_size.payload().vec();
+    }
+    if (nested_size.degree() == 0) {
+        return std::vector<int64_t>();
+    }
+    std::vector<int64_t> result;
+    result.push_back(nested_size.degree());
+    for (int64_t s : max_size(nested_size.children(0))) {
+        result.push_back(s);
+    }
+    for (size_t i = 1; i < nested_size.degree(); i++) {
+        std::vector<int64_t> max_size_i = max_size(nested_size.children(i));
+        for (size_t j = 1; j < result.size(); j++) {
+            result[j] = max_size_i[j - 1] > result[j] ? result[j] : max_size_i[j - 1];
+        }
+    }
+    return result;
+}
+
+TensorNode empty(TensorNode nested_size) {
+    return map([](c10::List<int64_t> size) { 
+            return torch::empty(IntArrayRef(size.vec()));
+            },
+            nested_size);
+}
+
+TensorNode make_full(TensorNode input, std::vector<int64_t> size, int64_t level = 0) {
+    if (input.is_leaf()) {
+        std::vector<int64_t> payload_size(input.payload().size());
+        std::vector<int64_t> target_size;
+        for (size_t i = level; size.size(); i++) {
+            int64_t pad_amount = size[i] - payload_size[i];
+            TORCH_CHECK(pad_amount >= 0, "Tensor larger than target size.");
+            target_size.push_back(0);
+            target_size.push_back(pad_amount);
+        }
+        return TensorNode(std::move(constant_pad_nd(input.payload(), IntArrayRef(target_size), 0)));
+    }
+    if (input.degree() == 0) {
+        return input;
+    }
+    TORCH_CHECK(input.degree() <= size[level], "Given input is wider than requested size.");
+    std::vector<TensorNode> unbound = input.unbind();
+    std::vector<TensorNode> result;
+    for (size_t i = 0; i < unbound.size(); i++) {
+        result.push_back(make_full(unbound[i], size, level + 1));
+    }
+    for (size_t i = 0; i < (size[level] - result.size()); i++) {
+        result.push_back(empty(result[0]));
+    }
+    return TensorNode(std::move(result));
+}
+
+std::pair<at::Tensor, at::Tensor>
+NestedTensor::to_tensor_mask(c10::optional<int64_t> mask_dim) {
+    std::vector<int64_t> ms =  max_size(nested_size());
+    std::cout << "max_size(nested_size()): ";
+    for (auto s : ms) {
+        std::cout << s << " ";
+    }
+    std::cout << std::endl;
+    return std::pair<at::Tensor, at::Tensor> (
+            _to_tensor(
+                make_full(_structure, ms),
+                torch::zeros({})));
+}
+
 NestedTensor::NestedTensor(TensorNode&& structure)
     : _structure(structure),
       _first_variable(

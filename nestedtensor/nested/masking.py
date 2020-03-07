@@ -141,6 +141,7 @@ def get_tensor_mask(nt, shape):
 # if passed mask_dim is lower than the minimal dimensionality of the mask that can represent 
 # the data tensor, an error is thrown.
 def to_tensor_mask(nt, mask_dim):
+    print(nt._impl.to_tensor_mask(mask_dim))
     if mask_dim is not None and mask_dim > nt.dim():
         raise RuntimeError("Mask dimension is bigger than nested dimension of a nested tensor.")
 

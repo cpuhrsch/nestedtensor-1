@@ -85,6 +85,7 @@ struct NestedTensor {
   int64_t __len__() const {
     return _structure.degree();
   }
+  std::pair<at::Tensor, at::Tensor> to_tensor_mask(c10::optional<int64_t> mask_dim);
   at::Tensor to_tensor();
   NestedTensor to_nested_tensor(c10::optional<int64_t> dim);
   int64_t nested_dim() const {

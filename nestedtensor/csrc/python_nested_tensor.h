@@ -90,6 +90,9 @@ struct THPNestedTensor {
     return _data.numel();
   }
   py::object to_tensor(c10::optional<int64_t>);
+  std::pair<at::Tensor, at::Tensor> to_tensor_mask(c10::optional<int64_t> mask_dim) {
+      return _data.to_tensor_mask(mask_dim);
+  }
   THPNestedTensor to_nested_tensor(c10::optional<int64_t> dim) {
       return THPNestedTensor(_data.to_nested_tensor(dim));
   }
