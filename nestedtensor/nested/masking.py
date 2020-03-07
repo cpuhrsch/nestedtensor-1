@@ -141,7 +141,7 @@ def get_tensor_mask(nt, shape):
 # if passed mask_dim is lower than the minimal dimensionality of the mask that can represent 
 # the data tensor, an error is thrown.
 def to_tensor_mask(nt, mask_dim):
-    print(nt._impl.to_tensor_mask(mask_dim))
+    c_tensor, _ = nt._impl.to_tensor_mask(mask_dim)
     if mask_dim is not None and mask_dim > nt.dim():
         raise RuntimeError("Mask dimension is bigger than nested dimension of a nested tensor.")
 
@@ -154,6 +154,15 @@ def to_tensor_mask(nt, mask_dim):
     max_size = get_max_size(nt)
     res_tensor, res_mask = get_tensor_mask(nt, max_size)
     tensor_mask_tuple = merge_tensor_mask(TensorMask(res_tensor, res_mask), mask_dim)
+
+    if ((c_tensor != tensor_mask_tuple.tensor).all()):
+        print("nt")
+        print(nt)
+        print("c_tensor")
+        print(c_tensor)
+        print("tensor_mask_tuple.tensor")
+        print(tensor_mask_tuple.tensor)
+        import pdb; pdb.set_trace()
 
     return tensor_mask_tuple.tensor, tensor_mask_tuple.mask
 
