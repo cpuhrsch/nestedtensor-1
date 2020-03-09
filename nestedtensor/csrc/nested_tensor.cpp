@@ -195,11 +195,11 @@ NestedTensor NestedTensor::to_nested_tensor(c10::optional<int64_t> dim__) {
 }
 
 std::vector<int64_t> max_size(SizeNode nested_size) {
+    if (nested_size.degree() == 0) {
+        return std::vector<int64_t>(1, 0);
+    }
     if (nested_size.is_leaf()) {
         return nested_size.payload().vec();
-    }
-    if (nested_size.degree() == 0) {
-        return std::vector<int64_t>(0);
     }
     std::vector<int64_t> result;
     result.push_back(nested_size.degree());
@@ -222,7 +222,15 @@ TensorNode empty(TensorNode input) {
             input);
 }
 
-TensorNode make_full(TensorNode input, std::vector<int64_t> size, int64_t level = 0) {
+// If a TensorNode has degree 0 in the context of a NestedTensor with other
+// TensorNodes that are not ancestors (e.g. siblings), then to maintain
+// a valid NestedTensor any new children must be of dimension 0.
+// An empty NestedTensor has dimension 0, so to add a Tensor of any
+// different dimensionality it will influence the global dimensionality
+// constraint.
+// That means, when we return a tensor mask in this case we can confidently
+// return an empty data scalar and bool scale of value False.
+TensorNode make_full(const at::Tensor& first_variable, TensorNode input, std::vector<int64_t> size, int64_t level = 0) {
     if (input.is_leaf()) {
         // std::cout << "payload: " << input.payload();
         auto payload_size = input.payload().sizes();
@@ -241,9 +249,14 @@ TensorNode make_full(TensorNode input, std::vector<int64_t> size, int64_t level 
     }
     TORCH_CHECK(input.degree() <= size[level], "Given input is wider than requested size.");
     std::vector<TensorNode> result;
-    std::vector<TensorNode> unbound = input.unbind();
-    for (size_t i = 0; i < unbound.size(); i++) {
-        result.push_back(make_full(unbound[i], size, level + 1));
+    if (input.degree() == 0) {
+        std::cout << "JJJ" << std::endl;
+        result.push_back(TensorNode(first_variable.new_empty({0})));
+    } else {
+        std::vector<TensorNode> unbound = input.unbind();
+        for (size_t i = 0; i < unbound.size(); i++) {
+            result.push_back(make_full(first_variable, unbound[i], size, level + 1));
+        }
     }
     for (size_t i = 0; i < (size[level] - result.size()); i++) {
         result.push_back(empty(result[0]));
@@ -259,8 +272,9 @@ NestedTensor::to_tensor_mask(c10::optional<int64_t> mask_dim) {
         std::cout << s << " ";
     }
     std::cout << std::endl;
+    TensorNode full_node = make_full(_first_variable, _structure, ms);
     return std::pair<at::Tensor, at::Tensor> (
-            _to_tensor(make_full(_structure, ms)),
+            _to_tensor(make_full(_first_variable, _structure, ms)),
             torch::zeros({}));
 }
 
