@@ -20,7 +20,7 @@ struct NestedTensor {
   const c10::optional<at::Tensor>& get_buffer() const {
     return _buffer;
   }
-  std::vector<c10::optional<int64_t>> size();
+  std::vector<c10::optional<int64_t>> size() const;
   int64_t element_size() const {
     return _first_variable.element_size();
   }
@@ -88,6 +88,9 @@ struct NestedTensor {
   NestedTensor to_nested_tensor(c10::optional<int64_t> dim);
   int64_t nested_dim() const {
     return _structure.height();
+  }
+  caffe2::TypeMeta dtype() const {
+    return _first_variable.dtype();
   }
   at::ScalarType scalar_type() const {
     return _first_variable.scalar_type();
