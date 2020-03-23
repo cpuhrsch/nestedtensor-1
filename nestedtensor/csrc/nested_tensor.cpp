@@ -1,4 +1,5 @@
 #include <nested_tensor.h>
+#include <ATen/ATen.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -41,7 +42,7 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
   return result;
 }
 
-std::vector<c10::optional<int64_t>> NestedTensor::size() {
+std::vector<c10::optional<int64_t>> NestedTensor::size() const {
   return construct_size(_nested_size);
 }
 
@@ -160,6 +161,38 @@ at::Tensor NestedTensor::to_tensor() {
     return (*_buffer).reshape(at::IntArrayRef(new_size));
   }
   return _to_tensor(_structure);
+}
+
+TensorNode _unbind_tensors(TensorNode structure) {
+  std::vector<TensorNode> result_nodes;
+  if (structure.is_leaf()) {
+    for (at::Tensor tensor : structure.payload().unbind()) {
+      result_nodes.emplace_back(TensorNode(std::move(tensor)));
+    }
+  } else {
+    for (TensorNode child : structure.unbind()) {
+      result_nodes.emplace_back(_unbind_tensors(child));
+    }
+  }
+  return TensorNode(std::move(result_nodes));
+}
+
+NestedTensor NestedTensor::to_nested_tensor(c10::optional<int64_t> dim__) {
+  int64_t dim_ = 0;
+  if (dim__) {
+    dim_ = *dim__;
+  }
+  int64_t dim = at::maybe_wrap_dim(dim_, this->dim());
+  // if dim < nested_dim() the NestedTensor is already nested
+  // up to the given dimension.
+  if (dim >= nested_dim()) {
+    TensorNode unbound = _unbind_tensors(_structure);
+    for (int64_t i = 0; i < (dim - nested_dim()); i++) {
+      unbound = _unbind_tensors(unbound);
+    }
+    return NestedTensor(std::move(unbound));
+  }
+  return *this;
 }
 
 NestedTensor::NestedTensor(TensorNode&& structure)

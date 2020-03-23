@@ -1,5 +1,4 @@
 #pragma once
-#include <torch/extension.h>
 #include <utils/nested_node.h>
 
 namespace torch {
@@ -21,10 +20,34 @@ struct NestedTensor {
   const c10::optional<at::Tensor>& get_buffer() const {
     return _buffer;
   }
-  std::vector<c10::optional<int64_t>> size();
+  std::vector<c10::optional<int64_t>> size() const;
+  caffe2::TypeMeta dtype() const {
+    return _first_variable.dtype();
+  }
   int64_t element_size() const {
     return _first_variable.element_size();
   }
+  // This is a C++ representation of a nested list of torch.Sizes
+  //
+  // It can never be a list of just numbers, because torch.Size
+  // is always a list and NestedTensors represent lists of torch.Tensors
+  //
+  // Noteworthy cases:
+  //
+  // This is an empty list of lists if we construct
+  // nested_tensor([])
+  // which is of nested_dim 1, dim 1 and tensor_dim 0
+  //
+  // This is a list of empty lists if we construct e.g.
+  // nested_tensor([torch.tensor(0), torch.tensor(1), ...])
+  // which is of nested_dim 1, dim 1 and tensor_dim 0
+  //
+  // This is a list of list of numbers if we construct e.g.
+  // nested_tensor([torch.tensor([1]), torch.tensor([2]), ...])
+  // which is of nested_dim 1, dim 2 and tensor_dim 1
+  //
+  // That means, if the list is not empty it is either a list of
+  // lists of numbers or a list of empty lists.
   SizeNode nested_size() const {
     return _nested_size;
   }
@@ -86,6 +109,7 @@ struct NestedTensor {
     return _structure.degree();
   }
   at::Tensor to_tensor();
+  NestedTensor to_nested_tensor(c10::optional<int64_t> dim);
   int64_t nested_dim() const {
     return _structure.height();
   }
@@ -137,10 +161,6 @@ struct NestedTensor {
   const TensorNode& get_structure() const {
     return _structure;
   }
-  // TODO: Implement these and call into them isntead of implementing them
-  // separately in Variable dispatch functions.
-  // NestedTensor to - it's a pain due to the 100s of to overloads
-  // separately in Variable dispatch functions.
 
  private:
   c10::optional<at::Tensor> _buffer;
