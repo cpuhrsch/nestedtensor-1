@@ -214,7 +214,13 @@ class TestFunctional(TestCase):
 
             nt = constructor([[t.reshape(1, 2, 1, 3)]])
             self.assertEqual(nt.squeeze(), result)
+            print(nt.nested_size())
+            print("0ndim: " + str(nt.nested_dim()))
+            print("8888: " + str(nt))
             nt.squeeze_()
+            print("9999: " + str(nt))
+            print(nt.nested_size())
+            print("1ndim: " + str(nt.nested_dim()))
             self.assertEqual(nt, result)
 
             nt = constructor([[[t.reshape(1, 2, 3)]]])

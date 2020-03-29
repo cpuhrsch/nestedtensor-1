@@ -37,17 +37,23 @@ void add_functions(
         return THPNestedTensor(squeeze(self.data(), dim, c10::nullopt));
       },
       py::arg("dim") = nullptr);
+  // TODO: Pass by reference is very important for in-place methods
+  // here, since THPNestedTensor isn't acting as a container in the
+  // sence at::Tensor + TensorImpl does.
   c.def(
       "squeeze_",
-      [](THPNestedTensor self, c10::optional<int64_t> dim) {
+      [](THPNestedTensor& self, c10::optional<int64_t> dim) {
         std::cout << "EEE0" << std::endl;
         std::cout << "self0: " << self.str() << std::endl;
-        self.data().squeeze_(dim);
+        NestedTensor& data = self.data();
+        data.squeeze_(dim);
         std::cout << "self1: " << self.str() << std::endl;
         std::cout << "EEE1" << std::endl;
-        return self;
+        // return self;
+        return THPNestedTensor(data);
       },
       py::arg("dim") = nullptr,
+      // TODO: Remove?
       py::return_value_policy::reference);
 }
 }
