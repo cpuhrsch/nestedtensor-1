@@ -24,9 +24,46 @@ struct NestedNode {
       }
     }
   }
-  // NestedNode(NestedNode&) = delete;
-  // NestedNode(const NestedNode&) = delete;
-  // NestedNode& operator=(NestedNode) = delete;
+  NestedNode(NestedNode& other) {
+    _is_leaf = other._is_leaf;
+    _children = other._children;
+    _payload = other._payload;
+    _height = other._height;
+    std::cout << "A1" << std::endl;
+  }
+  NestedNode(const NestedNode& other) {
+    _is_leaf = other._is_leaf;
+    _children = other._children;
+    _payload = other._payload;
+    _height = other._height;
+    std::cout << "A2" << std::endl;
+  }
+  NestedNode(NestedNode&& other) {
+    _is_leaf = other._is_leaf;
+    _children = other._children;
+    _payload = other._payload;
+    _height = other._height;
+    std::cout << "A3" << std::endl;
+  }
+  NestedNode& operator=(NestedNode& other) {
+    _is_leaf = other._is_leaf;
+    _children = other._children;
+    _payload = other._payload;
+    _height = other._height;
+    std::cout << "B1" << std::endl;
+    return *this;
+  }
+  NestedNode& operator=(const NestedNode& other) {
+    _is_leaf = other._is_leaf;
+    _children = other._children;
+    _payload = other._payload;
+    _height = other._height;
+    std::cout << "B2" << std::endl;
+    return *this;
+  }
+  // NestedNode& operator=(NestedNode&& other) {
+  //   std::cout << "B3" << std::endl;
+  // }
   NestedNode(T&& payload) : _is_leaf(true), _payload(payload), _height(0) {}
   inline bool is_leaf() const {
     return _is_leaf;
@@ -53,7 +90,7 @@ struct NestedNode {
   map(F&&, const NestedNode<B>&...);
 
   template <typename A>
-  friend inline c10::List<A> flatten(NestedNode<A>);
+  friend inline c10::List<A> flatten(const NestedNode<A>&);
 
   template <class R, class A>
   friend inline std::pair<int64_t, NestedNode<R>> _unflatten(
@@ -89,8 +126,6 @@ struct NestedNode {
  private:
   bool _is_leaf;
   std::vector<NestedNode<T>> _children;
-  // TODO: Make this const?
-  // _VariableNode _variable_node;
   T _payload;
   int64_t _height;
 };
@@ -142,15 +177,20 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
   static NestedNode<A> function(
       F&& fn,
       const NestedNode<Args>&... nested_node) {
+      std::cout << "0" << std::endl;
     auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
     if (first_node.is_leaf()) {
+      std::cout << "1" << std::endl;
       return NestedNode<A>(std::forward<F>(fn)(nested_node.payload()...));
     } else {
       std::vector<NestedNode<A>> result;
       for (size_t i = 0; i < first_node.degree(); i++) {
+      std::cout << "2" << std::endl;
         result.emplace_back(
             function(std::forward<F>(fn), nested_node.children(i)...));
+      std::cout << "3" << std::endl;
       }
+      std::cout << "4" << std::endl;
       return NestedNode<A>(std::move(result));
     }
   };
@@ -164,15 +204,18 @@ template <class F, class... B>
 static inline NestedNode<
     typename c10::guts::infer_function_traits<F>::type::return_type>
 map(F&& fn, const NestedNode<B>&... nested_node) {
-  return _map<
+  std::cout << "00" << std::endl;
+  auto result = _map<
       F,
       typename c10::guts::infer_function_traits<F>::type::return_type,
       typename c10::guts::infer_function_traits<F>::type::parameter_types>::
       function(std::move(fn), nested_node...);
+  std::cout << "11" << std::endl;
+  return std::move(result);
 }
 
 template <typename A>
-inline c10::List<A> flatten(NestedNode<A> nested_node) {
+inline c10::List<A> flatten(const NestedNode<A>& nested_node) {
   if (nested_node.is_leaf()) {
     c10::List<A> result;
     result.push_back(nested_node.payload());

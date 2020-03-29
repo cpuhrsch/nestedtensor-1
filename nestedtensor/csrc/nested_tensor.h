@@ -70,7 +70,7 @@ struct NestedTensor {
       // creating here are views into the grad, which could then be used
       // further.
       at::Tensor grad_buffer = (*_buffer).grad();
-      return NestedTensor(std::move(grad_buffer), _nested_size);
+      return NestedTensor(std::move(grad_buffer), std::move(_nested_size));
     }
     return NestedTensor(
         map([](at::Tensor tensor) { return tensor.grad(); }, _structure));
@@ -165,7 +165,7 @@ struct NestedTensor {
 
 // torch.Tensor methods
   NestedTensor copy_(const NestedTensor& source, bool non_blocking=false);
-  NestedTensor squeeze_(c10::optional<int64_t> dim);
+  void squeeze_(c10::optional<int64_t> dim);
 
  private:
   c10::optional<at::Tensor> _buffer;

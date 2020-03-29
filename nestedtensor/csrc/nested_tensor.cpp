@@ -253,7 +253,7 @@ inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
   return TensorNode(_squeeze_nested_dim(structure, dim - 1));
 }
 
-NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
+void NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
   if (!dim_) {
     // TODO: First dimension is always ignored.
     // We could decide to return a Tensor if the 0th
@@ -266,7 +266,7 @@ NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
         this->squeeze_(index);
       }
     }
-    return *this;
+    return;
   }
   int64_t dim = at::maybe_wrap_dim(*dim_, this->dim());
   TORCH_CHECK(dim > 0, "Cannot squeeze first dimension.");
@@ -274,22 +274,43 @@ NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
       ((sizes()[dim]) && ((*(sizes()[dim])) == 1)),
       "Given dimension is either undefined or not a singleton.");
   if (dim < this->nested_dim()) {
+    std::cout << "THIS TOO" << std::endl;
     _structure = _squeeze_nested_dim(_structure, dim);
   } else {
     int64_t height = _structure.height();
+    std::cout << "PREASD" << std::endl;
+    map(
+        [](at::Tensor tensor) {
+          std::cout << "MM: " << tensor.sizes() << std::endl;
+          return tensor;
+        },
+        _structure);
     std::cout << "ASDF dim - height: " << dim - height << std::endl;
-    _structure =
-        map([dim, height](
-                at::Tensor tensor) { return tensor.squeeze(dim - height); },
-            _structure);
+    _structure = map(
+        [dim, height](at::Tensor tensor) {
+          std::cout << "tensor.sizes(): " << tensor.sizes();
+          std::cout << " dim - height: " << dim - height;
+          std::cout << std::endl;
+          return tensor.squeeze(dim - height);
+        },
+        _structure);
+    std::cout << "IMA STATA" << std::endl;
+    map(
+        [](at::Tensor tensor) {
+          std::cout << "NN: " << tensor.sizes() << std::endl;
+          return tensor;
+        },
+        _structure);
+    std::cout << "FINITO" << std::endl;
   }
       std::cout << "ASDF 1" << std::endl;
   _first_variable =
       get_first_leaf(_structure) ? *get_first_leaf(_structure) : at::ones({});
       std::cout << "ASDF 2" << std::endl;
-  _nested_size = infer_nested_size(_structure);
+  _nested_size = map(
+      [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
+      _structure);
       std::cout << "ASDF 3" << std::endl;
-  return *this;
 }
 
 } // namespace nested_tensor

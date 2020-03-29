@@ -281,4 +281,7 @@ class NestedTensor(object):
         return NestedTensor(self._impl.squeeze(dim))
 
     def squeeze_(self, dim=None):
-        return NestedTensor(self._impl.squeeze_(dim))
+        print("1234 " + str(self._impl))
+        self._impl.squeeze_(dim)
+        print("4321 " + str(self._impl))
+        return self

@@ -40,10 +40,15 @@ void add_functions(
   c.def(
       "squeeze_",
       [](THPNestedTensor self, c10::optional<int64_t> dim) {
+        std::cout << "EEE0" << std::endl;
+        std::cout << "self0: " << self.str() << std::endl;
         self.data().squeeze_(dim);
+        std::cout << "self1: " << self.str() << std::endl;
+        std::cout << "EEE1" << std::endl;
         return self;
       },
-      py::arg("dim") = nullptr);
+      py::arg("dim") = nullptr,
+      py::return_value_policy::reference);
 }
 }
 } // namespace torch
