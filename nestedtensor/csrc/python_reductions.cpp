@@ -86,21 +86,21 @@ void add_reductions_functions(
                    c10::optional<std::vector<int64_t>> dim,
                    bool keepdim,
                    c10::optional<ST> dtype) -> py::object {
+    // sum(*, ScalarType? dtype=None)
     if (!dim) {
       if (dtype) {
         return py::cast(torch::nested_tensor::sum(self.data(), dtype->val));
       }
       return py::cast(torch::nested_tensor::sum(self.data(), c10::nullopt));
     }
+    // sum(IntArrayRef[1] dim, bool keepdim=False, *, ScalarType? dtype=None)
     if (dtype) {
-      return py::cast(
-          torch::nested_tensor::sum(self.data(), *dim, keepdim, dtype->val));
+      return py::cast(THPNestedTensor(
+          torch::nested_tensor::sum(self.data(), *dim, keepdim, dtype->val)));
     }
-    return py::cast(
-        torch::nested_tensor::sum(self.data(), *dim, keepdim, c10::nullopt));
+    return py::cast(THPNestedTensor(
+        torch::nested_tensor::sum(self.data(), *dim, keepdim, c10::nullopt)));
   };
-  // sum(*, ScalarType? dtype=None)
-  // sum(IntArrayRef[1] dim, bool keepdim=False, *, ScalarType? dtype=None)
   c.def(
       "sum",
       tmp_fn,

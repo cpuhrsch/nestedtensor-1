@@ -19,8 +19,14 @@ class TestNestedTensor(TestCase):
     def test_sum(self):
         for constructor in _iter_constructors():
             nt = constructor([torch.tensor(3)])
+            # NOTE: For torch.sum dtype can be a positional for full reductions.
             print(nt)
             print(nt.sum())
+            print(nt.sum(dtype=torch.int64))
+            print(nt.sum(dim=1, keepdim=False))
+            print(nt.sum(dim=1, keepdim=True))
+            print(nt.sum(dim=1, keepdim=False, dtype=torch.int64))
+            print(nt.sum(dim=1, keepdim=True, dtype=torch.int64))
 
 
 if __name__ == "__main__":
