@@ -5,6 +5,7 @@
 #include <reductions.h>
 #include <utils/nested_node_functions.h>
 #include <utils/python_nested_node.h>
+#include <python_functions.h>
 
 // TODO: Add a field such as is_empty to _NestedNode?
 // TODO: Remove Variable-only _NestedNodes and replace them with TensorList?
@@ -88,6 +89,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
   add_unary_functions(m, c);
   add_reductions_functions(m, c);
+  add_functions(m, c);
 
   // NOTE: This is a private function until it is feature complete
   m.def("_jit_tensorwise", &torch::nested_tensor::jit_tensorwise);
