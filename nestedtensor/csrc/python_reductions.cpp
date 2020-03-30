@@ -1,4 +1,5 @@
 #include <python_args.h>
+#include <python_reductions.h>
 #include <reductions.h>
 #include <torch/torch.h>
 
@@ -34,7 +35,7 @@ void add_reduction(
         return tmp_fn(self, {dim}, keepdim, dtype, out);
       },
       py::arg("self"),
-      py::arg("dim"),
+      py::arg("dim") = nullptr,
       py::arg("keepdim") = false,
       py::arg("dtype") = nullptr,
       py::arg("out") = nullptr);
@@ -42,12 +43,11 @@ void add_reduction(
       name.c_str(),
       tmp_fn,
       py::arg("self"),
-      py::arg("dim"),
+      py::arg("dim") = nullptr,
       py::arg("keepdim") = false,
       py::arg("dtype") = nullptr,
       py::arg("out") = nullptr);
 
-  // sum(IntArrayRef[1] dim, bool keepdim=False, *, ScalarType? dtype=None)
   c.def(
       name.c_str(),
       [&tmp_fn](
@@ -74,27 +74,6 @@ void add_reduction(
       py::arg("dtype") = nullptr);
 }
 
-template <class F>
-void add_full_reduction(
-    pybind11::module m,
-    pybind11::class_<torch::nested_tensor::THPNestedTensor> c,
-    std::string name,
-    F& fn) {
-  auto tmp_fn =
-      [&fn](THPNestedTensor self, c10::optional<ST> dtype) -> at::Tensor {
-    TensorNode result_node =
-        map([&fn, &dtype](Tensor data) { return fn(data, dtype); },
-            self.data().get_structure());
-    // Will be a list of 0-dim Tensors
-    at::Tensor values = stack(flatten(result_node).vec());
-    return fn(values, dtype);
-  };
-  // sum(Tensor input, *, ScalarType? dtype=None)
-  m.def(name.c_str(), tmp_fn, py::arg("self"), py::arg("dtype") = nullptr);
-  // sum(*, ScalarType? dtype=None)
-  c.def(name.c_str(), tmp_fn, py::arg("dtype") = nullptr);
-}
-
 // complete reductions
 //        'mean',
 //        'prod',
@@ -103,15 +82,48 @@ void add_full_reduction(
 void add_reductions_functions(
     pybind11::module m,
     pybind11::class_<torch::nested_tensor::THPNestedTensor> c) {
-  auto fn = [](Tensor& result, c10::optional<ST> dtype) {
-    if (dtype) {
-      return at::native::sum(result, (*dtype).val);
-    } else {
-      return at::native::sum(result, c10::nullopt);
+  auto tmp_fn = [](THPNestedTensor self,
+                   c10::optional<std::vector<int64_t>> dim,
+                   bool keepdim,
+                   c10::optional<ST> dtype) -> py::object {
+    if (!dim) {
+      if (dtype) {
+        return py::cast(torch::nested_tensor::sum(self.data(), dtype->val));
+      }
+      return py::cast(torch::nested_tensor::sum(self.data(), c10::nullopt));
     }
+    if (dtype) {
+      return py::cast(
+          torch::nested_tensor::sum(self.data(), *dim, keepdim, dtype->val));
+    }
+    return py::cast(
+        torch::nested_tensor::sum(self.data(), *dim, keepdim, c10::nullopt));
   };
-  add_full_reduction(m, c, "sum", fn);
-  add_reduction(m, c, "sum", fn);
+  // sum(*, ScalarType? dtype=None)
+  // sum(IntArrayRef[1] dim, bool keepdim=False, *, ScalarType? dtype=None)
+  c.def(
+      "sum",
+      tmp_fn,
+      py::arg("dim") = nullptr,
+      py::arg("keepdim") = false,
+      py::arg("dtype") = nullptr);
+  c.def(
+      "sum",
+      [&tmp_fn](
+          THPNestedTensor self,
+          c10::optional<int64_t> dim,
+          bool keepdim,
+          c10::optional<ST> dtype) -> py::object {
+        if (dim) {
+          auto dim_arg = std::vector<int64_t>(1);
+          dim_arg[0] = *dim;
+          return tmp_fn(self.data(), dim_arg, keepdim, dtype);
+        }
+        return tmp_fn(self.data(), c10::nullopt, keepdim, dtype);
+      },
+      py::arg("dim") = nullptr,
+      py::arg("keepdim") = false,
+      py::arg("dtype") = nullptr);
 }
 
 } // namespace nested_tensor

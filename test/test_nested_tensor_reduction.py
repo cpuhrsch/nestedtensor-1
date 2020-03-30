@@ -19,8 +19,6 @@ class TestNestedTensor(TestCase):
     def test_sum(self):
         for constructor in _iter_constructors():
             nt = constructor([torch.tensor(3)])
-            print(dir(nt))
-            print(type(nt))
             print(nt)
             print(nt.sum())
 
