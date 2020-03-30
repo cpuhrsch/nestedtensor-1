@@ -137,9 +137,9 @@ def monkey_patch(NestedTensor):
 
     # > PyTorch reduction operations
     # --- Module and Tensor reductions
-    for function_name in codegen.get_complete_reductions():
-        set_wrapped_torch_function(function_name, utils.reduction())
-        set_nt_method(function_name, utils.reduction())
+    # for function_name in codegen.get_complete_reductions():
+    #     set_wrapped_torch_function(function_name, utils.reduction())
+    #     set_nt_method(function_name, utils.reduction())
 
     for function_name in codegen.get_tensorwise_reductions():
         set_wrapped_torch_function(

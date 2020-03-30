@@ -282,3 +282,8 @@ class NestedTensor(object):
 
     def squeeze_(self, dim=None):
         return NestedTensor(self._impl.squeeze_(dim))
+
+    def sum(self, dim=None, keepdim=False, dtype=None):
+        print("HEE")
+        result = self._impl.sum(dim, keepdim, dtype)
+        return result if torch.is_tensor(result) else NestedTensor(result)
