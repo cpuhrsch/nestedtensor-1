@@ -10,7 +10,7 @@ at::Tensor sum(const NestedTensor& self, c10::optional<ScalarType> dtype) {
 
 NestedTensor& sum_out(
     NestedTensor& result,
-    const Tensor& self,
+    const NestedTensor& self,
     IntArrayRef dim,
     bool keepdim,
     optional<ScalarType> opt_dtype) {

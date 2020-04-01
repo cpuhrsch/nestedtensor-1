@@ -323,6 +323,7 @@ def monkey_patch(NestedTensor):
     # setattr(module, 'addmm', utils.dispatch(orig_fn=torch.addmm)(methods.addmm))
 
     C_functions[torch.squeeze] = "squeeze"
+    C_functions[torch.sum] = "sum"
 
     set_function(torch.conv2d, functions.conv2d)
     set_function(torch.nn.functional.max_pool2d, functions.max_pool2d)
