@@ -19,7 +19,7 @@ def _iter_constructors():
 class TestNestedTensor(TestCase):
     def test_sum(self):
         for constructor in _iter_constructors():
-            nt = constructor([torch.tensor(3)])
+            nt = constructor([torch.randn(2, 3)])
             # NOTE: For torch.sum dtype can be a positional for full reductions.
             print(nt)
             print(torch.sum(nt))
