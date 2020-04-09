@@ -52,23 +52,15 @@ void add_unary(
     pybind11::class_<torch::nested_tensor::THPNestedTensor> c,
     std::string name,
     F& at_out) {
-  m.def(
-      name.c_str(),
-      torch::nested_tensor::unary(at_out),
-      py::call_guard<py::gil_scoped_release>());
+  m.def(name.c_str(), torch::nested_tensor::unary(at_out));
   m.def(
       name.c_str(),
       torch::nested_tensor::unary_out(at_out),
       py::arg("input"),
       py::arg("out"));
+  c.def(name.c_str(), torch::nested_tensor::unary(at_out));
   c.def(
-      name.c_str(),
-      torch::nested_tensor::unary(at_out),
-      py::call_guard<py::gil_scoped_release>());
-  c.def(
-      (name + std::string("_")).c_str(),
-      torch::nested_tensor::unary_(at_out),
-      py::call_guard<py::gil_scoped_release>());
+      (name + std::string("_")).c_str(), torch::nested_tensor::unary_(at_out));
 }
 
 void add_unary_functions(
