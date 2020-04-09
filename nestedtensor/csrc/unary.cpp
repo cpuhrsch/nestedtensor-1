@@ -59,7 +59,8 @@ void add_unary(
   m.def(
       name.c_str(),
       torch::nested_tensor::unary_out(at_out),
-      py::call_guard<py::gil_scoped_release>());
+      py::arg("input"),
+      py::arg("out"));
   c.def(
       name.c_str(),
       torch::nested_tensor::unary(at_out),
