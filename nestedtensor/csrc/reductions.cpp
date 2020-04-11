@@ -40,7 +40,7 @@ inline TensorNode _node_sum_keep_dim(
   return TensorNode(std::move(result_nodes));
 }
 
-// TODO: check dim for each intarrayref and sort
+// TODO: check dim for each intarrayref and sort + dedup
 NestedTensor sum(
     const NestedTensor& self,
     IntArrayRef dim,
@@ -62,6 +62,7 @@ NestedTensor sum(
           result);
     }
   }
+  // TODO: Squeeze for keepdim support
   std::cout << "FFF" << std::endl;
   return NestedTensor(std::move(result));
 }
