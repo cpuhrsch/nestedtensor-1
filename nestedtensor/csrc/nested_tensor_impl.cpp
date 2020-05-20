@@ -7,6 +7,19 @@
 
 namespace at {
 
+namespace impl {
+void MyAutogradMeta::set_requires_grad(
+    bool requires_grad,
+    at::TensorImpl* self_impl) {
+  assert(self_impl->key_set().has(at::NestedTensorKey));
+  std::cout << "ADADA" << std::endl;
+  auto tpt = static_cast<at::NestedTensorImpl*>(self_impl);
+  auto nt = tpt->_data;
+  nt.requires_grad_(requires_grad);
+  requires_grad_ = requires_grad;
+}
+} // namespace impl
+
 using namespace torch::nested_tensor;
 
 IntArrayRef NestedTensorImpl::sizes() const {

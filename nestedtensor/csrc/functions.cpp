@@ -163,6 +163,11 @@ void NestedTensor_backward(
   std::cout << "BACKWARD" << std::endl;
 }
 
+Tensor& NestedTensor_requires_grad_(Tensor& self, bool _requires_grad) {
+  std::cout << "REQIRES GRAD" << std::endl;
+  return self;
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
@@ -173,5 +178,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
   m.impl_UNBOXED("sum", NestedTensor_sum);
   m.impl_UNBOXED("backward", NestedTensor_backward);
+  m.impl_UNBOXED("requires_grad_", NestedTensor_requires_grad_);
 }
 }

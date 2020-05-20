@@ -18,6 +18,8 @@ class TestNestedTensorBuffer(TestCase):
         nt = nestedtensor.nested_tensor([torch.rand(1, 2)])
         nt.requires_grad_(True)
         a = nt.unbind()[0]
+        print('a')
+        print(a)
         c = nt.sum()
         c.backward()
         # An unbound Tensor does not accumulate gradients because it's a
