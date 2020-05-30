@@ -4,6 +4,25 @@
 
 namespace torch {
 namespace nested_tensor {
+namespace {
+
+static auto nestedtensor =
+    torch::class_<NestedNode<int64_t>>("nestedtensor", "SizeNode");
+//        .def("Encode", &SentencePiece::Encode)
+//        .def("EncodeAsIds", &SentencePiece::EncodeAsIds)
+//        .def("EncodeAsPieces", &SentencePiece::EncodeAsPieces)
+//        .def("GetPieceSize", &SentencePiece::GetPieceSize)
+//        .def_pickle(
+//            // __setstate__
+//            [](const c10::intrusive_ptr<SentencePiece> &self) -> std::string {
+//              return self->content_;
+//            },
+//            // __getstate__
+//            [](std::string state) -> c10::intrusive_ptr<SentencePiece> {
+//              return c10::make_intrusive<SentencePiece>(std::move(state));
+//            });
+
+}
 
 using PythonNode = NestedNode<pybind11::object>;
 
