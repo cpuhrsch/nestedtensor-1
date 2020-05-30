@@ -87,10 +87,6 @@ struct NestedNode : torch::CustomClassHolder {
     return _payload;
   }
 
-  std::string __str__() {
-    return std::string("nestedtesadfs");
-  }
-
  private:
   bool _is_leaf;
   std::vector<NestedNode<T>> _children;

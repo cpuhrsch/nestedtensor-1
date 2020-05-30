@@ -9,7 +9,9 @@ namespace {
 
 static auto nestedtensor =
     torch::class_<SizeNode>("nestedtensor", "SizeNode")
-      .def("__str__", &SizeNode::__str__);
+      .def("__str__", &SizeNode::__str__)
+      .def("unbind", &SizeNode::unbind)
+      ;
 //        .def("Encode", &SentencePiece::Encode)
 //        .def("EncodeAsIds", &SentencePiece::EncodeAsIds)
 //        .def("EncodeAsPieces", &SentencePiece::EncodeAsPieces)
