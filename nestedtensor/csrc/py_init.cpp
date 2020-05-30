@@ -20,48 +20,68 @@ namespace py = pybind11;
 using namespace torch::nested_tensor;
 using namespace at;
 
+namespace torch {
+namespace nested_tensor {
+namespace {
+
+static auto registry =
+    torch::RegisterOperators()
+      .op("nestedtensor::is_nested_tensor_impl", [](Tensor tensor) {
+        return tensor.unsafeGetTensorImpl()->key_set().has(NestedTensorKey);
+      })
+      .op("nestedtensor::nested_dim", [](Tensor tensor) {
+        return get_nested_tensor_impl(tensor)->_data.nested_dim();
+      })
+      .op("nestedtensor::to_nested_tensor",
+              [](Tensor tensor, c10::optional<int64_t> dim) {
+                auto nt = get_nested_tensor(tensor);
+                return wrap_nested_tensor(nt.to_nested_tensor(dim));
+              })
+      .op("nestedtensor::grad", 
+            [](Tensor tensor) {
+              auto nt = get_nested_tensor(tensor);
+              return wrap_nested_tensor(nt.grad());
+            })
+      .op("nestedtensor::requires_grad", 
+            [](Tensor tensor) {
+              auto nt = get_nested_tensor(tensor);
+              return nt.requires_grad();
+            })
+      .op("nestedtensor::requires_grad_",
+            [](Tensor tensor, bool requires_grad) {
+            auto nt = get_nested_tensor(tensor);
+            return wrap_nested_tensor(nt.requires_grad_(requires_grad));
+          })
+      .op("nestedtensor::backward",
+          [](Tensor tensor,
+             Tensor gradient,
+             bool retain_graph,
+             bool create_graph) {
+            auto nt = get_nested_tensor(tensor);
+            nt.backward(get_nested_tensor(gradient), retain_graph, create_graph);
+          })
+      .op("nestedtensor::sizes", [](Tensor tensor) {
+        return get_nested_tensor(tensor).sizes();
+      })
+      // .op("nestedtensor::len", [](Tensor self) {
+      //   return get_nested_tensor(self).get_structure().degree();
+      // })
+      .op("nestedtensor::to_tensor",
+        [](Tensor tensor, c10::optional<int64_t> dim) {
+          return NestedTensor_to_tensor(tensor, dim);
+        })
+      ;
+
+}
+} // namespace nested_tensor
+} // namespace torch
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // NOTE: Never forget about pybind return value policies
   // since you can expect transparent changes to the constiuents
   // via unbind.
 
   m.def("nested_tensor_impl", &torch::nested_tensor::nested_tensor_impl);
-  m.def("is_nested_tensor_impl", [](Tensor tensor) {
-    return tensor.unsafeGetTensorImpl()->key_set().has(NestedTensorKey);
-  });
-  m.def("nested_dim", [](Tensor tensor) {
-    return get_nested_tensor_impl(tensor)->_data.nested_dim();
-  });
-  m.def(
-      "to_nested_tensor",
-      torch::wrap_pybind_function(
-          [](Tensor tensor, c10::optional<int64_t> dim) {
-            auto nt = get_nested_tensor(tensor);
-            return wrap_nested_tensor(nt.to_nested_tensor(dim));
-          }));
-  m.def("grad", torch::wrap_pybind_function([](Tensor tensor) {
-          auto nt = get_nested_tensor(tensor);
-          return wrap_nested_tensor(nt.grad());
-        }));
-  m.def("requires_grad", torch::wrap_pybind_function([](Tensor tensor) {
-          auto nt = get_nested_tensor(tensor);
-          return nt.requires_grad();
-        }));
-  m.def(
-      "requires_grad_",
-      torch::wrap_pybind_function([](Tensor tensor, bool requires_grad) {
-        auto nt = get_nested_tensor(tensor);
-        return wrap_nested_tensor(nt.requires_grad_(requires_grad));
-      }));
-  m.def(
-      "backward",
-      torch::wrap_pybind_function([](Tensor tensor,
-                                     Tensor gradient,
-                                     bool retain_graph,
-                                     bool create_graph) {
-        auto nt = get_nested_tensor(tensor);
-        nt.backward(get_nested_tensor(gradient), retain_graph, create_graph);
-      }));
   m.def("str", [](Tensor tensor) {
     auto impl_data = get_nested_tensor_impl(tensor)->_data;
     auto node = impl_data.get_structure();
@@ -83,12 +103,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
           return result;
         });
   });
-  m.def(
-      "to_tensor",
-      torch::wrap_pybind_function(
-          [](Tensor tensor, c10::optional<int64_t> dim) {
-            return NestedTensor_to_tensor(tensor, dim);
-          }));
   // Need to overwrite because
   // https://github.com/pytorch/pytorch/blob/09660896c0dd2bec888857300a7be9edb52dd05d/aten/src/ATen/TensorIndexing.h#L480
   // requires sizes() for non Tensor-shape compliant NestedTensors
@@ -105,14 +119,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return unbound[key];
   });
 #endif
-
-  m.def("sizes", [](Tensor tensor) {
-    return get_nested_tensor(tensor).sizes();
-  });
-
-  m.def("len", [](Tensor self) {
-    return get_nested_tensor(self).get_structure().degree();
-  });
 
   m.def("make_nested_tensor_impl", [](std::vector<Tensor> tensors) {
     std::vector<TensorNode> tensor_nodes;
