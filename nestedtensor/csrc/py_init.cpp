@@ -1,7 +1,7 @@
 #include <nestedtensor/csrc/creation.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
-#include <nestedtensor/csrc/utils/python_nested_node.h>
+#include <nestedtensor/csrc/utils/nested_node.h>
 #include <nestedtensor/csrc/python_functions.h>
 #include <torch/csrc/Size.h>
 #include <torch/extension.h>
@@ -20,31 +20,7 @@ namespace py = pybind11;
 using namespace torch::nested_tensor;
 using namespace at;
 
-py::object _nested_helper(c10::optional<int64_t> index, SizeNode&& size_node) {
-  auto fn = [](auto& self, const SizeNode& s, int64_t dim) -> py::object {
-    if (dim == 0) {
-      return py::cast(s.degree());
-    }
-    // List of Tensors
-    if (s.height() == 1) {
-      std::vector<int64_t> result;
-      for (const auto& child : s.unbind()) {
-        result.push_back(child.payload().get(dim - 1));
-      }
-      return py::tuple(py::cast(result));
-    }
-    std::vector<py::object> result;
-    for (const auto& child : s.unbind()) {
-      result.emplace_back(self(self, child, dim - 1));
-    }
-    return py::tuple(py::cast(result));
-  };
-  return fn(fn, size_node, *index);
-}
-
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  register_python_nested_node(m);
-
   // NOTE: Never forget about pybind return value policies
   // since you can expect transparent changes to the constiuents
   // via unbind.
@@ -132,34 +108,12 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
   m.def("nested_size", [](Tensor self, c10::optional<int64_t> index_) {
     auto nt = get_nested_tensor(self);
-    if (!index_) {
-      return py::cast(THPPythonNode(
-          map(
-              [](c10::List<int64_t> e) {
-                std::vector<int64_t> e_vec = e.vec();
-                return py::reinterpret_steal<py::object>(
-                    THPSize_NewFromSizes(e_vec.size(), e_vec.data()));
-              },
-              nt.nested_size()),
-          "NestedSize"));
-    }
-    int64_t index = at::maybe_wrap_dim((*index_), nt.dim());
-    SizeNode size_node = nt.nested_size();
-    return _nested_helper(index, std::move(size_node));
+    return c10::make_intrusive<SizeNode>(nt.nested_size());
   });
 
   m.def("nested_stride", [](Tensor self, c10::optional<int64_t> index_) {
     auto nt = get_nested_tensor(self);
-    if (!index_) {
-      return py::cast(THPPythonNode(
-          map([](c10::List<int64_t> e)
-                  -> py::object { return py::tuple(py::cast(e.vec())); },
-              nt.nested_stride()),
-          "NestedStride"));
-    }
-    int64_t index = at::maybe_wrap_dim((*index_), nt.dim());
-    SizeNode size_node = nt.nested_stride();
-    return _nested_helper(index, std::move(size_node));
+    return c10::make_intrusive<SizeNode>(nt.nested_stride());
   });
 
   m.def("sizes", [](Tensor tensor) {
