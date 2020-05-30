@@ -9,6 +9,7 @@ namespace {
 
 // TODO: Need special NestedSize object
 // TODO: Check if this is enough to make it jit-able
+// TODO: Step through the other pybin11 ops and see if you can make everything JIT-able and pickle-able
 
 template <typename T>
 struct THPNestedNode : torch::CustomClassHolder {
