@@ -25,16 +25,20 @@ struct THPNestedNode : torch::CustomClassHolder {
   const NestedNode<T>& get_node() const {
     return _size_node;
   }
-  pybind11::object unbind() {
-    std::vector<pybind11::object> result;
+  std::vector<c10::intrusive_ptr<THPNestedNode<T>>> unbind() {
+    std::vector<c10::intrusive_ptr<THPNestedNode<T>>> result;
     for (const auto& child : _size_node.unbind()) {
-      if (child.height() == 0) {
-        result.push_back(wrap_nested_node(child));
-      } else {
-        result.push_back(pybind11::cast(THPNestedNode<T>(child, _name)));
-      }
+      result.push_back(
+          c10::make_intrusive<THPNestedNode<T>>(
+            THPNestedNode<T>(child, _name)));
     }
-    return pybind11::cast(result);
+    return result;
+  }
+  T get_payload() {
+    if(! _size_node.is_leaf()) {
+      throw std::runtime_error("Needs to be a leaf!");
+    }
+    return _size_node.payload();
   }
 
  private:
@@ -47,6 +51,9 @@ using THPSizeNode = THPNestedNode<c10::List<int64_t>>;
 static auto nestedtensor =
     torch::class_<THPSizeNode>("nestedtensor", "SizeNode")
     .def("__str__", &THPSizeNode::str)
+    .def("__len__", &THPSizeNode::len)
+    .def("unbind", &THPSizeNode::unbind)
+    .def("get_payload", &THPSizeNode::get_payload)
     ;
 
 c10::intrusive_ptr<THPSizeNode> get_nested_size(at::Tensor self, c10::optional<int64_t> index_) {
