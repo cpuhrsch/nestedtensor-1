@@ -106,16 +106,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   });
 #endif
 
-  m.def("nested_size", [](Tensor self, c10::optional<int64_t> index_) {
-    auto nt = get_nested_tensor(self);
-    return c10::make_intrusive<SizeNode>(nt.nested_size());
-  });
-
-  m.def("nested_stride", [](Tensor self, c10::optional<int64_t> index_) {
-    auto nt = get_nested_tensor(self);
-    return c10::make_intrusive<SizeNode>(nt.nested_stride());
-  });
-
   m.def("sizes", [](Tensor tensor) {
     return get_nested_tensor(tensor).sizes();
   });
