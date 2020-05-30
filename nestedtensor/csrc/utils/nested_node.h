@@ -3,6 +3,7 @@
 #include <c10/util/Metaprogramming.h>
 #include <c10/util/Optional.h>
 #include <c10/util/TypeList.h>
+#include <torch/script.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -13,7 +14,7 @@ namespace nested_tensor {
 // even in the value (should it construct a new tree or
 // return a single value).
 template <typename T>
-struct NestedNode {
+struct NestedNode : torch::CustomClassHolder {
   // NestedNode() : _is_leaf(false), _height(1) {}
   NestedNode() = delete;
   NestedNode(std::vector<NestedNode<T>>&& children)
