@@ -39,6 +39,34 @@ def _cross_entropy(impl_args, impl_kwargs):
             input_, target_, weight, size_average, ignore_index, reduce_, reduction)
     )
 
+def _interpolate(impl_args, impl_kwargs):
+    input_ = impl_args[0]
+    size = impl_kwargs.get('size', None)
+    if size is not None and not isinstance(size, tuple):
+        size = ((size,),)
+    if len(size) > 0:
+        if not isinstance(size[0], tuple):
+            size = (size,)
+    scale_factor = impl_kwargs.get('scale_factor', None)
+    mode = impl_kwargs.get('mode', 'nearest')
+    align_corners = impl_kwargs.get('align_corners', False)
+    recompute_scale_factor = impl_kwargs.get('recompute_scale_factor', False)
+    align_corners = False if align_corners is None else align_corners
+    recompute_scale_factor = False if recompute_scale_factor is None else recompute_scale_factor
+    print("----")
+    print(size)
+    print(scale_factor)
+    print(mode)
+    print(align_corners)
+    print(recompute_scale_factor)
+    print("----")
+    return _wrap_result(torch.ops.nestedtensor.interpolate(input_,
+        size,
+        scale_factor,
+        mode,
+        align_corners,
+        recompute_scale_factor))
+
 class NestedTensorMeta(type):
     def __getattr__(cls, name):
         if getattr(torch.Tensor, name):
@@ -227,7 +255,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
         impl_args, impl_kwargs = _filter_impl(args, kwargs)
         # Need a specialized implementation to support lists of lists of sizes.
         if func is torch.nn.functional.interpolate:
-            return _wrap_result(nestedtensor._C.interpolate(*impl_args, **impl_kwargs))
+            return _interpolate(impl_args, impl_kwargs)
         # Need a specialized implementation to dodge call to view in nll_loss
         if func is torch.nn.functional.cross_entropy:
             return _cross_entropy(impl_args, impl_kwargs)
