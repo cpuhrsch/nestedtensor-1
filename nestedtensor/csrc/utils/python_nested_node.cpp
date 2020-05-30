@@ -8,8 +8,8 @@ namespace nested_tensor {
 namespace {
 
 static auto nestedtensor =
-    torch::class_<NestedNode<int64_t>>("nestedtensor", "SizeNode")
-      .def("__str__", &NestedNode<int64_t>::__str__);
+    torch::class_<SizeNode>("nestedtensor", "SizeNode")
+      .def("__str__", &SizeNode::__str__);
 //        .def("Encode", &SentencePiece::Encode)
 //        .def("EncodeAsIds", &SentencePiece::EncodeAsIds)
 //        .def("EncodeAsPieces", &SentencePiece::EncodeAsPieces)
@@ -36,8 +36,8 @@ c10::intrusive_ptr<SizeNode> get_nested_stride(at::Tensor self, c10::optional<in
 
 static auto registry =
     torch::RegisterOperators()
-        .op("torchtext::nested_size", &get_nested_size)
-        .op("torchtext::nested_stride", &get_nested_stride);
+        .op("nestedtensor::nested_size", &get_nested_size)
+        .op("nestedtensor::nested_stride", &get_nested_stride);
 }
 
 using PythonNode = NestedNode<pybind11::object>;

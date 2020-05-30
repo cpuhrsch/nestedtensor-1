@@ -203,10 +203,12 @@ class NestedTensor(metaclass = NestedTensorMeta):
         return self.__str__()
 
     def nested_size(self, dim=None):
-        return nestedtensor._C.nested_size(self._impl, dim)
+        # return nestedtensor._C.nested_size(self._impl, dim)
+        return torch.ops.nestedtensor.nested_size(self._impl, dim)
 
     def nested_stride(self, dim=None):
-        return nestedtensor._C.nested_stride(self._impl, dim)
+        return torch.ops.nestedtensor.nested_stride(self._impl, dim)
+        # return nestedtensor._C.nested_stride(self._impl, dim)
 
     # --- dependent on impl ends ---
 
