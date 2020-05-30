@@ -36,8 +36,15 @@ c10::intrusive_ptr<SizeNode> get_nested_stride(at::Tensor self, c10::optional<in
     return c10::make_intrusive<SizeNode>(nt.nested_stride());
 }
 
-std::string get_size_node_str(SizeNode nested_node) {
-  return std::string("ddd");
+// std::string get_size_node_str(SizeNode nested_node) {
+// std::string get_size_node_str() {
+std::string get_size_node_str(c10::intrusive_ptr<SizeNode> _size_node) {
+    return NestedNode___str__(
+        *_size_node, "SizeNode", [](c10::List<int64_t> payload, const std::string& tabs) {
+          std::stringstream ss;
+          ss << tabs << payload.vec();
+          return ss.str();
+        });
 }
 
 static auto registry =
