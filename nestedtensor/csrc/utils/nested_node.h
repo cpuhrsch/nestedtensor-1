@@ -14,7 +14,7 @@ namespace nested_tensor {
 // even in the value (should it construct a new tree or
 // return a single value).
 template <typename T>
-struct NestedNode : torch::CustomClassHolder {
+struct NestedNode {
   // NestedNode() : _is_leaf(false), _height(1) {}
   NestedNode() = delete;
   NestedNode(std::vector<NestedNode<T>>&& children)
