@@ -8,6 +8,7 @@ namespace nested_tensor {
 namespace {
 
 // TODO: Need special NestedSize object
+// TODO: Check if this is enough to make it jit-able
 
 template <typename T>
 struct THPNestedNode : torch::CustomClassHolder {
