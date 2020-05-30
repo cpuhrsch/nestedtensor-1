@@ -127,6 +127,4 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     }
     return wrap_tensor_node(std::move(tensor_nodes));
   });
-
-  add_functions(m);
 }

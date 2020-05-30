@@ -26,6 +26,19 @@ def _filter_impl(args, kwargs):
     }
     return impl_args, impl_kwargs
 
+def _cross_entropy(impl_args, impl_kwargs):
+    input_ = impl_args[0]
+    target_ = impl_args[1]
+    weight = impl_kwargs.get('weight', None)
+    size_average = impl_kwargs.get('size_average', True)
+    ignore_index = impl_kwargs.get('ignore_index', -100)
+    reduce_ = impl_kwargs.get('reduce', True)
+    reduction = impl_kwargs.get('reduction', "mean")
+    return _wrap_result(
+        torch.ops.nestedtensor.cross_entropy(
+            input_, target_, weight, size_average, ignore_index, reduce_, reduction)
+    )
+
 class NestedTensorMeta(type):
     def __getattr__(cls, name):
         if getattr(torch.Tensor, name):
@@ -217,17 +230,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
             return _wrap_result(nestedtensor._C.interpolate(*impl_args, **impl_kwargs))
         # Need a specialized implementation to dodge call to view in nll_loss
         if func is torch.nn.functional.cross_entropy:
-            input_ = impl_args[0]
-            target_ = impl_args[1]
-            weight = impl_kwargs.get('weight', None)
-            size_average = impl_kwargs.get('size_average', True)
-            ignore_index = impl_kwargs.get('ignore_index', -100)
-            reduce_ = impl_kwargs.get('reduce', True)
-            reduction = impl_kwargs.get('reduction', "mean")
-            return _wrap_result(
-                torch.ops.nestedtensor.cross_entropy(
-                    input_, target_, weight, size_average, ignore_index, reduce_, reduction)
-            )
+            return _cross_entropy(impl_args, impl_kwargs)
         return _wrap_result(func(*impl_args, **impl_kwargs))
 
     # Might require nonzero
