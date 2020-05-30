@@ -36,16 +36,15 @@ c10::intrusive_ptr<SizeNode> get_nested_stride(at::Tensor self, c10::optional<in
     return c10::make_intrusive<SizeNode>(nt.nested_stride());
 }
 
-template <class T>
-std::string get_nested_node_str(NestedNode<T> nested_node) {
-
+std::string get_size_node_str(SizeNode nested_node) {
+  return std::string("ddd");
 }
 
 static auto registry =
     torch::RegisterOperators()
         .op("nestedtensor::nested_size", &get_nested_size)
         .op("nestedtensor::nested_stride", &get_nested_stride)
-        .op("nestedtensor::get_size_node_str", &get_nested_node_str<int64_t>);
+        .op("nestedtensor::get_size_node_str", &get_size_node_str);
 }
 
 using PythonNode = NestedNode<pybind11::object>;
