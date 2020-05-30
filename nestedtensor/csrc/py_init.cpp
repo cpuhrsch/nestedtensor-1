@@ -63,9 +63,9 @@ static auto registry =
       .op("nestedtensor::sizes", [](Tensor tensor) {
         return get_nested_tensor(tensor).sizes();
       })
-      // .op("nestedtensor::len", [](Tensor self) {
-      //   return get_nested_tensor(self).get_structure().degree();
-      // })
+      .op("nestedtensor::len", [](Tensor self) {
+        return (int64_t)(get_nested_tensor(self).get_structure().degree());
+      })
       .op("nestedtensor::to_tensor",
         [](Tensor tensor, c10::optional<int64_t> dim) {
           return NestedTensor_to_tensor(tensor, dim);

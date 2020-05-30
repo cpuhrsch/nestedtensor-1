@@ -13,24 +13,24 @@ namespace nested_tensor {
 NestedTensor cross_entropy(NestedTensor& input,
                            NestedTensor& target,
                            c10::optional<at::Tensor>& weight,
-                           c10::optional<bool>& size_average, // TODO: use
-                           c10::optional<int64_t>& ignore_index,
-                           c10::optional<bool>& reduce, // TODO: use
-                           c10::optional<std::string>& reduction) {
+                           bool size_average, // TODO: use
+                           int64_t ignore_index,
+                           bool reduce, // TODO: use
+                           std::string reduction) {
   TensorNode input_structure = input.get_structure();
   TensorNode target_structure = target.get_structure();
   F::CrossEntropyFuncOptions::reduction_t redct;
-  if (reduction.value() == "mean" || reduction.value() == "none") {
+  if (reduction == "mean" || reduction == "none") {
       redct = torch::kMean;
-  } else if (reduction.value() == "sum") {
+  } else if (reduction == "sum") {
       redct = torch::kSum;
   } else {
-      throw std::runtime_error("Unexpected mode for reduction: " + reduction.value());
+      throw std::runtime_error("Unexpected mode for reduction: " + reduction);
   }
 
   auto options = F::CrossEntropyFuncOptions().reduction(redct);
-  if (ignore_index.has_value()) {
-      options = options.ignore_index(ignore_index.value());
+  if (ignore_index) {
+      options = options.ignore_index(ignore_index);
   }
 
   TensorNode res = map([&, options] (at::Tensor input_tensor, at::Tensor target_tensor){
@@ -232,34 +232,32 @@ void add_functions(pybind11::module m) {
       py::arg("mode") = "nearest",
       py::arg("align_corners") = false,
       py::arg("recompute_scale_factor") = false);
+}
 
-  m.def(
-      "cross_entropy",
-      [](at::Tensor input_,
-         at::Tensor target_,
-         c10::optional<at::Tensor> weight,
-         c10::optional<bool> size_average, // TODO: use
-         c10::optional<int64_t> ignore_index,
-         c10::optional<bool> reduce, // TODO: use
-         c10::optional<std::string> reduction) {
-        auto input = get_nested_tensor_impl(input_)->_data;
-        auto target = get_nested_tensor_impl(target_)->_data;
-        return at::detail::make_tensor<NestedTensorImpl>(cross_entropy(
-            input,
-            target,
-            weight,
-            size_average,
-            ignore_index,
-            reduce,
-            reduction));
-      },
-      py::arg("input"),
-      py::arg("target"),
-      py::arg("weight") = nullptr,
-      py::arg("size_average") = true,
-      py::arg("ignore_index") = -100,
-      py::arg("reduce") = true,
-      py::arg("reduction") = "mean");
+namespace {
+
+static auto registry =
+    torch::RegisterOperators()
+    .op(
+        "nestedtensor::cross_entropy",
+        [](at::Tensor input_,
+           at::Tensor target_,
+           c10::optional<at::Tensor> weight,
+           bool size_average, // TODO: use
+           int64_t ignore_index,
+           bool reduce, // TODO: use
+           std::string reduction) {
+          auto input = get_nested_tensor_impl(input_)->_data;
+          auto target = get_nested_tensor_impl(target_)->_data;
+          return at::detail::make_tensor<NestedTensorImpl>(cross_entropy(
+              input,
+              target,
+              weight,
+              size_average,
+              ignore_index,
+              reduce,
+              reduction));
+        });
 }
 } // namespace nested_tensor
 }
