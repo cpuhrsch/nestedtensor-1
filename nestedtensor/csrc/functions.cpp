@@ -231,6 +231,66 @@ Tensor NestedTensor_layer_norm(
 
 }
 
+Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
+  auto self_data = get_nested_tensor(self);
+  if (is_nested_tensor_impl(other)) {
+    auto other_data = get_nested_tensor(other);
+    return wrap_tensor_node(
+        map([](Tensor tensor, Tensor other) { return at::matmul(tensor, other); },
+            self_data.get_structure(),
+            other_data.get_structure()));
+  }
+  if (self_data.is_contiguous() && other.is_contiguous()) {
+    if (self_data.dim() >= 2 && other.dim() >= 2) {
+      int64_t self_1 = *self_data.sizes()[self_data.dim() - 2];
+      int64_t self_2 = *self_data.sizes()[self_data.dim() - 1];
+      int64_t other_1 = other.sizes()[other.dim() - 2];
+      int64_t other_2 = other.sizes()[other.dim() - 1];
+      int64_t s_o = self_1 / other_1;
+      if (self_1 == other_2 && self_2 && other_1) {
+        auto self_buffer = *self_data.get_buffer();
+        // std::cout << "self_1: " << self_1 << std::endl;
+        // std::cout << "self_2: " << self_2 << std::endl;
+        // std::cout << "other_1: " << other_1 << std::endl;
+        // std::cout << "other_2: " << other_2 << std::endl;
+        auto other_buffer = at::reshape(other, {-1, 1, other_1, other_2});
+        int64_t s_o = 1;
+        if (other.dim() > 2) {
+          s_o = self_buffer.numel() / (other_buffer.size(0) * other_1 * other_2);
+        }
+        // std::cout << "s_o: " << s_o << std::endl;
+        self_buffer = at::reshape(self_buffer, {-1, s_o, self_1, self_2});
+        // std::cout <<  "self_buffer.sizes(): " <<  self_buffer.sizes() << std::endl;
+        // std::cout << "other_buffer.sizes(): " << other_buffer.sizes() << std::endl;
+        auto new_size_node = map([other_2](c10::List<int64_t> size) {
+            auto size_vec = size.vec();
+            size_vec[size.size() - 1] = other_2;
+            return c10::List<int64_t>(size_vec);
+          }, self_data.nested_size());
+        // std::cout << "HEEEEEEE" << std::endl;
+        return wrap_nested_tensor(torch::nested_tensor::NestedTensor(at::matmul(self_buffer, other_buffer).reshape({-1}), std::move(new_size_node)));
+      }
+    }
+  }
+  return wrap_tensor_node(
+      map([&other](Tensor tensor) { return at::matmul(tensor, other); },
+          self_data.get_structure()));
+}
+
+Tensor& NestedTensor_matmul_out(
+    Tensor& result,
+    const Tensor& self,
+    const Tensor& other) {
+  apply(
+      [](Tensor& result, Tensor& tensor, Tensor& other) {
+        return at::matmul_out(result, tensor, other);
+      },
+      get_nested_tensor_structure(result),
+      get_nested_tensor_structure(self),
+      get_nested_tensor_structure(other));
+  return result;
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
@@ -244,5 +304,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("transpose.int", NestedTensor_transpose);
   m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
   m.impl_UNBOXED("layer_norm", NestedTensor_layer_norm);
+  m.impl_UNBOXED("matmul", NestedTensor_matmul);
+  m.impl_UNBOXED("matmul.out", NestedTensor_matmul_out);
 }
 }
