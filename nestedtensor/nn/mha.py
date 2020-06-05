@@ -64,6 +64,8 @@ def multi_head_attention_forward(query,                           # type: Tensor
     _w = in_proj_weight[_start:_end, :]
     if _b is not None:
         _b = _b[_start:_end]
+    query = query.contiguous()
+    _w = _w.contiguous()
     q = F.linear(query, _w, _b)
 
     # This is inline in_proj function with in_proj_weight and in_proj_bias
@@ -73,6 +75,8 @@ def multi_head_attention_forward(query,                           # type: Tensor
     _w = in_proj_weight[_start:_end, :]
     if _b is not None:
         _b = _b[_start:_end]
+    key = key.contiguous()
+    _w = _w.contiguous()
     k = F.linear(key, _w, _b)
 
     # This is inline in_proj function with in_proj_weight and in_proj_bias
@@ -82,6 +86,8 @@ def multi_head_attention_forward(query,                           # type: Tensor
     _w = in_proj_weight[_start:, :]
     if _b is not None:
         _b = _b[_start:]
+    value = value.contiguous()
+    _w = _w.contiguous()
     v = F.linear(value, _w, _b)
     q = q * scaling
 
@@ -98,11 +104,11 @@ def multi_head_attention_forward(query,                           # type: Tensor
     # print("02v:\n", v)
 
     # NOTE: This is usually contiguous plus a view
-    q = q.reshape(-1, -1, num_heads, head_dim).transpose(1, 2)
+    q = q.reshape(-1, -1, num_heads, head_dim).transpose(1, 2).contiguous()
     if k is not None:
         k = k.reshape(-1, -1, num_heads, head_dim).transpose(1, 2)
     if v is not None:
-        v = v.reshape(-1, -1, num_heads, head_dim).transpose(1, 2)
+        v = v.reshape(-1, -1, num_heads, head_dim).transpose(1, 2).contiguous()
 
     # print("12q:\n", q)
     # print("12k:\n", k)
@@ -110,7 +116,7 @@ def multi_head_attention_forward(query,                           # type: Tensor
 
     # src_len = k.size(1)
 
-    attn_output_weights = torch.matmul(q, k.transpose(2, 3))
+    attn_output_weights = torch.matmul(q, k.transpose(2, 3).contiguous())
     # attn_output_weights = torch.bmm(q, k.transpose(1, 2))
     # assert list(attn_output_weights.size()) == [bsz * num_heads, tgt_len, src_len]
 
@@ -127,7 +133,7 @@ def multi_head_attention_forward(query,                           # type: Tensor
 
     # attn_output = attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, embed_dim)
     # import pdb; pdb.set_trace()
-    attn_output = attn_output.transpose(1, 2).reshape(-1, -1, embed_dim)
+    attn_output = attn_output.transpose(1, 2).reshape(-1, -1, embed_dim).contiguous()
     # print('2attn_output')
     # print(attn_output)
 
