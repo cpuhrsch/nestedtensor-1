@@ -115,6 +115,20 @@ Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
   return result;
 }
 
+Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
+  if (is_nested_tensor_impl(other)) {
+    apply(
+        [alpha](Tensor& self, Tensor& other) { self.add_(other, alpha); },
+        get_nested_tensor_structure(self),
+        get_nested_tensor_structure(other));
+    return self;
+  }
+  apply(
+      [&other, alpha](at::Tensor& self) { return self.add_(other, alpha); },
+      get_nested_tensor_structure(self));
+  return self;
+}
+
 #define BINARY_OP(NAME)                                             \
   m.impl_UNBOXED(#NAME ".Tensor", NestedTensor_binary<at::NAME>);   \
   m.impl_UNBOXED(#NAME "_.Tensor", NestedTensor_binary_<at::NAME>); \
@@ -144,5 +158,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("pow.Tensor_Scalar_out", NestedTensor_pow_out_2);
   m.impl_UNBOXED("pow.Tensor_Scalar", NestedTensor_pow_2);
   m.impl_UNBOXED("pow.Scalar_out", NestedTensor_pow_out_3);
+
+  m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
 }
 } // namespace at
