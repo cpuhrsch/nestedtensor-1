@@ -11,8 +11,8 @@ using namespace torch::nested_tensor;
 template <class F, F func>
 Tensor& NestedTensor_unary_(Tensor& self) {
   auto self_impl = get_nested_tensor(self);
-  auto result = func(*self_impl.get_buffer());
-  self.get_buffer().copy_(result);
+  auto result = func(self_impl.get_buffer());
+  self_impl.get_buffer().copy_(result);
   return self;
 }
 
@@ -20,8 +20,8 @@ Tensor& NestedTensor_unary_(Tensor& self) {
 template <class F, F func>
 Tensor& NestedTensor_unary_method_(Tensor& self) {
   auto self_impl = get_nested_tensor(self);
-  auto result = (self_impl.get_buffer()).*func();
-  self.get_buffer().copy_(result);
+  auto result = (self_impl.get_buffer())->*func();
+  self_impl.get_buffer().copy_(result);
   return self;
 }
 

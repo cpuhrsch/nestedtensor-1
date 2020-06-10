@@ -30,7 +30,7 @@ Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
           get_nested_tensor_structure(self)));
 }
 
-template <Tensor& (*func)(Tensor&, const Tensor&)>
+template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
   return self.copy_(NestedTensor_binary<func>(self, other));
 }
@@ -51,7 +51,7 @@ Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
 //           get_nested_tensor_structure(self)));
 // }
 
-template <Tensor& (*func)(Tensor&, const Tensor&, const Tensor&)>
+template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor& NestedTensor_binary_out(
     Tensor& result,
     const Tensor& self,
@@ -130,7 +130,7 @@ Tensor& NestedTensor_binary_out(
 
 #define BINARY_OP(NAME)                                                        \
   m.impl_UNBOXED(#NAME ".Tensor", NestedTensor_binary<at::NAME>);              \
-  m.impl_UNBOXED(#NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
+  m.impl_UNBOXED(#NAME "_.Tensor", NestedTensor_binary_<at::NAME>); \
   m.impl_UNBOXED(#NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
