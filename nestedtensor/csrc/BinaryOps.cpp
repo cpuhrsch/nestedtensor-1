@@ -131,7 +131,7 @@ Tensor& NestedTensor_binary_out(
 #define BINARY_OP(NAME)                                                        \
   m.impl_UNBOXED(#NAME ".Tensor", NestedTensor_binary<at::NAME>);              \
   m.impl_UNBOXED(#NAME "_.Tensor", NestedTensor_binary_<at::NAME>); \
-  m.impl_UNBOXED(#NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
+  m.impl_UNBOXED(#NAME ".out", NestedTensor_binary_out<at::NAME>);
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   BINARY_OP(div)

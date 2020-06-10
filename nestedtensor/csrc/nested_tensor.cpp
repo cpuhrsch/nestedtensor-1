@@ -190,7 +190,8 @@ const TensorNode NestedTensor::get_structure() const {
 
 NestedTensor::NestedTensor(const TensorNode structure)
     : _buffer(build_buffer(structure)),
-      _nested_size(infer_nested_size(structure)) {}
+      _nested_size(infer_nested_size(structure)),
+      _nested_stride(infer_nested_stride(structure)) {}
 //      _nested_stride(map(
 //          [](at::Tensor tensor) {
 //            return c10::List<int64_t>(tensor.strides());
@@ -201,7 +202,9 @@ NestedTensor::NestedTensor(const TensorNode structure)
 // of buffer.
 // TODO: Add an explicit test for debug purposes.
 NestedTensor::NestedTensor(at::Tensor&& buffer, const TensorNode structure)
-    : _buffer(buffer), _nested_size(infer_nested_size(structure)) {}
+    : _buffer(buffer),
+      _nested_size(infer_nested_size(structure)),
+      _nested_stride(infer_nested_stride(structure)) {}
 //      _nested_stride(map(
 //          [](at::Tensor tensor) {
 //            return c10::List<int64_t>(tensor.strides());
@@ -211,7 +214,9 @@ NestedTensor::NestedTensor(at::Tensor&& buffer, const TensorNode structure)
 NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
     : _buffer(buffer),
       _nested_size(nested_size),
-      _nested_stride(_cont_stride(nested_size)) {}
+      _nested_stride(
+          map([](c10::List<int64_t> size) { return _cont_stride(size); },
+              nested_size)) {}
 
 NestedTensor::NestedTensor(
     at::Tensor&& buffer,

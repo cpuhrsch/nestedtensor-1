@@ -180,6 +180,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     return _nested_helper(index, std::move(size_node));
   });
 
-  add_functions(m);
+  // add_functions(m);
 }
 
