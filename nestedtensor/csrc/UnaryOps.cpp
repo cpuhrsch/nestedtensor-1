@@ -37,7 +37,11 @@ template <class F, F func>
 Tensor NestedTensor_unary(const Tensor& self) {
   auto self_impl = get_nested_tensor(self);
   if (self_impl.is_contiguous()) {
-    return wrap_nested_tensor(NestedTensor(func(*self_impl.get_buffer()), self_impl.nested_size()));
+    auto result = at::zeros_like(*self_impl.get_buffer());
+    at::native::cos_out(result, *self_impl.get_buffer());
+    auto result_nt = NestedTensor(std::move(result), self_impl.nested_size());
+    result_nt.requires_grad_(true);
+    return wrap_nested_tensor(std::move(result_nt));
   }
   return wrap_tensor_node(
       map([](at::Tensor tensor) { return func(tensor); },
@@ -67,6 +71,7 @@ Tensor& NestedTensor_clamp_(Tensor& self, optional<Scalar> min, optional<Scalar>
 }
 
 Tensor NestedTensor_clamp(const Tensor& self, optional<Scalar> min, optional<Scalar> max) {
+  std::cout << "DDD" << std::endl;
   return wrap_tensor_node(
       map([min, max](at::Tensor tensor) { return at::clamp(tensor, min, max); },
           get_nested_tensor_structure(self)));
@@ -151,7 +156,7 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
       NestedTensor_unary_out<decltype(&at::NAME##_out), at::NAME##_out>);
 
 #define UNARY_OP(NAME) \
-  m.impl_UNBOXED(#NAME, NestedTensor_unary<decltype(&at::NAME), at::NAME>); \
+  m.impl(#NAME, NestedTensorKey_PreAutograd, NestedTensor_unary<decltype(&at::NAME), at::NAME>); \
   m.impl_UNBOXED(                                                           \
       #NAME "_", NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>); \
   m.impl_UNBOXED(                                                           \
@@ -205,7 +210,8 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("mvlgamma", NestedTensor_mvlgamma);
   m.impl_UNBOXED("mvlgamma_", NestedTensor_mvlgamma_);
 
-  m.impl_UNBOXED("clamp", NestedTensor_clamp);
+  // m.impl_UNBOXED("clamp", NestedTensor_clamp);
+  m.impl("clamp", NestedTensorKey_PreAutograd, &NestedTensor_clamp);
   m.impl_UNBOXED("clamp_", NestedTensor_clamp_);
   m.impl_UNBOXED("clamp.out", NestedTensor_clamp_out);
 

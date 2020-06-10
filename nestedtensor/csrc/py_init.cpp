@@ -63,8 +63,12 @@ static auto registry =
               })
       .op("nestedtensor::grad", 
             [](Tensor tensor) {
+            std::cout << "1" << std::endl;
               auto nt = get_nested_tensor(tensor);
-              return wrap_nested_tensor(nt.grad());
+            std::cout << "2" << std::endl;
+              auto result = nt.grad();
+            std::cout << "3" << std::endl;
+              return wrap_nested_tensor(std::move(result));
             })
       .op("nestedtensor::requires_grad", 
             [](Tensor tensor) {
@@ -82,6 +86,7 @@ static auto registry =
              bool retain_graph,
              bool create_graph) {
             auto nt = get_nested_tensor(tensor);
+            std::cout << "HEEEE" << std::endl;
             nt.backward(get_nested_tensor(gradient), retain_graph, create_graph);
           })
       .op("nestedtensor::sizes", [](Tensor tensor) {

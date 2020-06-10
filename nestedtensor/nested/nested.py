@@ -139,6 +139,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
         return _wrap_result(torch.ops.nestedtensor.requires_grad_(self._impl, requires_grad))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
+        print("HDHDHD")
         nestedtensor._C.backward(self._impl, gradient._impl, retain_graph, create_graph)
 
     def nested_dim(self):

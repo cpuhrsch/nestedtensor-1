@@ -11,7 +11,7 @@ constexpr auto NestedTensorKey = DispatchKey::PrivateUse1;
 struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(torch::nested_tensor::NestedTensor&& data)
       : TensorImpl(
-            c10::DispatchKeySet(NestedTensorKey_PreAutograd),
+            c10::DispatchKeySet({NestedTensorKey_PreAutograd, NestedTensorKey}),
             data.dtype(),
             data.device()),
         _data(std::move(data)) {

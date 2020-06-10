@@ -1,5 +1,6 @@
 #pragma once
 #include <nestedtensor/csrc/utils/nested_node.h>
+#include <torch/torch.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -64,8 +65,18 @@ struct NestedTensor {
         map([](at::Tensor tensor) { return tensor.pin_memory(); }, _structure));
   }
   NestedTensor grad() {
-    return NestedTensor(
-        map([](at::Tensor tensor) { return tensor.grad(); }, _structure));
+    if (_buffer) {
+      TORCH_CHECK(_buffer->grad().is_contiguous(), "buffer grad needs to be contiguous if defined.");
+      return NestedTensor(std::move(_buffer->grad()), nested_size());
+    }
+    std::cout << "buffer.grad(): " << _buffer->grad() << std::endl;
+    return NestedTensor(map(
+        [](at::Tensor tensor) {
+          std::cout << "tensor: " << tensor << std::endl;
+          std::cout << "tensor.grad(): " << tensor.grad() << std::endl;
+          return tensor.grad();
+        },
+        _structure));
   }
   NestedTensor detach() {
     // NOTE: For the contiguous case the tensors in _structure are views
@@ -86,17 +97,11 @@ struct NestedTensor {
     return *this;
   }
   void backward(NestedTensor gradient, bool retain_graph, bool create_graph) {
-    if (is_contiguous() && gradient.is_contiguous()) {
-      (*_buffer).backward((*gradient.get_buffer()), retain_graph, create_graph);
-    } else {
-      apply(
-          [retain_graph, create_graph](
-              at::Tensor tensor1, at::Tensor tensor2) -> void {
-            tensor1.backward(tensor2, retain_graph, create_graph);
-          },
-          _structure,
-          gradient.get_structure());
-    }
+    apply(
+        [retain_graph, create_graph](at::Tensor tensor1, at::Tensor tensor2)
+            -> void { tensor1.backward(tensor2, retain_graph, create_graph); },
+        _structure,
+        gradient.get_structure());
   }
   int64_t __len__() const {
     return _structure.degree();
@@ -122,7 +127,10 @@ struct NestedTensor {
     return _first_variable.options();
   }
   bool requires_grad() const {
-    return _first_variable.requires_grad();
+    auto fn = [](at::Tensor leaf, bool input) {
+      return input && leaf.requires_grad();
+    };
+    return reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true);
   }
   int64_t dim() const {
     return _first_variable.dim() + nested_dim();
@@ -158,8 +166,8 @@ struct NestedTensor {
     return _structure;
   }
 
-// torch.Tensor methods
-  NestedTensor copy_(const NestedTensor& source, bool non_blocking=false);
+  // torch.Tensor methods
+  NestedTensor copy_(const NestedTensor& source, bool non_blocking = false);
   NestedTensor squeeze_(c10::optional<int64_t> dim);
 
  private:

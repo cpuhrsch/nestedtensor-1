@@ -144,7 +144,7 @@ Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
 }
 
 #define BINARY_OP(NAME)                                                        \
-  m.impl_UNBOXED(#NAME ".Tensor", NestedTensor_binary<at::NAME>);              \
+  m.impl(#NAME ".Tensor", NestedTensorKey_PreAutograd, NestedTensor_binary<at::NAME>);              \
   m.impl_UNBOXED(#NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
   m.impl_UNBOXED(#NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
