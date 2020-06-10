@@ -72,13 +72,13 @@ at::Tensor build_buffer(const TensorNode& structure) {
   return at::cat(vectors);
 }
 
-SizeNode infer_nested_size(const TensorNode& structure) {
+SizeNode infer_nested_size(const TensorNode structure) {
   return map(
       [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
       structure);
 }
 
-SizeNode infer_nested_stride(const TensorNode& structure) {
+SizeNode infer_nested_stride(const TensorNode structure) {
   return map(
       [](at::Tensor tensor) { return c10::List<int64_t>(tensor.strides()); },
       structure);
@@ -188,9 +188,9 @@ const TensorNode NestedTensor::get_structure() const {
   return build_structure(_buffer, _nested_size, _nested_stride);
 }
 
-NestedTensor::NestedTensor(TensorNode&& structure)
+NestedTensor::NestedTensor(const TensorNode structure)
     : _buffer(build_buffer(structure)),
-      _nested_size(std::move(infer_nested_size(structure))) {}
+      _nested_size(infer_nested_size(structure)) {}
 //      _nested_stride(map(
 //          [](at::Tensor tensor) {
 //            return c10::List<int64_t>(tensor.strides());
@@ -200,8 +200,8 @@ NestedTensor::NestedTensor(TensorNode&& structure)
 // NOTE: It is assumed that structure is a tree of views
 // of buffer.
 // TODO: Add an explicit test for debug purposes.
-NestedTensor::NestedTensor(at::Tensor&& buffer, TensorNode&& structure)
-    : _buffer(buffer), _nested_size(std::move(infer_nested_size(structure))) {}
+NestedTensor::NestedTensor(at::Tensor&& buffer, const TensorNode structure)
+    : _buffer(buffer), _nested_size(infer_nested_size(structure)) {}
 //      _nested_stride(map(
 //          [](at::Tensor tensor) {
 //            return c10::List<int64_t>(tensor.strides());
@@ -211,7 +211,7 @@ NestedTensor::NestedTensor(at::Tensor&& buffer, TensorNode&& structure)
 NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
     : _buffer(buffer),
       _nested_size(nested_size),
-      _nested_stride(_cont_stride(_nested_size)) {}
+      _nested_stride(_cont_stride(nested_size)) {}
 
 NestedTensor::NestedTensor(
     at::Tensor&& buffer,
@@ -228,7 +228,7 @@ NestedTensor NestedTensor::copy_(
   TORCH_CHECK(
       shape_matches(nested_size(), source.nested_size()),
       "self and source don't match in shape");
-  _buffer->copy_(source.get_buffer());
+  _buffer.copy_(source.get_buffer());
   return *this;
 }
 

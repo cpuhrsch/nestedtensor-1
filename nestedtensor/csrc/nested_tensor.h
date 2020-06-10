@@ -12,8 +12,8 @@ using IntegerNode = NestedNode<int64_t>;
 // TODO: Eventually allow construction from a list of _BufferNestedTensors.
 struct NestedTensor {
   NestedTensor() = delete;
-  NestedTensor(TensorNode&& structure);
-  NestedTensor(at::Tensor&& buffer, TensorNode&& structure);
+  NestedTensor(const TensorNode structure);
+  NestedTensor(at::Tensor&& buffer, const TensorNode structure);
   NestedTensor(at::Tensor&& buffer, SizeNode nested_size);
   NestedTensor(at::Tensor&& buffer, SizeNode nested_size, SizeNode nested_stride);
   at::Tensor& get_buffer() {
