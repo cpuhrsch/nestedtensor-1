@@ -15,10 +15,11 @@ struct NestedTensor {
   NestedTensor(TensorNode&& structure);
   NestedTensor(at::Tensor&& buffer, TensorNode&& structure);
   NestedTensor(at::Tensor&& buffer, SizeNode nested_size);
-  c10::optional<at::Tensor>& get_buffer() {
+  NestedTensor(at::Tensor&& buffer, SizeNode nested_size, SizeNode nested_stride);
+  at::Tensor& get_buffer() {
     return _buffer;
   }
-  const c10::optional<at::Tensor>& get_buffer() const {
+  const at::Tensor& get_buffer() const {
     return _buffer;
   }
   std::vector<c10::optional<int64_t>> sizes() const;
@@ -55,24 +56,25 @@ struct NestedTensor {
   SizeNode nested_stride() const {
     return map(
         [](at::Tensor tensor) { return c10::List<int64_t>(tensor.strides()); },
-        _structure);
+        get_structure());
   }
   NestedTensor pin_memory() {
     // NOTE: The assumption here is that pin_memory will materialize
     // the views that _structure contains when NestedTensor is contiguous.
     return NestedTensor(
-        map([](at::Tensor tensor) { return tensor.pin_memory(); }, _structure));
+        map([](at::Tensor tensor) { return tensor.pin_memory(); },
+            get_structure()));
   }
   NestedTensor grad() {
-    return NestedTensor(
-        map([](at::Tensor tensor) { return tensor.grad(); }, _structure));
+    // TORCH_CHECK(
+    //     _buffer.grad().contiguous(), "Gradient of buffer is not contiguous.");
+    return NestedTensor(std::move(_buffer.grad()), _nested_size);
   }
   NestedTensor detach() {
     // NOTE: For the contiguous case the tensors in _structure are views
     // of parts of _buffer and the returned detached views will still
     // modify that buffer if using in-place methods etc.
-    return NestedTensor(
-        map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
+    return NestedTensor(std::move(_buffer.grad()), _nested_size, _nested_stride);
   }
   NestedTensor requires_grad_(bool requires_grad) {
     _buffer.set_requires_grad(requires_grad);
@@ -130,7 +132,7 @@ struct NestedTensor {
         reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true);
   }
   NestedTensor contiguous() const;
-  const TensorNode& get_structure() const;
+  const TensorNode get_structure() const;
 
   // torch.Tensor methods
   NestedTensor copy_(const NestedTensor& source, bool non_blocking = false);

@@ -59,7 +59,7 @@ c10::List<int64_t> _cont_stride(c10::List<int64_t> size) {
   return c10::List<int64_t>(stride);
 }
 
-TensorNode build_buffer(const TensorNode& structure) {
+at::Tensor build_buffer(const TensorNode& structure) {
   c10::List<at::Tensor> tensors = flatten(structure);
   auto tensors_vec = tensors.vec();
   std::vector<at::Tensor> vectors;
@@ -72,32 +72,24 @@ TensorNode build_buffer(const TensorNode& structure) {
   return at::cat(vectors);
 }
 
-SizeNode infer_nested_size(const TensorNode& _structure) {
+SizeNode infer_nested_size(const TensorNode& structure) {
   return map(
       [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
-      _structure);
+      structure);
+}
+
+SizeNode infer_nested_stride(const TensorNode& structure) {
+  return map(
+      [](at::Tensor tensor) { return c10::List<int64_t>(tensor.strides()); },
+      structure);
 }
 
 NestedTensor NestedTensor::contiguous() const {
   if (is_contiguous()) {
     return *this;
   }
-  return NestedTensor(_buffer.contiguous(), _nested_size, _nested_stride);
-}
-
-at::Tensor _to_tensor(TensorNode node) {
-  // TODO: Recursive stacking is expensive.
-  if (node.is_leaf()) {
-    return node.payload();
-  }
-  if (node.degree() == 0) {
-    return at::empty({0});
-  }
-  std::vector<at::Tensor> flat;
-  for (auto child : node.unbind()) {
-    flat.push_back(_to_tensor(child));
-  }
-  return stack(flat);
+  return NestedTensor(
+      std::move(_buffer.contiguous()), _nested_size, _nested_stride);
 }
 
 at::Tensor NestedTensor::to_tensor() {
@@ -112,10 +104,7 @@ at::Tensor NestedTensor::to_tensor() {
     }
     new_size.push_back(*si);
   }
-  if (is_contiguous()) {
-    return (*_buffer).reshape(at::IntArrayRef(new_size));
-  }
-  return _to_tensor(_structure);
+  return _buffer.reshape(at::IntArrayRef(new_size));
 }
 
 TensorNode _unbind_tensors(TensorNode structure) {
@@ -141,7 +130,7 @@ NestedTensor NestedTensor::to_nested_tensor(c10::optional<int64_t> dim__) {
   // if dim < nested_dim() the NestedTensor is already nested
   // up to the given dimension.
   if (dim >= nested_dim()) {
-    TensorNode unbound = _unbind_tensors(_structure);
+    TensorNode unbound = _unbind_tensors(get_structure());
     for (int64_t i = 0; i < (dim - nested_dim()); i++) {
       unbound = _unbind_tensors(unbound);
     }
@@ -181,7 +170,7 @@ TensorNode build_structure(
     }
   }
   TensorNode tmp = unflatten(nested_size, c10::List<at::Tensor>(buffers));
-  TensorNode result = map(
+  return map(
       [](at::Tensor buffer,
          c10::List<int64_t> size,
          c10::List<int64_t> stride) {
@@ -193,38 +182,44 @@ TensorNode build_structure(
       tmp,
       nested_size,
       nested_stride);
-  return result;
 }
 
-const TensorNode& NestedTensor::get_structure() const {
+const TensorNode NestedTensor::get_structure() const {
   return build_structure(_buffer, _nested_size, _nested_stride);
 }
 
 NestedTensor::NestedTensor(TensorNode&& structure)
     : _buffer(build_buffer(structure)),
-      _nested_size(infer_nested_size(_structure)),
-      _nested_stride(map(
-          [](at::Tensor tensor) {
-            return c10::List<int64_t>(tensor.strides());
-          },
-          structure)) {}
+      _nested_size(std::move(infer_nested_size(structure))) {}
+//      _nested_stride(map(
+//          [](at::Tensor tensor) {
+//            return c10::List<int64_t>(tensor.strides());
+//          },
+//          structure)) {}
 
 // NOTE: It is assumed that structure is a tree of views
 // of buffer.
 // TODO: Add an explicit test for debug purposes.
 NestedTensor::NestedTensor(at::Tensor&& buffer, TensorNode&& structure)
-    : _buffer(buffer),
-      _nested_size(infer_nested_size(_structure)),
-      _nested_stride(map(
-          [](at::Tensor tensor) {
-            return c10::List<int64_t>(tensor.strides());
-          },
-          structure)) {}
+    : _buffer(buffer), _nested_size(std::move(infer_nested_size(structure))) {}
+//      _nested_stride(map(
+//          [](at::Tensor tensor) {
+//            return c10::List<int64_t>(tensor.strides());
+//          },
+//          structure)) {}
 
 NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
     : _buffer(buffer),
       _nested_size(nested_size),
       _nested_stride(_cont_stride(_nested_size)) {}
+
+NestedTensor::NestedTensor(
+    at::Tensor&& buffer,
+    SizeNode nested_size,
+    SizeNode nested_stride)
+    : _buffer(buffer),
+      _nested_size(nested_size),
+      _nested_stride(nested_stride) {}
 
 // torch.Tensor methods
 NestedTensor NestedTensor::copy_(
@@ -233,19 +228,7 @@ NestedTensor NestedTensor::copy_(
   TORCH_CHECK(
       shape_matches(nested_size(), source.nested_size()),
       "self and source don't match in shape");
-  if (_buffer && source.get_buffer()) {
-    _buffer->copy_(*source.get_buffer());
-    return *this;
-  }
-  if (_buffer) {
-    NestedTensor cont_source = source.contiguous();
-    _buffer->copy_(*cont_source.get_buffer());
-    return *this;
-  }
-  auto result =
-      map([](at::Tensor self, at::Tensor source) { return self.copy_(source); },
-          _structure,
-          source.get_structure());
+  _buffer->copy_(source.get_buffer());
   return *this;
 }
 
@@ -277,15 +260,18 @@ NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
       ((sizes()[dim]) && ((*(sizes()[dim])) == 1)),
       "Given dimension is either undefined or not a singleton.");
   if (dim < this->nested_dim()) {
-    _structure = _squeeze_nested_dim(_structure, dim);
+    auto structure = _squeeze_nested_dim(get_structure(), dim);
+    _nested_size = infer_nested_size(structure);
+    _nested_stride = infer_nested_stride(structure);
   } else {
-    int64_t height = _structure.height();
-    _structure =
+    int64_t height = _nested_size.height();
+    auto structure =
         map([dim, height](
                 at::Tensor tensor) { return tensor.squeeze(dim - height); },
-            _structure);
+            get_structure());
+    _nested_size = infer_nested_size(structure);
+    _nested_stride = infer_nested_stride(structure);
   }
-  _nested_size = infer_nested_size(_structure);
   return *this;
 }
 
