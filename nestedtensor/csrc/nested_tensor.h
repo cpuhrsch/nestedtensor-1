@@ -23,10 +23,10 @@ struct NestedTensor {
   }
   std::vector<c10::optional<int64_t>> sizes() const;
   caffe2::TypeMeta dtype() const {
-    return _first_variable.dtype();
+    return _buffer.dtype();
   }
   int64_t element_size() const {
-    return _first_variable.element_size();
+    return _buffer.element_size();
   }
   // This is a C++ representation of a nested list of torch.Sizes
   //
@@ -75,70 +75,49 @@ struct NestedTensor {
         map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
   }
   NestedTensor requires_grad_(bool requires_grad) {
-    apply(
-        [requires_grad](at::Tensor tensor) -> void {
-          tensor.set_requires_grad(requires_grad);
-        },
-        _structure);
-    if (is_contiguous()) {
-      (*_buffer).set_requires_grad(requires_grad);
-    }
+    _buffer.set_requires_grad(requires_grad);
     return *this;
   }
   void backward(NestedTensor gradient, bool retain_graph, bool create_graph) {
-    if (is_contiguous() && gradient.is_contiguous()) {
-      (*_buffer).backward((*gradient.get_buffer()), retain_graph, create_graph);
-    } else {
-      apply(
-          [retain_graph, create_graph](
-              at::Tensor tensor1, at::Tensor tensor2) -> void {
-            tensor1.backward(tensor2, retain_graph, create_graph);
-          },
-          _structure,
-          gradient.get_structure());
-    }
+    _buffer.backward(gradient.get_buffer(), retain_graph, create_graph);
   }
   int64_t __len__() const {
-    return _structure.degree();
+    return _nested_size.degree();
   }
   at::Tensor to_tensor();
   NestedTensor to_nested_tensor(c10::optional<int64_t> dim);
   int64_t nested_dim() const {
-    return _structure.height();
+    return _nested_size.height();
   }
   at::ScalarType scalar_type() const {
-    return _first_variable.scalar_type();
+    return _buffer.scalar_type();
   }
   at::Backend backend() const {
     return options().backend();
   }
   at::Layout layout() const {
-    return _first_variable.layout();
+    return _buffer.layout();
   }
   at::Device device() const {
-    return _first_variable.device();
+    return _buffer.device();
   }
   at::TensorOptions options() const {
-    return _first_variable.options();
+    return _buffer.options();
   }
   bool requires_grad() const {
-    return _first_variable.requires_grad();
+    return _buffer.requires_grad();
   }
   int64_t dim() const {
-    return _first_variable.dim() + nested_dim();
+    return _buffer.dim() + nested_dim();
   }
   int64_t numel() const {
     auto fn = [](at::Tensor leaf, int64_t input) {
       return input + leaf.numel();
     };
-    return reduce<decltype(fn), int64_t, at::Tensor>(_structure, fn, 0);
+    return reduce<decltype(fn), int64_t, at::Tensor>(get_structure(), fn, 0);
   }
   bool is_pinned() const {
-    if (is_contiguous()) {
-      return (*_buffer).is_pinned();
-    } else {
-      return _first_variable.is_pinned();
-    }
+    return _buffer.is_pinned();
   }
   bool is_contiguous() const {
     // NOTE: The Tensors themselves might not be contiguous even if there is a
@@ -147,26 +126,22 @@ struct NestedTensor {
     auto fn = [](at::Tensor leaf, bool input) {
       return input && leaf.is_contiguous();
     };
-    return _buffer && (*_buffer).is_contiguous() &&
-        reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true);
+    return _buffer.is_contiguous() &&
+        reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true);
   }
   NestedTensor contiguous() const;
-  TensorNode& get_structure() {
-    return _structure;
-  }
   const TensorNode& get_structure() const {
     return _structure;
   }
 
-// torch.Tensor methods
-  NestedTensor copy_(const NestedTensor& source, bool non_blocking=false);
+  // torch.Tensor methods
+  NestedTensor copy_(const NestedTensor& source, bool non_blocking = false);
   NestedTensor squeeze_(c10::optional<int64_t> dim);
 
  private:
-  c10::optional<at::Tensor> _buffer;
-  TensorNode _structure;
-  at::Tensor _first_variable;
+  at::Tensor _buffer;
   SizeNode _nested_size;
+  SizeNode _nested_stride;
 };
 
 } // namespace nested_tensor
