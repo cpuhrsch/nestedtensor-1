@@ -3,10 +3,10 @@
 #include <torch/extension.h>
 #include <torch/library.h>
 
-// using namespace torch::nn;
-// namespace F = torch::nn::functional;
-// 
-// namespace at {
+using namespace torch::nn;
+namespace F = torch::nn::functional;
+
+namespace at {
 // 
 // Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
 //   return wrap_tensor_node(
@@ -220,21 +220,21 @@
 //       },
 //       input_data.get_structure()));
 // }
-// 
-// Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
-//   if (is_nested_tensor_impl(other)) {
-//     apply(
-//         [alpha](Tensor& self, Tensor& other) { self.add_(other, alpha); },
-//         get_nested_tensor_structure(self),
-//         get_nested_tensor_structure(other));
-//     return self;
-//   }
-//   apply(
-//       [&other, alpha](at::Tensor& self) { return self.add_(other, alpha); },
-//       get_nested_tensor_structure(self));
-//   return self;
-// }
-// 
+
+Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
+  if (is_nested_tensor_impl(other)) {
+    apply(
+        [alpha](Tensor& self, Tensor& other) { self.add_(other, alpha); },
+        get_nested_tensor_structure(self),
+        get_nested_tensor_structure(other));
+    return self;
+  }
+  apply(
+      [&other, alpha](at::Tensor& self) { return self.add_(other, alpha); },
+      get_nested_tensor_structure(self));
+  return self;
+}
+
 // Tensor NestedTensor_all(const Tensor& self) {
 //   auto self_impl = get_nested_tensor_impl(self)->_data;
 //   if (self_impl.numel() == 0) {
@@ -337,14 +337,14 @@
 //       self_data.get_structure()));
 // }
 // 
-// TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
 //   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
 //   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
 //   m.impl_UNBOXED("max_pool2d", NestedTensor_max_pool2d);
 //   m.impl_UNBOXED("dropout", NestedTensor_dropout);
 //   m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
 //   m.impl_UNBOXED("sum", NestedTensor_sum);
-//   m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
+   m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
 //   m.impl_UNBOXED("any", NestedTensor_any);
 //   m.impl_UNBOXED("all", NestedTensor_all);
 //   m.impl_UNBOXED("_log_softmax", NestedTensor__log_softmax);
@@ -356,5 +356,5 @@
 //   m.impl_UNBOXED("matmul.out", NestedTensor_matmul_out);
 //   m.impl_UNBOXED("pin_memory", NestedTensor_pin_memory);
 //   m.impl_UNBOXED("flatten.using_ints", NestedTensor_flatten);
-// }
-// } // namespace at
+}
+} // namespace at
