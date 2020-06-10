@@ -66,6 +66,9 @@ TensorNode build_buffer(const TensorNode& structure) {
   for (const auto& tensor : tensors_vec) {
     vectors.push_back(tensor.reshape({-1}));
   }
+  if (vectors.size() == 0) {
+    return at::ones({0});
+  }
   return at::cat(vectors);
 }
 
@@ -79,13 +82,7 @@ NestedTensor NestedTensor::contiguous() const {
   if (is_contiguous()) {
     return *this;
   }
-  TensorNode flat_structure =
-      map([](at::Tensor tensor) { return tensor.reshape({-1}); }, _structure);
-  auto tensors = flatten(flat_structure).vec();
-  if (tensors.size() == 0) {
-    return NestedTensor(at::ones({0}), _nested_size);
-  }
-  return NestedTensor(at::cat(tensors, 0), _nested_size);
+  return NestedTensor(_buffer.contiguous(), _nested_size, _nested_stride);
 }
 
 at::Tensor _to_tensor(TensorNode node) {
