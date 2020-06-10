@@ -5,12 +5,13 @@
 
 namespace at {
 
-constexpr auto NestedTensorKey = DispatchKey::PrivateUse1_PreAutograd;
+constexpr auto NestedTensorKey_PreAutograd = DispatchKey::PrivateUse1_PreAutograd;
+constexpr auto NestedTensorKey = DispatchKey::PrivateUse1;
 
 struct NestedTensorImpl : public c10::TensorImpl {
   explicit NestedTensorImpl(torch::nested_tensor::NestedTensor&& data)
       : TensorImpl(
-            c10::DispatchKeySet(NestedTensorKey),
+            c10::DispatchKeySet(NestedTensorKey_PreAutograd),
             data.dtype(),
             data.device()),
         _data(std::move(data)) {
@@ -41,7 +42,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
 };
 
 inline bool is_nested_tensor_impl(const at::Tensor tensor) {
-  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
+  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey_PreAutograd);
 }
 
 inline at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {

@@ -65,7 +65,7 @@ Tensor NestedTensor_max_pool2d(
       auto res = at::max_pool2d(
           tensor, kernel_size, stride, padding, dilation, ceil_mode);
 
-      return at::detail::make_tensor<NestedTensorImpl>(
+      return wrap_nested_tensor(
           torch::nested_tensor::NestedTensor(std::move(res))
               .to_nested_tensor(nt.nested_dim() - 1));
     }
@@ -78,7 +78,7 @@ Tensor NestedTensor_max_pool2d(
     auto res = at::max_pool2d(
         at::stack(tensors), kernel_size, stride, padding, dilation, ceil_mode);
 
-    return at::detail::make_tensor<NestedTensorImpl>(
+    return wrap_nested_tensor(
         torch::nested_tensor::NestedTensor(std::move(res))
             .to_nested_tensor(nt.nested_dim() - 1));
   }
@@ -280,7 +280,7 @@ Tensor NestedTensor__log_softmax(
     const int64_t dim_,
     const bool half_to_float) {
   auto self_impl = get_nested_tensor_impl(input_);
-  return at::detail::make_tensor<NestedTensorImpl>(
+  return wrap_tensor_node(
       map([&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); },
           self_impl->_data.get_structure()));
 }
