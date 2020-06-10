@@ -14,12 +14,12 @@ struct NestedTensorImpl : public c10::TensorImpl {
             data.dtype(),
             data.device()),
         _data(std::move(data)) {
-            for (auto opt_int : _data.sizes()) {
-              if (opt_int) {
-                _sizes.push_back(*opt_int);
-              }
-            }
-        }
+    for (auto opt_int : _data.sizes()) {
+      if (opt_int) {
+        _sizes.push_back(*opt_int);
+      }
+    }
+  }
 
   int64_t dim() const override {
     return _data.dim();
@@ -27,8 +27,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
   int64_t numel() const override {
     return _data.numel();
   }
-  bool is_contiguous(
-      at::MemoryFormat memory_format) const override {
+  bool is_contiguous(at::MemoryFormat memory_format) const override {
     return _data.is_contiguous();
   }
 
@@ -61,6 +60,16 @@ inline torch::nested_tensor::TensorNode get_nested_tensor_structure(
   return get_nested_tensor(tensor).get_structure();
 }
 
+inline at::Tensor get_nested_tensor_buffer(
+    const at::Tensor tensor) {
+  return get_nested_tensor(tensor).get_buffer();
+}
+
+inline torch::nested_tensor::SizeNode get_nested_size(
+    const at::Tensor tensor) {
+  return get_nested_tensor(tensor).nested_size();
+}
+
 inline bool is_tensor_shape(const at::Tensor tensor) {
   auto nt = get_nested_tensor(tensor);
   for (const auto& size : nt.sizes()) {
@@ -76,15 +85,24 @@ inline at::Tensor wrap_nested_tensor(
   return at::detail::make_tensor<NestedTensorImpl>(std::move(result));
 }
 
-inline at::Tensor wrap_tensor_node(
-    torch::nested_tensor::TensorNode&& result) {
+inline at::Tensor wrap_buffer(
+    at::Tensor&& buffer,
+    torch::nested_tensor::SizeNode&& nested_size) {
+  auto nt = torch::nested_tensor::NestedTensor(
+      std::move(buffer), std::move(nested_size));
+  return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
+}
+
+inline at::Tensor wrap_tensor_node(torch::nested_tensor::TensorNode&& result) {
   return at::detail::make_tensor<NestedTensorImpl>(
       torch::nested_tensor::NestedTensor(std::move(result)));
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_);
 
-inline std::ostream& operator<<(std::ostream& out, const NestedTensorImpl& batch_tensor) {
+inline std::ostream& operator<<(
+    std::ostream& out,
+    const NestedTensorImpl& batch_tensor) {
   auto node = batch_tensor._data.get_structure();
   out << "NESTED_TENSOR";
   apply([&out](at::Tensor tensor) { out << tensor << std::endl; }, node);
@@ -92,4 +110,4 @@ inline std::ostream& operator<<(std::ostream& out, const NestedTensorImpl& batch
   return out;
 }
 
-}
+} // namespace at

@@ -130,9 +130,7 @@ struct NestedTensor {
         reduce<decltype(fn), bool, at::Tensor>(get_structure(), fn, true);
   }
   NestedTensor contiguous() const;
-  const TensorNode& get_structure() const {
-    return _structure;
-  }
+  const TensorNode& get_structure() const;
 
   // torch.Tensor methods
   NestedTensor copy_(const NestedTensor& source, bool non_blocking = false);
