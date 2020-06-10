@@ -59,77 +59,64 @@ Tensor& NestedTensor_binary_out(
   return result.copy_(NestedTensor_binary<func>(self, other));
 }
 
-// Tensor& NestedTensor_sub_(Tensor& self, const Tensor& other, Scalar alpha) {
-//   apply(
-//       [&alpha](Tensor& tensor, Tensor& other) {
-//         at::native::sub_(tensor, other, alpha);
-//       },
-//       get_nested_tensor_structure(self),
-//       get_nested_tensor_structure(other));
-//   return self;
-// }
-//
-// Tensor& NestedTensor_sub_out(
-//     Tensor& result,
-//     const Tensor& self,
-//     const Tensor& other,
-//     Scalar alpha) {
-//   apply(
-//       [&alpha](Tensor& result, Tensor& tensor, Tensor& other) {
-//         return at::sub_out(result, tensor, other, alpha);
-//       },
-//       get_nested_tensor_structure(result),
-//       get_nested_tensor_structure(self),
-//       get_nested_tensor_structure(other));
-//   return result;
-// }
-//
-// Tensor& NestedTensor_pow_out_1(Tensor& result, const Tensor& base, const
-// Tensor& exp) {
-//   apply(
-//       [](Tensor& result, Tensor& base, Tensor& exp) {
-//         return at::pow_out(result, base, exp);
-//       },
-//       get_nested_tensor_structure(result),
-//       get_nested_tensor_structure(base),
-//       get_nested_tensor_structure(exp));
-//   return result;
-// }
-//
-// Tensor& NestedTensor_pow__1(Tensor& base, const Tensor& other) {
-//   return NestedTensor_pow_out_1(base, base, other);
-// }
-//
-// Tensor& NestedTensor_pow_out_2(Tensor& result, const Tensor& base, Scalar
-// exp) {
-//   apply(
-//       [&exp](Tensor& result, Tensor& base) {
-//         return at::pow_out(result, base, exp);
-//       },
-//       get_nested_tensor_structure(result),
-//       get_nested_tensor_structure(base));
-//   return result;
-// }
-//
-// Tensor NestedTensor_pow_2(const Tensor& base, Scalar exp) {
-//   return wrap_tensor_node(
-//       map([exp](Tensor base) { return at::pow(base, exp); },
-//           get_nested_tensor_structure(base)));
-// }
-//
-// Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor&
-// exp) {
-//   apply(
-//       [&base](Tensor& result, Tensor& exp) {
-//         return at::pow_out(result, base, exp);
-//       },
-//       get_nested_tensor_structure(result),
-//       get_nested_tensor_structure(exp));
-//   return result;
-// }
+Tensor& NestedTensor_sub_(Tensor& self, const Tensor& other, Scalar alpha) {
+  apply(
+      [&alpha](Tensor& tensor, Tensor& other) {
+        at::native::sub_(tensor, other, alpha);
+      },
+      get_nested_tensor_structure(self),
+      get_nested_tensor_structure(other));
+  return self;
+}
 
-#define BINARY_OP(NAME)                                                        \
-  m.impl_UNBOXED(#NAME ".Tensor", NestedTensor_binary<at::NAME>);              \
+Tensor& NestedTensor_sub_out(
+    Tensor& result,
+    const Tensor& self,
+    const Tensor& other,
+    Scalar alpha) {
+  return NestedTensor_sub_(result.copy_(self), other, alpha);
+}
+
+Tensor& NestedTensor_pow_out_1(
+    Tensor& result,
+    const Tensor& base,
+    const Tensor& exp) {
+  auto result_nt = NestedTensor(
+      map([](Tensor base, Tensor exp) { return at::pow(base, exp); },
+          get_nested_tensor_structure(base),
+          get_nested_tensor_structure(exp)));
+  get_nested_tensor(result).copy_(result_nt);
+  return result;
+}
+
+Tensor& NestedTensor_pow__1(Tensor& base, const Tensor& other) {
+  return NestedTensor_pow_out_1(base, base, other);
+}
+
+Tensor& NestedTensor_pow_out_2(Tensor& result, const Tensor& base, Scalar exp) {
+  auto result_nt = NestedTensor(
+      map([&exp](Tensor base) { return at::pow(base, exp); },
+          get_nested_tensor_structure(base)));
+  get_nested_tensor(result).copy_(result_nt);
+  return result;
+}
+
+Tensor NestedTensor_pow_2(const Tensor& base, Scalar exp) {
+  return wrap_tensor_node(
+      map([exp](Tensor base) { return at::pow(base, exp); },
+          get_nested_tensor_structure(base)));
+}
+
+Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
+  auto result_nt = NestedTensor(
+      map([&base](Tensor exp) { return at::pow(base, exp); },
+          get_nested_tensor_structure(exp)));
+  get_nested_tensor(result).copy_(result_nt);
+  return result;
+}
+
+#define BINARY_OP(NAME)                                             \
+  m.impl_UNBOXED(#NAME ".Tensor", NestedTensor_binary<at::NAME>);   \
   m.impl_UNBOXED(#NAME "_.Tensor", NestedTensor_binary_<at::NAME>); \
   m.impl_UNBOXED(#NAME ".out", NestedTensor_binary_out<at::NAME>);
 
@@ -148,14 +135,14 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   // m.impl_UNBOXED("atan2.out", NestedTensor_binary_out<at::atan2_out>);
 
   // m.impl_UNBOXED("sub.Tensor", NestedTensor_binary<Scalar, at::sub>);
-  // m.impl_UNBOXED("sub_.Tensor", NestedTensor_sub_);
-  // m.impl_UNBOXED("sub.out", NestedTensor_sub_out);
+  m.impl_UNBOXED("sub_.Tensor", NestedTensor_sub_);
+  m.impl_UNBOXED("sub.out", NestedTensor_sub_out);
 
-  // m.impl_UNBOXED("pow.Tensor_Tensor_out", NestedTensor_pow_out_1);
+  m.impl_UNBOXED("pow.Tensor_Tensor_out", NestedTensor_pow_out_1);
   // m.impl_UNBOXED("pow.Tensor_Tensor", NestedTensor_binary<at::pow>);
-  // m.impl_UNBOXED("pow_.Tensor", NestedTensor_pow__1);
-  // m.impl_UNBOXED("pow.Tensor_Scalar_out", NestedTensor_pow_out_2);
-  // m.impl_UNBOXED("pow.Tensor_Scalar", NestedTensor_pow_2);
-  // m.impl_UNBOXED("pow.Scalar_out", NestedTensor_pow_out_3);
+  m.impl_UNBOXED("pow_.Tensor", NestedTensor_pow__1);
+  m.impl_UNBOXED("pow.Tensor_Scalar_out", NestedTensor_pow_out_2);
+  m.impl_UNBOXED("pow.Tensor_Scalar", NestedTensor_pow_2);
+  m.impl_UNBOXED("pow.Scalar_out", NestedTensor_pow_out_3);
 }
 } // namespace at
