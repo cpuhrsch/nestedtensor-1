@@ -201,6 +201,10 @@ class TestNestedTensor(TestCase):
             self.assertRaises(IndexError, lambda: a.nested_size(2))
 
             a = constructor([torch.randn(1, 2)])
+            print(a.nested_size())
+            print(a.nested_size(0))
+            print(a.nested_size(1))
+            print(a.nested_size(2))
             self.assertEqual(a.nested_size()[0], torch.Size([1, 2]))
             self.assertEqual(a.nested_size(0), 1)
             self.assertEqual(a.nested_size(1), (1,))
@@ -237,7 +241,9 @@ class TestNestedTensor(TestCase):
         for constructor in _iter_constructors():
             tensors = [torch.rand(1, 2, 4)[:, :, 0], torch.rand(
                 2, 3, 4)[:, 1, :], torch.rand(3, 4, 5)[1, :, :]]
+            # print(tensors)
             a = constructor(tensors)
+            # print("a: ", a)
             na = list(list(t.contiguous().stride()) for t in tensors)
             ans = a.nested_stride()
             result = tuple(ans[i] for i in range(len(ans)))

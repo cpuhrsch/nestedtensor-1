@@ -13,7 +13,7 @@ using IntegerNode = NestedNode<int64_t>;
 struct NestedTensor {
   NestedTensor() = delete;
   NestedTensor(const TensorNode structure);
-  NestedTensor(at::Tensor&& buffer, const TensorNode structure);
+  // NestedTensor(at::Tensor&& buffer, const TensorNode structure);
   NestedTensor(at::Tensor&& buffer, SizeNode nested_size);
   NestedTensor(at::Tensor&& buffer, SizeNode nested_size, SizeNode nested_stride);
   at::Tensor& get_buffer() {
@@ -110,7 +110,11 @@ struct NestedTensor {
     return _buffer.requires_grad();
   }
   int64_t dim() const {
-    return _buffer.dim() + nested_dim();
+    auto flattened = flatten(_nested_size);
+    if (flattened.size() > 0) { 
+      return flattened.get(0).size() + nested_dim();
+    }
+    return nested_dim();
   }
   int64_t numel() const {
     auto fn = [](at::Tensor leaf, int64_t input) {

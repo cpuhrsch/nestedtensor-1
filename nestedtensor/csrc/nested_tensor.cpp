@@ -148,14 +148,26 @@ TensorNode build_structure(
              c10::List<int64_t> b) { return num_memory(a, b); },
           nested_size,
           nested_stride));
+  // auto flat_sizes = flatten(nested_size);
+  // for(size_t i = 0; i < flat_sizes.size(); i++) {
+  //   std::cout << "flat_sizes[" << i << "]: " << flat_sizes.get(i).vec() << std::endl;
+  // }
+  // auto flat_strides = flatten(nested_stride);
+  // for(size_t i = 0; i < flat_strides.size(); i++) {
+  //   std::cout << "flat_strides[" << i << "]: " << flat_strides.get(i).vec() << std::endl;
+  // }
   std::vector<int64_t> nonzero_split_sizes;
   for (size_t i = 0; i < split_sizes.size(); i++) {
     if (split_sizes[i] > 0) {
       nonzero_split_sizes.push_back(split_sizes[i]);
     }
   }
+  // std::cout << "buffer: " << buffer << std::endl;
   std::vector<at::Tensor> buffers_;
   if (nonzero_split_sizes.size() > 0) {
+    // std::cout << 
+    //   "c10::IntArrayRef(nonzero_split_sizes): " 
+    //   << c10::IntArrayRef(nonzero_split_sizes) << std::endl;
     buffers_ =
         at::split_with_sizes(buffer, c10::IntArrayRef(nonzero_split_sizes), 0);
   }
@@ -191,25 +203,19 @@ const TensorNode NestedTensor::get_structure() const {
 NestedTensor::NestedTensor(const TensorNode structure)
     : _buffer(build_buffer(structure)),
       _nested_size(infer_nested_size(structure)),
-      _nested_stride(infer_nested_stride(structure)) {}
-//      _nested_stride(map(
-//          [](at::Tensor tensor) {
-//            return c10::List<int64_t>(tensor.strides());
-//          },
-//          structure)) {}
+      _nested_stride(
+          map([](c10::List<int64_t> size) { return _cont_stride(size); },
+              _nested_size)) {}
 
-// NOTE: It is assumed that structure is a tree of views
-// of buffer.
-// TODO: Add an explicit test for debug purposes.
-NestedTensor::NestedTensor(at::Tensor&& buffer, const TensorNode structure)
-    : _buffer(buffer),
-      _nested_size(infer_nested_size(structure)),
-      _nested_stride(infer_nested_stride(structure)) {}
-//      _nested_stride(map(
-//          [](at::Tensor tensor) {
-//            return c10::List<int64_t>(tensor.strides());
-//          },
-//          structure)) {}
+// // NOTE: It is assumed that structure is a tree of views
+// // of buffer.
+// // TODO: Add an explicit test for debug purposes.
+// NestedTensor::NestedTensor(at::Tensor&& buffer, const TensorNode structure)
+//     : _buffer(buffer),
+//       _nested_size(infer_nested_size(structure)),
+//       _nested_stride(
+//           map([](c10::List<int64_t> size) { return _cont_stride(size); },
+//               _nested_size)) {}
 
 NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
     : _buffer(buffer),
