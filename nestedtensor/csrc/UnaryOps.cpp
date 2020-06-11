@@ -6,36 +6,25 @@ namespace at {
 
 using namespace torch::nested_tensor;
 
+template <class F, F func>
+Tensor NestedTensor_unary(const Tensor& self) {
+  auto self_data = get_nested_tensor(self);
+  return wrap_buffer(func(self_data.get_buffer()), self_data.nested_size());
+}
+
 // NOTE: Can't reuse dispatch from cos_ to cos_out either, because it requries
 // support for at::empty through unary_op_impl
 template <class F, F func>
 Tensor& NestedTensor_unary_(Tensor& self) {
-  auto self_impl = get_nested_tensor(self);
-  auto result = func(self_impl.get_buffer());
-  self_impl.get_buffer().copy_(result);
+  self.copy_(NestedTensor_unary<F, func>(self));
   return self;
-}
-
-// NOTE: Missing at::sign_ etc. -> very annoying. not clear why.
-template <class F, F func>
-Tensor& NestedTensor_unary_method_(Tensor& self) {
-  auto self_impl = get_nested_tensor(self);
-  auto result = (self_impl.get_buffer().*func)();
-  self_impl.get_buffer().copy_(result);
-  return self;
-}
-
-template <class F, F func>
-Tensor NestedTensor_unary(const Tensor& self) {
-  auto self_impl = get_nested_tensor(self);
-  return wrap_buffer(func(self_impl.get_buffer()), self_impl.nested_size());
 }
 
 template <class F, F func>
 Tensor& NestedTensor_unary_out(Tensor& result, const Tensor& self) {
-  auto result_impl = get_nested_tensor(result);
-  auto self_impl = get_nested_tensor(self);
-  func(result_impl.get_buffer(), self_impl.get_buffer());
+  auto result_data = get_nested_tensor(result);
+  auto self_data = get_nested_tensor(self);
+  func(result_data.get_buffer(), self_data.get_buffer());
   return result;
 }
 
@@ -106,29 +95,17 @@ Tensor& NestedTensor_mvlgamma_(Tensor& self, int64_t p) {
   return self.copy_(NestedTensor_mvlgamma(self, p));
 }
 
-#define UNARY_OP_INPLACE_METHOD(NAME)                                       \
-  m.impl_UNBOXED(#NAME, NestedTensor_unary<decltype(&at::NAME), at::NAME>); \
-  m.impl_UNBOXED(                                                           \
-      #NAME "_",                                                            \
-      NestedTensor_unary_method_<                                           \
-          decltype(&at::Tensor::NAME##_),                                   \
-          &at::Tensor::NAME##_>);                                           \
-  m.impl_UNBOXED(                                                           \
-      #NAME ".out",                                                         \
-      NestedTensor_unary_out<decltype(&at::NAME##_out), at::NAME##_out>);
-
 #define UNARY_OP(NAME)                                                      \
   m.impl_UNBOXED(#NAME, NestedTensor_unary<decltype(&at::NAME), at::NAME>); \
   m.impl_UNBOXED(                                                           \
-      #NAME "_", NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>); \
+      #NAME "_", NestedTensor_unary_<decltype(&at::NAME), at::NAME>);       \
   m.impl_UNBOXED(                                                           \
       #NAME ".out",                                                         \
       NestedTensor_unary_out<decltype(&at::NAME##_out), at::NAME##_out>);
 
 #define UNARY_OP_NO_OUT(NAME)                                               \
   m.impl_UNBOXED(#NAME, NestedTensor_unary<decltype(&at::NAME), at::NAME>); \
-  m.impl_UNBOXED(                                                           \
-      #NAME "_", NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>);
+  m.impl_UNBOXED(#NAME "_", NestedTensor_unary_<decltype(&at::NAME), at::NAME>);
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   UNARY_OP(abs);
@@ -138,16 +115,16 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   UNARY_OP(ceil);
   UNARY_OP(cos);
   UNARY_OP(cosh);
-  UNARY_OP_INPLACE_METHOD(digamma)
+  UNARY_OP(digamma)
   UNARY_OP(erf);
   UNARY_OP(erfc);
-  UNARY_OP_INPLACE_METHOD(erfinv)
+  UNARY_OP(erfinv)
   UNARY_OP(exp);
   UNARY_OP(expm1);
   UNARY_OP(floor);
   // UNARY_OP(fill);
   UNARY_OP(frac);
-  UNARY_OP_INPLACE_METHOD(lgamma)
+  UNARY_OP(lgamma)
   UNARY_OP(log);
   UNARY_OP(log10);
   UNARY_OP(log1p);
@@ -159,7 +136,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   UNARY_OP(round);
   UNARY_OP(rsqrt);
   UNARY_OP(sigmoid);
-  UNARY_OP_INPLACE_METHOD(sign)
+  UNARY_OP(sign)
   UNARY_OP(sin);
   UNARY_OP(sinh);
   UNARY_OP(sqrt);

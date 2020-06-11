@@ -88,8 +88,7 @@ NestedTensor NestedTensor::contiguous() const {
   if (is_contiguous()) {
     return *this;
   }
-  return NestedTensor(
-      std::move(_buffer.contiguous()), _nested_size, _nested_stride);
+  return NestedTensor(_buffer.contiguous(), _nested_size, _nested_stride);
 }
 
 at::Tensor NestedTensor::to_tensor() {

@@ -93,7 +93,8 @@ inline at::Tensor wrap_buffer(
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
 }
 
-inline at::Tensor wrap_tensor_node(torch::nested_tensor::TensorNode&& result) {
+inline at::Tensor wrap_tensor_node(
+    const torch::nested_tensor::TensorNode result) {
   return at::detail::make_tensor<NestedTensorImpl>(
       torch::nested_tensor::NestedTensor(std::move(result)));
 }
