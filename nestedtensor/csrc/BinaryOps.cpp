@@ -81,12 +81,10 @@ Tensor& NestedTensor_pow_out_1(
     Tensor& result,
     const Tensor& base,
     const Tensor& exp) {
-  auto result_nt = NestedTensor(
+  return result.copy_(wrap_tensor_node(
       map([](Tensor base, Tensor exp) { return at::pow(base, exp); },
           get_nested_tensor_structure(base),
-          get_nested_tensor_structure(exp)));
-  get_nested_tensor(result).copy_(result_nt);
-  return result;
+          get_nested_tensor_structure(exp))));
 }
 
 Tensor& NestedTensor_pow__1(Tensor& base, const Tensor& other) {
@@ -94,11 +92,9 @@ Tensor& NestedTensor_pow__1(Tensor& base, const Tensor& other) {
 }
 
 Tensor& NestedTensor_pow_out_2(Tensor& result, const Tensor& base, Scalar exp) {
-  auto result_nt = NestedTensor(
+  return result.copy_(wrap_tensor_node(
       map([&exp](Tensor base) { return at::pow(base, exp); },
-          get_nested_tensor_structure(base)));
-  get_nested_tensor(result).copy_(result_nt);
-  return result;
+          get_nested_tensor_structure(base))));
 }
 
 Tensor NestedTensor_pow_2(const Tensor& base, Scalar exp) {
@@ -108,11 +104,9 @@ Tensor NestedTensor_pow_2(const Tensor& base, Scalar exp) {
 }
 
 Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
-  auto result_nt = NestedTensor(
+  result.copy_(wrap_tensor_node(
       map([&base](Tensor exp) { return at::pow(base, exp); },
-          get_nested_tensor_structure(exp)));
-  get_nested_tensor(result).copy_(result_nt);
-  return result;
+          get_nested_tensor_structure(exp))));
 }
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
