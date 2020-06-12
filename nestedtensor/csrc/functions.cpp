@@ -211,7 +211,7 @@ Tensor NestedTensor_layer_norm(
       "Currently only singleton tuples of integers supported for layer_norm.");
   auto input_data = get_nested_tensor(input);
   TORCH_CHECK(
-      input_data->sizes()[input_data->dim() - 1],
+      input_data->opt_sizes()[input_data->dim() - 1],
       "Cannot normalize across irregular dimension ",
       std::to_string(input_data->dim() - 1));
   return wrap_tensor_node(map(

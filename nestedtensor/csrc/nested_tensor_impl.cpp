@@ -305,7 +305,7 @@ IntArrayRef NestedTensorImpl::sizes() const {
 }
 
 int64_t NestedTensorImpl::size(int64_t dim) const {
-  std::vector<c10::optional<int64_t>> size = _data.sizes();
+  std::vector<c10::optional<int64_t>> size = _data.opt_sizes();
   if (size[dim]) {
     return *(size[dim]);
   }
