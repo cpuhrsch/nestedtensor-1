@@ -8,6 +8,8 @@
 
 namespace at {
 
+using namespace torch::nested_tensor;
+
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
   // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
   // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
@@ -297,8 +299,6 @@ NestedTensorImpl NestedTensorImpl::squeeze_(c10::optional<int64_t> dim_) {
   _nested_size = infer_nested_size(_structure);
   return *this;
 }
-
-using namespace torch::nested_tensor;
 
 IntArrayRef NestedTensorImpl::sizes() const {
   return IntArrayRef(_sizes);
