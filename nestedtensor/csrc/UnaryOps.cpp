@@ -48,13 +48,13 @@ template <class F, F func>
 Tensor& NestedTensor_unary_out(Tensor& result, const Tensor& self) {
   auto result_impl = get_nested_tensor(result);
   auto self_impl = get_nested_tensor(self);
-  if (result_impl.is_contiguous() && self_impl->is_contiguous()) {
-    func(*result_impl.get_buffer(), *self_impl->get_buffer());
+  if (result_impl->is_contiguous() && self_impl->is_contiguous()) {
+    func(*result_impl->get_buffer(), *self_impl->get_buffer());
     return result;
   }
   apply([](at::Tensor& result, at::Tensor& tensor)
           { return func(result, tensor); },
-      result_impl.get_structure(),
+      result_impl->get_structure(),
       self_impl->get_structure());
   return result;
 }
