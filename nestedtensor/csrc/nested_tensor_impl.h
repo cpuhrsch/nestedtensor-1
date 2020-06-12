@@ -12,16 +12,16 @@ using IntegerNode = torch::nested_tensor::NestedNode<int64_t>;
 constexpr auto NestedTensorKey = DispatchKey::PrivateUse1_PreAutograd;
 
 struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl(torch::nested_tensor::NestedTensor&& data)
-      : TensorImpl(
-            c10::DispatchKeySet(NestedTensorKey),
-            data.dtype(),
-            data.device()),
-        _data(std::move(data)) 
+  // explicit NestedTensorImpl(torch::nested_tensor::NestedTensor&& data)
+  //     : TensorImpl(
+  //           c10::DispatchKeySet(NestedTensorKey),
+  //           data.dtype(),
+  //           data.device()),
+  //       _data(std::move(data)) 
 
-  NestedTensor(TensorNode&& structure);
-  NestedTensor(at::Tensor&& buffer, TensorNode&& structure);
-  NestedTensor(at::Tensor&& buffer, SizeNode nested_size);
+  NestedTensorImpl(TensorNode&& structure);
+  NestedTensorImpl(at::Tensor&& buffer, TensorNode&& structure);
+  NestedTensorImpl(at::Tensor&& buffer, SizeNode nested_size);
   c10::optional<at::Tensor>& get_buffer() {
     return _buffer;
   }
@@ -64,24 +64,24 @@ struct NestedTensorImpl : public c10::TensorImpl {
         [](at::Tensor tensor) { return c10::List<int64_t>(tensor.strides()); },
         _structure);
   }
-  NestedTensor pin_memory() {
+  NestedTensorImpl pin_memory() {
     // NOTE: The assumption here is that pin_memory will materialize
-    // the views that _structure contains when NestedTensor is contiguous.
-    return NestedTensor(
+    // the views that _structure contains when NestedTensorImpl is contiguous.
+    return NestedTensorImpl(
         map([](at::Tensor tensor) { return tensor.pin_memory(); }, _structure));
   }
-  NestedTensor grad() {
-    return NestedTensor(
+  NestedTensorImpl grad() {
+    return NestedTensorImpl(
         map([](at::Tensor tensor) { return tensor.grad(); }, _structure));
   }
-  NestedTensor detach() {
+  NestedTensorImpl detach() {
     // NOTE: For the contiguous case the tensors in _structure are views
     // of parts of _buffer and the returned detached views will still
     // modify that buffer if using in-place methods etc.
-    return NestedTensor(
+    return NestedTensorImpl(
         map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
   }
-  NestedTensor requires_grad_(bool requires_grad) {
+  NestedTensorImpl requires_grad_(bool requires_grad) {
     apply(
         [requires_grad](at::Tensor tensor) -> void {
           tensor.set_requires_grad(requires_grad);
@@ -92,7 +92,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
     }
     return *this;
   }
-  void backward(NestedTensor gradient, bool retain_graph, bool create_graph) {
+  void backward(NestedTensorImpl gradient, bool retain_graph, bool create_graph) {
     if (is_contiguous() && gradient.is_contiguous()) {
       (*_buffer).backward((*gradient.get_buffer()), retain_graph, create_graph);
     } else {
@@ -109,7 +109,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return _structure.degree();
   }
   at::Tensor to_tensor();
-  NestedTensor to_nested_tensor(c10::optional<int64_t> dim);
+  NestedTensorImpl to_nested_tensor(c10::optional<int64_t> dim);
   int64_t nested_dim() const {
     return _structure.height();
   }
@@ -131,10 +131,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
   bool requires_grad() const {
     return _first_variable.requires_grad();
   }
-  int64_t dim() const {
+  int64_t dim() const override {
     return _first_variable.dim() + nested_dim();
   }
-  int64_t numel() const {
+  int64_t numel() const override {
     auto fn = [](at::Tensor leaf, int64_t input) {
       return input + leaf.numel();
     };
@@ -147,7 +147,9 @@ struct NestedTensorImpl : public c10::TensorImpl {
       return _first_variable.is_pinned();
     }
   }
-  bool is_contiguous() const {
+  bool is_contiguous(
+      at::MemoryFormat memory_format =
+          at::MemoryFormat::Contiguous) const override {
     // NOTE: The Tensors themselves might not be contiguous even if there is a
     // buffer. For this to be contiguous not only the individuals Tensors have
     // to be but also the buffer.
@@ -157,7 +159,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return _buffer && (*_buffer).is_contiguous() &&
         reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true);
   }
-  NestedTensor contiguous() const;
+  NestedTensorImpl contiguous() const;
   TensorNode& get_structure() {
     return _structure;
   }
@@ -166,19 +168,8 @@ struct NestedTensorImpl : public c10::TensorImpl {
   }
 
 // torch.Tensor methods
-  NestedTensor copy_(const NestedTensor& source, bool non_blocking=false);
-  NestedTensor squeeze_(c10::optional<int64_t> dim);
-
-  int64_t dim() const override {
-    return _data.dim();
-  }
-  int64_t numel() const override {
-    return _data.numel();
-  }
-  bool is_contiguous(
-      at::MemoryFormat memory_format) const override {
-    return _data.is_contiguous();
-  }
+  NestedTensorImpl copy_(const NestedTensorImpl& source, bool non_blocking=false);
+  NestedTensorImpl squeeze_(c10::optional<int64_t> dim);
 
   IntArrayRef sizes() const override;
   int64_t size(int64_t dim) const override;
@@ -218,25 +209,24 @@ inline bool is_tensor_shape(const at::Tensor tensor) {
   return true;
 }
 
-inline at::Tensor wrap_nested_tensor(
-    torch::nested_tensor::NestedTensor&& result) {
-  return at::detail::make_tensor<NestedTensorImpl>(std::move(result));
+inline at::Tensor wrap_nested_tensor(NestedTensorImpl* result) {
+  return at::detail::make_tensor<NestedTensorImpl>(result);
 }
 
 inline at::Tensor wrap_tensor_node(
     torch::nested_tensor::TensorNode&& result) {
   return at::detail::make_tensor<NestedTensorImpl>(
-      torch::nested_tensor::NestedTensor(std::move(result)));
+      torch::nested_tensor::NestedTensorImpl(std::move(result)));
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_);
 
-inline std::ostream& operator<<(std::ostream& out, const NestedTensorImpl& batch_tensor) {
-  auto node = batch_tensor._data.get_structure();
-  out << "NESTED_TENSOR";
-  apply([&out](at::Tensor tensor) { out << tensor << std::endl; }, node);
-  out << std::endl;
-  return out;
-}
+// inline std::ostream& operator<<(std::ostream& out, const NestedTensorImpl& batch_tensor) {
+//   auto node = batch_tensor._data.get_structure();
+//   out << "NESTED_TENSOR";
+//   apply([&out](at::Tensor tensor) { out << tensor << std::endl; }, node);
+//   out << std::endl;
+//   return out;
+// }
 
 }
