@@ -200,7 +200,7 @@ NestedTensorImpl NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim__
   return *this;
 }
 
-NestedTensorImpl::NestedTensor(TensorNode&& structure)
+NestedTensorImpl::NestedTensorImpl(TensorNode&& structure)
     : _structure(structure),
       _first_variable(
           get_first_leaf(_structure) ? *get_first_leaf(_structure)
@@ -217,7 +217,7 @@ NestedTensorImpl::NestedTensor(TensorNode&& structure)
 // NOTE: It is assumed that structure is a tree of views
 // of buffer.
 // TODO: Add an explicit test for debug purposes.
-NestedTensorImpl::NestedTensor(at::Tensor&& buffer, TensorNode&& structure)
+NestedTensorImpl::NestedTensorImpl(at::Tensor&& buffer, TensorNode&& structure)
     : _buffer(buffer),
       _structure(structure),
       _first_variable(
@@ -225,7 +225,7 @@ NestedTensorImpl::NestedTensor(at::Tensor&& buffer, TensorNode&& structure)
                                      : at::ones({})),
       _nested_size(infer_nested_size(_structure)) {}
 
-NestedTensorImpl::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
+NestedTensorImpl::NestedTensorImpl(at::Tensor&& buffer, SizeNode nested_size)
     : _buffer(buffer),
       _structure(build_structure(*_buffer, nested_size)),
       _first_variable(
@@ -431,7 +431,7 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
     TORCH_CHECK_INDEX(false, "select() only supports dim == 0 for now.");
   }
   TensorNode tn = get_nested_tensor(self).get_structure()->unbind()[index];
-  torch::nested_tensor::NestedTensor nt = torch::nested_tensor::NestedTensor(
+  torch::nested_tensor::NestedTensorImpl nt = torch::nested_tensor::NestedTensorImpl(
       std::move(tn));
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));
 }
