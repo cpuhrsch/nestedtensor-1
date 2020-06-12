@@ -168,8 +168,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
   }
 
 // torch.Tensor methods
-  NestedTensorImpl copy_(const NestedTensorImpl& source, bool non_blocking=false);
-  NestedTensorImpl squeeze_(c10::optional<int64_t> dim);
+  // NestedTensorImpl squeeze_(c10::optional<int64_t> dim);
 
   IntArrayRef sizes() const override;
   int64_t size(int64_t dim) const override;
