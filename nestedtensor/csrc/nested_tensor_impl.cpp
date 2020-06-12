@@ -124,18 +124,6 @@ SizeNode infer_nested_size(const TensorNode& _structure) {
       _structure);
 }
 
-NestedTensorImpl NestedTensorImpl::contiguous() const {
-  if (is_contiguous()) {
-    return *this;
-  }
-  TensorNode flat_structure =
-      map([](at::Tensor tensor) { return tensor.reshape({-1}); }, _structure);
-  auto tensors = flatten(flat_structure).vec();
-  if (tensors.size() == 0) {
-    return NestedTensor(at::ones({0}), _nested_size);
-  }
-  return NestedTensor(at::cat(tensors, 0), _nested_size);
-}
 
 at::Tensor _to_tensor(TensorNode node) {
   // TODO: Recursive stacking is expensive.
@@ -271,7 +259,13 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  return wrap_nested_tensor(get_nested_tensor(self)->contiguous());
+  TensorNode flat_structure =
+      map([](at::Tensor tensor) { return tensor.reshape({-1}); }, get_nested_tensor_structure(self));
+  auto tensors = flatten(flat_structure).vec();
+  if (tensors.size() == 0) {
+    return wrap_nested_tensor(NestedTensorImpl(at::ones({0}), _nested_size));
+  }
+  return wrap_nested_tensor(NestedTensorImpl(at::cat(tensors, 0), _nested_size));
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
@@ -403,9 +397,9 @@ Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
     (*self_impl->get_buffer()).copy_(*src_impl->get_buffer());
     return *this;
   }
-  if (_buffer) {
-    NestedTensorImpl cont_source = src_impl->contiguous();
-    (*self_impl->get_buffer())->copy_(*cont_source.get_buffer());
+  if (self_impl->get_buffer()) {
+    at::Tensor cont_source = src.contiguous();
+    (*self_impl->get_buffer())->copy_(*get_nested_tensor(cont_source)->get_buffer());
     return *this;
   }
   auto result =

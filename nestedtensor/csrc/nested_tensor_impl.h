@@ -81,17 +81,17 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return NestedTensorImpl(
         map([](at::Tensor tensor) { return tensor.detach(); }, _structure));
   }
-  NestedTensorImpl requires_grad_(bool requires_grad) {
-    apply(
-        [requires_grad](at::Tensor tensor) -> void {
-          tensor.set_requires_grad(requires_grad);
-        },
-        _structure);
-    if (is_contiguous()) {
-      (*_buffer).set_requires_grad(requires_grad);
-    }
-    return *this;
-  }
+  // NestedTensorImpl requires_grad_(bool requires_grad) {
+  //   apply(
+  //       [requires_grad](at::Tensor tensor) -> void {
+  //         tensor.set_requires_grad(requires_grad);
+  //       },
+  //       _structure);
+  //   if (is_contiguous()) {
+  //     (*_buffer).set_requires_grad(requires_grad);
+  //   }
+  //   return *this;
+  // }
   void backward(NestedTensorImpl gradient, bool retain_graph, bool create_graph) {
     if (is_contiguous() && gradient.is_contiguous()) {
       (*_buffer).backward((*gradient.get_buffer()), retain_graph, create_graph);
@@ -134,12 +134,12 @@ struct NestedTensorImpl : public c10::TensorImpl {
   int64_t dim() const override {
     return _first_variable.dim() + nested_dim();
   }
-  int64_t numel() const override {
-    auto fn = [](at::Tensor leaf, int64_t input) {
-      return input + leaf.numel();
-    };
-    return reduce<decltype(fn), int64_t, at::Tensor>(_structure, fn, 0);
-  }
+  // int64_t numel() const override {
+  //   auto fn = [](at::Tensor leaf, int64_t input) {
+  //     return input + leaf.numel();
+  //   };
+  //   return reduce<decltype(fn), int64_t, at::Tensor>(_structure, fn, 0);
+  // }
   bool is_pinned() const {
     if (is_contiguous()) {
       return (*_buffer).is_pinned();
@@ -157,7 +157,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
       return input && leaf.is_contiguous();
     };
     return _buffer && (*_buffer).is_contiguous() &&
-        reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true);
+        torch::nested_tensor::reduce<decltype(fn), bool, at::Tensor>(_structure, fn, true);
   }
   NestedTensorImpl contiguous() const;
   TensorNode& get_structure() {
@@ -212,10 +212,9 @@ inline at::Tensor wrap_nested_tensor(NestedTensorImpl* result) {
   return at::detail::make_tensor<NestedTensorImpl>(result);
 }
 
-inline at::Tensor wrap_tensor_node(
-    torch::nested_tensor::TensorNode&& result) {
+inline at::Tensor wrap_tensor_node(torch::nested_tensor::TensorNode&& result) {
   return at::detail::make_tensor<NestedTensorImpl>(
-      torch::nested_tensor::NestedTensorImpl(std::move(result)));
+      NestedTensorImpl(std::move(result)));
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_);
