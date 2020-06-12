@@ -111,15 +111,17 @@ Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
 
 Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
   if (is_nested_tensor_impl(other)) {
-    apply(
-        [alpha](Tensor& self, Tensor& other) { self.add_(other, alpha); },
-        get_nested_tensor_structure(self),
-        get_nested_tensor_structure(other));
+    self.copy_(wrap_buffer(
+        at::add(
+            get_nested_tensor(self).get_buffer(),
+            get_nested_tensor(other).get_buffer(),
+            alpha),
+        get_nested_tensor(self).nested_size()));
     return self;
   }
-  apply(
-      [&other, alpha](at::Tensor& self) { return self.add_(other, alpha); },
-      get_nested_tensor_structure(self));
+  self.copy_(wrap_tensor_node(
+      map([&other, alpha](at::Tensor self) { return at::add(self, other, alpha); },
+          get_nested_tensor_structure(self))));
   return self;
 }
 
