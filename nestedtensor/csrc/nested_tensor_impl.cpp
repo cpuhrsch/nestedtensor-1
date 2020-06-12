@@ -6,8 +6,7 @@
 #include <ATen/ATen.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 
-namespace torch {
-namespace nested_tensor {
+namespace at {
 
 int64_t num_memory(c10::List<int64_t> size, c10::List<int64_t> stride) {
   // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
@@ -291,11 +290,6 @@ NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
   _nested_size = infer_nested_size(_structure);
   return *this;
 }
-
-} // namespace nested_tensor
-} // namespace torch
-
-namespace at {
 
 using namespace torch::nested_tensor;
 

@@ -2,17 +2,29 @@
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <ATen/ATen.h>
 
-namespace torch {
-namespace nested_tensor {
+namespace at {
 
-using TensorNode = NestedNode<at::Tensor>;
-using IValueNode = NestedNode<c10::IValue>;
-using SizeNode = NestedNode<c10::List<int64_t>>;
-using IntegerNode = NestedNode<int64_t>;
+using TensorNode =  torch::nested_tensor::NestedNode<at::Tensor>;
+using IValueNode =  torch::nested_tensor::NestedNode<c10::IValue>;
+using SizeNode =    torch::nested_tensor::NestedNode<c10::List<int64_t>>;
+using IntegerNode = torch::nested_tensor::NestedNode<int64_t>;
 
-// TODO: Eventually allow construction from a list of _BufferNestedTensors.
-struct NestedTensor {
-  NestedTensor() = delete;
+constexpr auto NestedTensorKey = DispatchKey::PrivateUse1_PreAutograd;
+
+struct NestedTensorImpl : public c10::TensorImpl {
+  explicit NestedTensorImpl(torch::nested_tensor::NestedTensor&& data)
+      : TensorImpl(
+            c10::DispatchKeySet(NestedTensorKey),
+            data.dtype(),
+            data.device()),
+        _data(std::move(data)) {
+            for (auto opt_int : _data.sizes()) {
+              if (opt_int) {
+                _sizes.push_back(*opt_int);
+              }
+            }
+        }
+
   NestedTensor(TensorNode&& structure);
   NestedTensor(at::Tensor&& buffer, TensorNode&& structure);
   NestedTensor(at::Tensor&& buffer, SizeNode nested_size);
@@ -163,34 +175,6 @@ struct NestedTensor {
   NestedTensor copy_(const NestedTensor& source, bool non_blocking=false);
   NestedTensor squeeze_(c10::optional<int64_t> dim);
 
- private:
-  c10::optional<at::Tensor> _buffer;
-  TensorNode _structure;
-  at::Tensor _first_variable;
-  SizeNode _nested_size;
-};
-
-} // namespace nested_tensor
-} // namespace torch
-
-namespace at {
-
-constexpr auto NestedTensorKey = DispatchKey::PrivateUse1_PreAutograd;
-
-struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl(torch::nested_tensor::NestedTensor&& data)
-      : TensorImpl(
-            c10::DispatchKeySet(NestedTensorKey),
-            data.dtype(),
-            data.device()),
-        _data(std::move(data)) {
-            for (auto opt_int : _data.sizes()) {
-              if (opt_int) {
-                _sizes.push_back(*opt_int);
-              }
-            }
-        }
-
   int64_t dim() const override {
     return _data.dim();
   }
@@ -206,7 +190,11 @@ struct NestedTensorImpl : public c10::TensorImpl {
   int64_t size(int64_t dim) const override;
   IntArrayRef strides() const override;
 
-  torch::nested_tensor::NestedTensor _data;
+ private:
+  c10::optional<at::Tensor> _buffer;
+  TensorNode _structure;
+  at::Tensor _first_variable;
+  SizeNode _nested_size;
   std::vector<int64_t> _sizes;
 };
 
