@@ -53,7 +53,7 @@ Tensor NestedTensor_max_pool2d(
     IntArrayRef padding,
     IntArrayRef dilation,
     bool ceil_mode) {
-  auto self_impl = get_nested_tensor_impl(self);
+  auto self_impl = get_nested_tensor(self);
   auto nt = self_impl->_data;
   auto tensor_node = get_nested_tensor_structure(self);
 
@@ -236,7 +236,7 @@ Tensor& NestedTensor_add_(Tensor& self, const Tensor& other, Scalar alpha) {
 }
 
 Tensor NestedTensor_all(const Tensor& self) {
-  auto self_impl = get_nested_tensor_impl(self)->_data;
+  auto self_impl = get_nested_tensor(self)->_data;
   if (self_impl.numel() == 0) {
     // XXX: self.options doesn't work here because
     // we don't want a Tensor backed by a NestedTensor
@@ -256,7 +256,7 @@ Tensor NestedTensor_all(const Tensor& self) {
 }
 
 Tensor NestedTensor_any(const Tensor& self) {
-  auto self_impl = get_nested_tensor_impl(self)->_data;
+  auto self_impl = get_nested_tensor(self)->_data;
   if (self_impl.numel() == 0) {
     // XXX: self.options doesn't work here because
     // we don't want a Tensor backed by a NestedTensor
@@ -279,7 +279,7 @@ Tensor NestedTensor__log_softmax(
     const Tensor& input_,
     const int64_t dim_,
     const bool half_to_float) {
-  auto self_impl = get_nested_tensor_impl(input_);
+  auto self_impl = get_nested_tensor(input_);
   return at::detail::make_tensor<NestedTensorImpl>(
       map([&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); },
           self_impl->_data.get_structure()));

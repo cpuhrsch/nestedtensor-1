@@ -205,7 +205,7 @@ inline at::NestedTensorImpl* get_nested_tensor(const at::Tensor tensor) {
 
 inline torch::nested_tensor::TensorNode get_nested_tensor_structure(
     const at::Tensor tensor) {
-  return get_nested_tensor_impl(tensor)->get_structure();
+  return get_nested_tensor(tensor)->get_structure();
 }
 
 inline bool is_tensor_shape(const at::Tensor tensor) {

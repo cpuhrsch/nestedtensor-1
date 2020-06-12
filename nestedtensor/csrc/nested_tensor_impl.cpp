@@ -305,7 +305,7 @@ IntArrayRef NestedTensorImpl::sizes() const {
 }
 
 int64_t NestedTensorImpl::size(int64_t dim) const {
-  std::vector<c10::optional<int64_t>> size = _data.opt_sizes();
+  std::vector<c10::optional<int64_t>> size = opt_sizes();
   if (size[dim]) {
     return *(size[dim]);
   }
@@ -327,17 +327,17 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
-  auto impl_data = get_nested_tensor_impl(tensor)->_data;
+  auto impl_data = get_nested_tensor(tensor);
   if (!dim_) {
-    return impl_data.to_tensor();
+    return impl_data->to_tensor();
   }
-  int64_t dim = maybe_wrap_dim((*dim_), impl_data.dim());
+  int64_t dim = maybe_wrap_dim((*dim_), impl_data->dim());
   if (dim == 0) {
-    return impl_data.to_tensor();
+    return impl_data->to_tensor();
   }
   // If dim is bigger than nested_dim the NestedTensor is already
   // of Tensor for dimensions bigger than the given.
-  if (impl_data.nested_dim() == 1) {
+  if (impl_data->nested_dim() == 1) {
     return tensor;
   }
   // At this point nested_dim is at least 2. That means any unbind
@@ -437,7 +437,7 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
 }
 
 Tensor NestedTensor_clone(const Tensor& src, c10::optional<c10::MemoryFormat> optional_memory_format) {
-  auto self_impl = get_nested_tensor_impl(src);
+  auto self_impl = get_nested_tensor(src);
   return at::detail::make_tensor<NestedTensorImpl>(
       map([&optional_memory_format](Tensor a) {
           return at::clone(a, optional_memory_format);
@@ -446,21 +446,21 @@ Tensor NestedTensor_clone(const Tensor& src, c10::optional<c10::MemoryFormat> op
 }
 
 Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto src_impl = get_nested_tensor_impl(src);
-  self_impl->_data.copy_(src_impl->_data);
+  auto self_impl = get_nested_tensor(self);
+  auto src_impl = get_nested_tensor(src);
+  self_impl->.copy_(*src_impl);
   return self;
 }
 
 Tensor& NestedTensor_squeeze_(Tensor& self) {
-  auto self_impl = get_nested_tensor_impl(self);
-  self_impl->_data.squeeze_(c10::nullopt);
+  auto self_impl = get_nested_tensor(self);
+  self_impl->squeeze_(c10::nullopt);
   return self;
 }
 
 Tensor& NestedTensor_squeeze__dim(Tensor& self, int64_t dim) {
-  auto self_impl = get_nested_tensor_impl(self);
-  self_impl->_data.squeeze_(dim);
+  auto self_impl = get_nested_tensor(self);
+  self_impl->squeeze_(dim);
   return self;
 }
 
