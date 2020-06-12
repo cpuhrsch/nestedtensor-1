@@ -19,9 +19,9 @@ struct NestedTensorImpl : public c10::TensorImpl {
   //           data.device()),
   //       _data(std::move(data)) 
 
-  NestedTensorImpl(TensorNode&& structure);
-  NestedTensorImpl(at::Tensor&& buffer, TensorNode&& structure);
-  NestedTensorImpl(at::Tensor&& buffer, SizeNode nested_size);
+  explicit NestedTensorImpl(TensorNode&& structure);
+  explicit NestedTensorImpl(at::Tensor&& buffer, TensorNode&& structure);
+  explicit NestedTensorImpl(at::Tensor&& buffer, SizeNode nested_size);
   c10::optional<at::Tensor>& get_buffer() {
     return _buffer;
   }
