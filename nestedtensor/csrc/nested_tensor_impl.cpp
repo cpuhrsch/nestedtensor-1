@@ -46,7 +46,7 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
   return result;
 }
 
-std::vector<c10::optional<int64_t>> NestedTensor::sizes() const {
+std::vector<c10::optional<int64_t>> NestedTensorImpl::opt_sizes() const {
   return construct_size(_nested_size);
 }
 
@@ -122,7 +122,7 @@ SizeNode infer_nested_size(const TensorNode& _structure) {
       _structure);
 }
 
-NestedTensor NestedTensor::contiguous() const {
+NestedTensorImpl NestedTensorImpl::contiguous() const {
   if (is_contiguous()) {
     return *this;
   }
@@ -150,10 +150,10 @@ at::Tensor _to_tensor(TensorNode node) {
   return stack(flat);
 }
 
-at::Tensor NestedTensor::to_tensor() {
+at::Tensor NestedTensorImpl::to_tensor() {
   // TODO: Not necessarily a view because of stack and reshape.
   std::vector<int64_t> new_size;
-  for (const auto& si : sizes()) {
+  for (const auto& si : opt_sizes()) {
     if (!si) {
       // TODO: This assumes we'll extend to_tensor to also work with int64_t at
       // this level.
@@ -182,7 +182,7 @@ TensorNode _unbind_tensors(TensorNode structure) {
   return TensorNode(std::move(result_nodes));
 }
 
-NestedTensor NestedTensor::to_nested_tensor(c10::optional<int64_t> dim__) {
+NestedTensorImpl NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim__) {
   int64_t dim_ = 0;
   if (dim__) {
     dim_ = *dim__;
@@ -200,17 +200,24 @@ NestedTensor NestedTensor::to_nested_tensor(c10::optional<int64_t> dim__) {
   return *this;
 }
 
-NestedTensor::NestedTensor(TensorNode&& structure)
+NestedTensorImpl::NestedTensor(TensorNode&& structure)
     : _structure(structure),
       _first_variable(
           get_first_leaf(_structure) ? *get_first_leaf(_structure)
                                      : at::ones({})),
       _nested_size(infer_nested_size(_structure)) {}
+//  {
+//            for (auto opt_int : _data.sizes()) {
+//              if (opt_int) {
+//                _sizes.push_back(*opt_int);
+//              }
+//            }
+//        }
 
 // NOTE: It is assumed that structure is a tree of views
 // of buffer.
 // TODO: Add an explicit test for debug purposes.
-NestedTensor::NestedTensor(at::Tensor&& buffer, TensorNode&& structure)
+NestedTensorImpl::NestedTensor(at::Tensor&& buffer, TensorNode&& structure)
     : _buffer(buffer),
       _structure(structure),
       _first_variable(
@@ -218,7 +225,7 @@ NestedTensor::NestedTensor(at::Tensor&& buffer, TensorNode&& structure)
                                      : at::ones({})),
       _nested_size(infer_nested_size(_structure)) {}
 
-NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
+NestedTensorImpl::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
     : _buffer(buffer),
       _structure(build_structure(*_buffer, nested_size)),
       _first_variable(
@@ -227,7 +234,7 @@ NestedTensor::NestedTensor(at::Tensor&& buffer, SizeNode nested_size)
       _nested_size(nested_size) {}
 
 // torch.Tensor methods
-NestedTensor NestedTensor::copy_(
+NestedTensorImpl NestedTensorImpl::copy_(
     const NestedTensor& source,
     bool non_blocking) {
   TORCH_CHECK(
@@ -256,12 +263,12 @@ inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
   return TensorNode(_squeeze_nested_dim(structure, dim - 1));
 }
 
-NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
+NestedTensorImpl NestedTensorImpl::squeeze_(c10::optional<int64_t> dim_) {
   if (!dim_) {
     // TODO: First dimension is always ignored.
     // We could decide to return a Tensor if the 0th
     // dimension can be squeezed.
-    auto init_sizes = sizes();
+    auto init_sizes = opt_sizes();
     for (size_t i = 0; i < init_sizes.size() - 1; i++) {
       int64_t index = init_sizes.size() - i - 1;
       c10::optional<int64_t> s = init_sizes[index];
@@ -274,7 +281,7 @@ NestedTensor NestedTensor::squeeze_(c10::optional<int64_t> dim_) {
   int64_t dim = at::maybe_wrap_dim(*dim_, this->dim());
   TORCH_CHECK(dim > 0, "Cannot squeeze first dimension.");
   TORCH_CHECK(
-      ((sizes()[dim]) && ((*(sizes()[dim])) == 1)),
+      ((opt_sizes()[dim]) && ((*(opt_sizes()[dim])) == 1)),
       "Given dimension is either undefined or not a singleton.");
   if (dim < this->nested_dim()) {
     _structure = _squeeze_nested_dim(_structure, dim);
@@ -316,7 +323,7 @@ Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   TORCH_CHECK(
       memory_format != MemoryFormat::Preserve,
       "preserve memory format is unsupported by the contiguous operator");
-  return wrap_nested_tensor(get_nested_tensor(self).contiguous());
+  return wrap_nested_tensor(get_nested_tensor(self)->contiguous());
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
@@ -342,7 +349,7 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
   for (Tensor child : unbound) {
     auto ci = NestedTensor_to_tensor(child, dim - 1);
     if (is_nested_tensor_impl(ci)) {
-      auto s = get_nested_tensor(ci).get_structure();
+      auto s = get_nested_tensor(ci)->get_structure();
       result.push_back(TensorNode(std::move(s)));
     } else {
       // TODO: If it's a NestedTensor instance get the structure
@@ -354,7 +361,7 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
 }
 
 bool NestedTensor_is_pinned(const Tensor& self) {
-  return get_nested_tensor(self).is_pinned();
+  return get_nested_tensor(self)->is_pinned();
 }
 
 std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim) {
@@ -423,7 +430,7 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   if (dim == 0) {
     TORCH_CHECK_INDEX(false, "select() only supports dim == 0 for now.");
   }
-  TensorNode tn = get_nested_tensor(self).get_structure().unbind()[index];
+  TensorNode tn = get_nested_tensor(self).get_structure()->unbind()[index];
   torch::nested_tensor::NestedTensor nt = torch::nested_tensor::NestedTensor(
       std::move(tn));
   return at::detail::make_tensor<NestedTensorImpl>(std::move(nt));

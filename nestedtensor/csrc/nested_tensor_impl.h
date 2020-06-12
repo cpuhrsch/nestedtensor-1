@@ -17,13 +17,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
             c10::DispatchKeySet(NestedTensorKey),
             data.dtype(),
             data.device()),
-        _data(std::move(data)) {
-            for (auto opt_int : _data.sizes()) {
-              if (opt_int) {
-                _sizes.push_back(*opt_int);
-              }
-            }
-        }
+        _data(std::move(data)) 
 
   NestedTensor(TensorNode&& structure);
   NestedTensor(at::Tensor&& buffer, TensorNode&& structure);
@@ -34,7 +28,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
   const c10::optional<at::Tensor>& get_buffer() const {
     return _buffer;
   }
-  std::vector<c10::optional<int64_t>> sizes() const;
+  std::vector<c10::optional<int64_t>> opt_sizes() const;
   caffe2::TypeMeta dtype() const {
     return _first_variable.dtype();
   }
@@ -202,26 +196,21 @@ inline bool is_nested_tensor_impl(const at::Tensor tensor) {
   return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
 }
 
-inline at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
+inline at::NestedTensorImpl* get_nested_tensor(const at::Tensor tensor) {
   if (!is_nested_tensor_impl(tensor)) {
     throw std::runtime_error("Function requires NestedTensorImpl");
   }
   return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
 }
 
-inline torch::nested_tensor::NestedTensor get_nested_tensor(
-    const at::Tensor tensor) {
-  return get_nested_tensor_impl(tensor)->_data;
-}
-
 inline torch::nested_tensor::TensorNode get_nested_tensor_structure(
     const at::Tensor tensor) {
-  return get_nested_tensor(tensor).get_structure();
+  return get_nested_tensor_impl(tensor)->get_structure();
 }
 
 inline bool is_tensor_shape(const at::Tensor tensor) {
   auto nt = get_nested_tensor(tensor);
-  for (const auto& size : nt.sizes()) {
+  for (const auto& size : nt->opt_sizes()) {
     if (!size) {
       return false;
     }
