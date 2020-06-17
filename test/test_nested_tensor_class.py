@@ -5,10 +5,10 @@ import sys
 import torch
 import nestedtensor
 import unittest
-from utils import TestCase
+from nestedtensor.test.utils import TestCase
+from nestedtensor.test import utils
 import random
 
-import utils
 
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.

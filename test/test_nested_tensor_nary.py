@@ -4,12 +4,12 @@ import pdb
 import sys
 import torch
 import nestedtensor
+from nestedtensor.test import utils
+from nestedtensor.test.utils import TestCase
 import unittest
-from utils import TestCase
-from utils import get_unary_functions
-from utils import get_binary_functions
+from nestedtensor.test.utils import get_unary_functions
+from nestedtensor.test.utils import get_binary_functions
 import random
-import utils
 
 
 class DynamicClassBase(TestCase):

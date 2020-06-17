@@ -5,9 +5,9 @@ import sys
 import torch
 import nestedtensor
 import unittest
-from utils import TestCase
+from nestedtensor.test.utils import TestCase
 import random
-import utils
+from nestedtensor.test import utils
 from torch.nn import functional as F
 
 

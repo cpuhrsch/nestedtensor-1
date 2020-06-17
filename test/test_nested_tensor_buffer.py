@@ -5,7 +5,7 @@ import sys
 import torch
 import nestedtensor
 import unittest
-from utils import TestCase
+from nestedtensor.test.utils import TestCase
 import random
 
 

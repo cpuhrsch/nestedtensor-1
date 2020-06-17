@@ -8,7 +8,7 @@ import unittest
 import random
 import urllib
 
-from utils_test_case import TestCase
+from nestedtensor.test.utils_test_case import TestCase
 
 
 def debug_on(*exceptions):
