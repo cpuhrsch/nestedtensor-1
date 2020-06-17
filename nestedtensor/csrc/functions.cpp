@@ -324,6 +324,28 @@ Tensor NestedTensor_flatten(
       self_data->get_structure()));
 }
 
+std::vector<Tensor> NestedTensor_chunk(const Tensor& self, int64_t chunks, int64_t dim) {
+  dim = maybe_wrap_dim(dim, self.dim());
+  auto self_data = get_nested_tensor_impl(self);
+  std::vector<at::Tensor> result;
+  if (dim == 0) {
+    auto unbound = self_data->get_structure().unbind();
+    int64_t counter = 0;
+    for (size_t i = 0; i < unbound.size();) {
+      std::vector<TensorNode> tmp;
+      for (int64_t j = 0; j < chunks; j++) {
+        tmp.push_back(TensorNode(unbound[i]));
+        i++;
+        if (i == unbound.size()) {
+          break;
+        }
+      }
+      result.push_back(wrap_tensor_node(TensorNode(std::move(tmp))));
+    }
+  }
+  return result;
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("conv2d", NestedTensor_conv2d);
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
@@ -343,5 +365,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("matmul.out", NestedTensor_matmul_out);
   m.impl_UNBOXED("pin_memory", NestedTensor_pin_memory);
   m.impl_UNBOXED("flatten.using_ints", NestedTensor_flatten);
+  m.impl_UNBOXED("chunk", NestedTensor_chunk);
 }
 } // namespace at
