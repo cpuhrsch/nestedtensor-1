@@ -324,26 +324,65 @@ Tensor NestedTensor_flatten(
       self_data->get_structure()));
 }
 
-std::vector<Tensor> NestedTensor_chunk(const Tensor& self, int64_t chunks, int64_t dim) {
-  dim = maybe_wrap_dim(dim, self.dim());
-  auto self_data = get_nested_tensor_impl(self);
-  std::vector<at::Tensor> result;
-  if (dim == 0) {
-    auto unbound = self_data->get_structure().unbind();
-    int64_t counter = 0;
-    for (size_t i = 0; i < unbound.size();) {
-      std::vector<TensorNode> tmp;
-      for (int64_t j = 0; j < chunks; j++) {
-        tmp.push_back(TensorNode(unbound[i]));
-        i++;
-        if (i == unbound.size()) {
-          break;
-        }
-      }
-      result.push_back(wrap_tensor_node(TensorNode(std::move(tmp))));
-    }
+// std::vector<Tensor> NestedTensor_chunk(const Tensor& self, int64_t chunks, int64_t dim) {
+//   dim = maybe_wrap_dim(dim, self.dim());
+//   auto self_data = get_nested_tensor_impl(self);
+//   std::vector<at::Tensor> result;
+//   if (dim == 0) {
+//     auto unbound = self_data->get_structure().unbind();
+//     int64_t counter = 0;
+//     for (size_t i = 0; i < unbound.size();) {
+//       std::vector<TensorNode> tmp;
+//       for (int64_t j = 0; j < chunks; j++) {
+//         tmp.push_back(TensorNode(unbound[i]));
+//         i++;
+//         if (i == unbound.size()) {
+//           break;
+//         }
+//       }
+//       result.push_back(wrap_tensor_node(TensorNode(std::move(tmp))));
+//     }
+//   }
+//   return result;
+// }
+
+// NOTE: This should cover narrow, narrow.Tensor, split.Tensor, split_with_sizes
+Tensor NestedTensor_slice(const Tensor& self, int64_t dim, int64_t start, int64_t end, int64_t step) {
+  int64_t ndim = self.dim();
+  if (ndim == 0) {
+    TORCH_CHECK_INDEX(false, "slice() cannot be applied to a 0-dim tensor.");
   }
-  return result;
+  dim = maybe_wrap_dim(dim, ndim);
+  std::cout << "ASDF!: "
+            << "dim: " << dim << " - start: " << start << " - end: " << end
+            << " - step: " << step << std::endl;
+  // auto sizes = self.sizes().vec();
+  // auto strides = self.strides().vec();
+  // // TODO: support negative strides
+  // TORCH_CHECK(step > 0, "slice step must be positive");
+  // if (start < 0) {
+  //   start += sizes[dim];
+  // }
+  // if (end < 0) {
+  //   end += sizes[dim];
+  // }
+  // if (start < 0) {
+  //   start = 0;
+  // } else if (start >= sizes[dim]) {
+  //   start = sizes[dim];
+  // }
+  // if (end < start) {
+  //   end = start;
+  // } else if (end >= sizes[dim]) {
+  //   end = sizes[dim];
+  // }
+  // auto storage_offset = self.storage_offset() + start * strides[dim];
+  // auto len = end - start;
+  // sizes[dim] = (len + step - 1) / step;  // round-up
+  // strides[dim] *= step;
+  // auto result = self.as_strided(sizes, strides, storage_offset);
+  // namedinference::propagate_names(result, self);
+  return self;
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
@@ -365,6 +404,9 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("matmul.out", NestedTensor_matmul_out);
   m.impl_UNBOXED("pin_memory", NestedTensor_pin_memory);
   m.impl_UNBOXED("flatten.using_ints", NestedTensor_flatten);
-  m.impl_UNBOXED("chunk", NestedTensor_chunk);
+  m.impl_UNBOXED("slice.Tensor", NestedTensor_slice);
+  // Registering native kernel for PrivateUse1_PreAutograd since it does a basic dispatch to at::slice
+  m.impl_UNBOXED("narrow",  static_cast<Tensor(*)(const Tensor&, int64_t, int64_t, int64_t)>(at::native::narrow));
+  m.impl_UNBOXED("narrow.Tensor",  static_cast<Tensor(*)(const Tensor&, int64_t, const Tensor&, int64_t)>(at::native::narrow));
 }
 } // namespace at
