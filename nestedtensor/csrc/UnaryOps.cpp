@@ -147,13 +147,24 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
   m.impl_UNBOXED(                                                           \
       #NAME "_", NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>);
 
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  m.impl_UNBOXED("cos", NestedTensor_unary<decltype(&at::native::cos), at::native::cos>);
+  m.impl_UNBOXED(
+      "cos_", NestedTensor_unary_method_<decltype(&at::Tensor::cos_), &at::Tensor::cos_>);
+  m.impl_UNBOXED(
+      "cos.out",
+      NestedTensor_unary_out<decltype(&at::native::cos_out), at::native::cos_out>);
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   UNARY_OP(abs);
   UNARY_OP(acos);
   UNARY_OP(asin);
   UNARY_OP(atan);
   UNARY_OP(ceil);
-  UNARY_OP(cos);
+
+  // UNARY_OP(cos);
+
   UNARY_OP(cosh);
   UNARY_OP_INPLACE_METHOD(digamma)
   UNARY_OP(erf);
@@ -183,6 +194,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   UNARY_OP(tan);
   UNARY_OP(tanh);
   UNARY_OP(trunc);
+
 
 
   // NOTE: mvlgamma doesn't have an out variant? why?

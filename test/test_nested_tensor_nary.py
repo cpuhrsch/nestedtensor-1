@@ -18,7 +18,7 @@ class DynamicClassBase(TestCase):
 
 def _gen_test_unary(func__, nested_dim, device):
     def _test_unary(self):
-        data = utils.gen_nested_list(1, nested_dim, 3)
+        data = utils.gen_nested_list(1, nested_dim, 3, size_high=3)
         data = utils.nested_map(lambda x: x.to(device), data)
 
         if func__ in ['log', 'log10', 'log2', 'rsqrt', 'sqrt']:
@@ -103,6 +103,27 @@ def _gen_test_unary(func__, nested_dim, device):
         _close(method(a1), a2)
         _close(method_inplace(a1), a2)
         _close(a1, a2)
+
+        a1.requires_grad_(True)
+        print('')
+        print(a1)
+        res = func(a1)
+        print('')
+        print(res)
+        s = res.sum()
+        print('')
+        print(s)
+        s.backward()
+        print('')
+        print('a1.grad')
+        print(a1.grad)
+        a1_unbound = a1.unbind()
+        print('')
+        print('a1_unbound[0]')
+        print(a1_unbound[0])
+        print('')
+        print('a1_unbound[1]')
+        print(a1_unbound[1])
     return _test_unary
 
 
