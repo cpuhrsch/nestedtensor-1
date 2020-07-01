@@ -120,7 +120,7 @@ class NestedTensor(metaclass = NestedTensorMeta):
         """
         Is ```True``` if gradients need to be computed for this Tensor.
         """
-        return torch.ops.nestedtensor.requires_grad(self._impl)
+        return self._impl.requires_grad 
 
     @property
     def grad(self):
@@ -130,16 +130,19 @@ class NestedTensor(metaclass = NestedTensorMeta):
         The attribute will then contain the gradients computed and future
         calls to backward() will accumulate (add) gradients into it.
         """
-        return _wrap_result(torch.ops.nestedtensor.grad(self._impl))
+        print('self._impl.requires_grad')
+        print(self._impl.requires_grad)
+        return _wrap_result(self._impl.grad)
 
     def requires_grad_(self, requires_grad=True):
         """
         Is ```True``` if gradients need to be computed for this Tensor.
         """
-        return _wrap_result(torch.ops.nestedtensor.requires_grad_(self._impl, requires_grad))
+        print("caaling _wrap_result(self._impl.requires_grad_(requires_grad))")
+        return _wrap_result(self._impl.requires_grad_(requires_grad))
 
     def backward(self, gradient=None, retain_graph=None, create_graph=False):
-        nestedtensor._C.backward(self._impl, gradient._impl, retain_graph, create_graph)
+        self._impl.backward(gradient._impl, retain_graph, create_graph)
 
     def nested_dim(self):
         """
@@ -237,9 +240,9 @@ class NestedTensor(metaclass = NestedTensorMeta):
         # print(args[0].nested_size())
         # print('torch.sin(args[0])')
         # print(torch.sin(args[0]))
-        print('torch.cos(impl_args[0])')
-        print(NestedTensor(torch.cos(impl_args[0])))
-        import sys; sys.exit(1)
+        # print('torch.cos(impl_args[0])')
+        # print(NestedTensor(torch.cos(impl_args[0])))
+        # import sys; sys.exit(1)
         return _wrap_result(func(*impl_args, **impl_kwargs))
 
     # Might require nonzero

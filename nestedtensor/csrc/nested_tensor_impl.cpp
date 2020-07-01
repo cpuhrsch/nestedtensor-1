@@ -1,10 +1,10 @@
+#include <ATen/ATen.h>
 #include <ATen/WrapDimUtils.h>
 #include <ATen/core/op_registration/op_registration.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
+#include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/csrc/jit/runtime/operator.h>
 #include <torch/library.h>
-#include <ATen/ATen.h>
-#include <nestedtensor/csrc/utils/nested_node_functions.h>
 
 namespace at {
 
@@ -88,7 +88,9 @@ TensorNode _unbind_tensors(TensorNode structure) {
 
 NestedTensorImpl::NestedTensorImpl(TensorNode structure)
     : TensorImpl(
-          c10::DispatchKeySet({NestedTensorKey_PreAutograd, DispatchKey::Autograd, NestedTensorKey}),
+          c10::DispatchKeySet({NestedTensorKey_PreAutograd,
+                               DispatchKey::Autograd,
+                               NestedTensorKey}),
           get_first_leaf(structure) ? get_first_leaf(structure)->dtype()
                                     : at::ones({}).dtype(),
           get_first_leaf(structure) ? get_first_leaf(structure)->device()
@@ -146,7 +148,6 @@ at::Tensor NestedTensorImpl::to_tensor() {
   return _to_tensor(get_structure());
 }
 
-
 Tensor NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim__) {
   int64_t dim_ = 0;
   if (dim__) {
@@ -160,14 +161,15 @@ Tensor NestedTensorImpl::to_nested_tensor(c10::optional<int64_t> dim__) {
     for (int64_t i = 0; i < (dim - nested_dim()); i++) {
       unbound = _unbind_tensors(unbound);
     }
-    return at::detail::make_tensor<NestedTensorImpl>(NestedTensorImpl(std::move(unbound)));
+    return at::detail::make_tensor<NestedTensorImpl>(
+        NestedTensorImpl(std::move(unbound)));
   }
   return at::detail::make_tensor<NestedTensorImpl>(_structure);
 }
 
-
 bool is_nested_tensor_impl(const at::Tensor tensor) {
-  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey_PreAutograd);
+  return tensor.unsafeGetTensorImpl()->key_set().has(
+      at::NestedTensorKey_PreAutograd);
 }
 
 at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
@@ -182,8 +184,7 @@ torch::nested_tensor::TensorNode get_nested_tensor_structure(
   return get_nested_tensor_impl(tensor)->get_structure();
 }
 
-at::Tensor wrap_tensor_node(
-    torch::nested_tensor::TensorNode&& result) {
+at::Tensor wrap_tensor_node(torch::nested_tensor::TensorNode&& result) {
   return at::detail::make_tensor<NestedTensorImpl>(result);
 }
 
@@ -192,7 +193,8 @@ int64_t NestedTensorImpl::size(int64_t dim) const {
   if (size[dim]) {
     return *(size[dim]);
   }
-  throw std::runtime_error("NestedTensor size at dim is not Tensor shape compliant.");
+  throw std::runtime_error(
+      "NestedTensor size at dim is not Tensor shape compliant.");
 }
 
 IntArrayRef NestedTensorImpl::strides() const {
@@ -241,14 +243,17 @@ Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_) {
       result.push_back(TensorNode(std::move(ci)));
     }
   }
-  return at::detail::make_tensor<at::NestedTensorImpl>(TensorNode(std::move(result)));
+  return at::detail::make_tensor<at::NestedTensorImpl>(
+      TensorNode(std::move(result)));
 }
 
 bool NestedTensor_is_pinned(const Tensor& self) {
   return get_nested_tensor_impl(self)->is_pinned();
 }
 
-std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim) {
+std::vector<at::Tensor> NestedTensor_unbind(
+    const at::Tensor& self,
+    int64_t dim) {
   auto _data = get_nested_tensor_impl(self);
   dim = at::maybe_wrap_dim(dim, _data->dim());
   auto node = _data->get_structure();
@@ -278,14 +283,16 @@ std::vector<at::Tensor> NestedTensor_unbind(const at::Tensor &self, int64_t dim)
       std::vector<at::Tensor> result;
       for (size_t i = 0; i < unbound.size(); i++) {
         TensorNode tmp = TensorNode(std::move(unbound[i]));
-        result.push_back(at::detail::make_tensor<NestedTensorImpl>(std::move(tmp)));
+        result.push_back(
+            at::detail::make_tensor<NestedTensorImpl>(std::move(tmp)));
       }
       return result;
     }
   }
   std::vector<at::Tensor> unbound_thp;
   for (auto child : node.unbind()) {
-    unbound_thp.push_back(at::detail::make_tensor<NestedTensorImpl>(std::move(child)));
+    unbound_thp.push_back(
+        at::detail::make_tensor<NestedTensorImpl>(std::move(child)));
   }
   if (dim == 0) {
     return unbound_thp;
@@ -318,13 +325,23 @@ Tensor NestedTensor_select(const Tensor& self, int64_t dim, int64_t index) {
   return at::detail::make_tensor<NestedTensorImpl>(std::move(tn));
 }
 
-Tensor NestedTensor_clone(const Tensor& src, c10::optional<c10::MemoryFormat> optional_memory_format) {
+Tensor NestedTensor_clone(
+    const Tensor& src,
+    c10::optional<c10::MemoryFormat> optional_memory_format) {
   auto self_impl = get_nested_tensor_impl(src);
-  return at::detail::make_tensor<NestedTensorImpl>(
-      map([&optional_memory_format](Tensor a) {
-          return at::clone(a, optional_memory_format);
-          }, 
-          self_impl->get_structure()));
+  return at::detail::make_tensor<NestedTensorImpl>(map(
+      [&optional_memory_format](Tensor a) {
+        return at::clone(a, optional_memory_format);
+      },
+      self_impl->get_structure()));
+}
+
+Tensor& NestedTensor_requires_grad_(Tensor& src, bool requires_grad) {
+  std::cout << "bEEE11" << std::endl;
+  apply(
+      [requires_grad](Tensor& a) { a.requires_grad_(requires_grad); },
+      get_nested_tensor_structure(src));
+  return src;
 }
 
 Tensor& NestedTensor_copy_(Tensor& self, const Tensor& src, bool non_blocking) {
@@ -392,7 +409,12 @@ Tensor NestedTensor_squeeze_dim(const Tensor& self, int64_t dim) {
   return _NestedTensor_squeeze_(new_tensor, dim);
 }
 
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  m.impl_UNBOXED("requires_grad_", NestedTensor_requires_grad_);
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+  m.impl("requires_grad_", torch::CppFunction::makeFallthrough());
   m.impl_UNBOXED("clone", NestedTensor_clone);
   m.impl_UNBOXED("copy_", NestedTensor_copy_);
   m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
@@ -404,4 +426,4 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("unbind.int", NestedTensor_unbind);
   m.impl_UNBOXED("select.int", NestedTensor_select);
 }
-}
+} // namespace at

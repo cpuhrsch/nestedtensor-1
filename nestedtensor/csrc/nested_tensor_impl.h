@@ -79,6 +79,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
           return tensor.grad(); }, get_structure()));
   }
   Tensor requires_grad_(bool requires_grad) {
+    std::cout << "HEEE1" << std::endl;
     apply(
         [requires_grad](at::Tensor& tensor) -> void {
           tensor.set_requires_grad(requires_grad);
@@ -87,6 +88,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return at::detail::make_tensor<NestedTensorImpl>(_structure);
   }
   bool requires_grad() const {
+    std::cout << "HEEE2" << std::endl;
     return _first_variable.requires_grad();
   }
   bool is_pinned() const {

@@ -179,13 +179,14 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
   m.impl_UNBOXED(                                                           \
       #NAME "_", NestedTensor_unary_<decltype(&at::NAME##_), at::NAME##_>);
 
-// TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
-//   m.impl_UNBOXED(
-//       "cos_", NestedTensor_unary_method_<decltype(&at::Tensor::cos_), &at::Tensor::cos_>);
-//   m.impl_UNBOXED("cos", NestedTensor_unary<decltype(&at::native::cos), at::native::cos>);
-//   m.impl_UNBOXED(
-//       "cos.out",
-//       NestedTensor_unary_out<decltype(&at::native::cos_out), at::native::cos_out>);
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  m.impl_UNBOXED(
+      "cos_", NestedTensor_unary_method_<decltype(&at::Tensor::cos_), &at::Tensor::cos_>);
+  m.impl_UNBOXED("cos", NestedTensor_unary<decltype(&at::native::cos), at::native::cos>);
+  m.impl_UNBOXED(
+      "cos.out",
+      NestedTensor_unary_out<decltype(&at::native::cos_out), at::native::cos_out>);
+}
 // 
 //   m.impl_UNBOXED(
 //       "sin_", NestedTensor_unary_method_<decltype(&at::Tensor::sin_), &at::Tensor::sin_>);
@@ -195,14 +196,14 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
 //       NestedTensor_unary_out<decltype(&at::native::sin_out), at::native::sin_out>);
 // }
 
-TORCH_LIBRARY_IMPL(aten, Autograd, m) {
- m.impl_UNBOXED(
-     "cos_", NestedTensor_cos_method_);
- m.impl_UNBOXED("cos", NestedTensor_cos);
- m.impl_UNBOXED(
-     "cos.out",
-     NestedTensor_cos_out);
-}
+// TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+//  m.impl_UNBOXED(
+//      "cos_", NestedTensor_cos_method_);
+//  m.impl_UNBOXED("cos", NestedTensor_cos);
+//  m.impl_UNBOXED(
+//      "cos.out",
+//      NestedTensor_cos_out);
+// }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
 
