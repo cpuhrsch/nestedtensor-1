@@ -95,14 +95,22 @@ def _gen_test_unary(func__, nested_dim, device):
         def _close(t1, t2):
             self.assertAlmostEqual(t1, t2, ignore_contiguity=True)
 
+        print("N1")
         if func__ not in ['mvlgamma']:
-            func(a1, out=a3)
+            # print("N2")
+            # func(a1, out=a3)
             # TODO: Abstract this
+            print("N3")
             _close(func(a1), a3)
+        print("N4")
         _close(func(a1), a2)
+        print("N5")
         _close(method(a1), a2)
+        print("N6")
         _close(method_inplace(a1), a2)
+        print("N7")
         _close(a1, a2)
+        print("N8")
 
         a1.requires_grad_(True)
         print('')

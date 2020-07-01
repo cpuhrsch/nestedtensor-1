@@ -88,7 +88,7 @@ TensorNode _unbind_tensors(TensorNode structure) {
 
 NestedTensorImpl::NestedTensorImpl(TensorNode structure)
     : TensorImpl(
-          c10::DispatchKeySet(NestedTensorKey_PreAutograd),
+          c10::DispatchKeySet({NestedTensorKey_PreAutograd, NestedTensorKey}),
           get_first_leaf(structure) ? get_first_leaf(structure)->dtype()
                                     : at::ones({}).dtype(),
           get_first_leaf(structure) ? get_first_leaf(structure)->device()
