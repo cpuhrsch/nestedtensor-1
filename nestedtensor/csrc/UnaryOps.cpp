@@ -195,7 +195,7 @@ Tensor NestedTensor_mvlgamma(const Tensor& self, int64_t p) {
 //       NestedTensor_unary_out<decltype(&at::native::sin_out), at::native::sin_out>);
 // }
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, Autograd, m) {
  m.impl_UNBOXED(
      "cos_", NestedTensor_cos_method_);
  m.impl_UNBOXED("cos", NestedTensor_cos);
@@ -205,6 +205,13 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+
+ m.impl(
+     "cos_", torch::CppFunction::makeFallthrough());
+ m.impl("cos", torch::CppFunction::makeFallthrough());
+ m.impl(
+     "cos.out",
+     torch::CppFunction::makeFallthrough());
 // m.impl_UNBOXED(
 //     "cos_", NestedTensor_cos_method_);
 // m.impl_UNBOXED("cos", NestedTensor_cos);

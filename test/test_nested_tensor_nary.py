@@ -87,7 +87,9 @@ def _gen_test_unary(func__, nested_dim, device):
             method = method_
             method_inplace = method_inplace_
 
+        print("P0")
         a2 = nestedtensor.nested_tensor(utils.nested_map(func, data))
+        print("P1")
 
         self.assertTrue(a1.nested_dim() == a2.nested_dim())
         self.assertTrue(a2.nested_dim() == a3.nested_dim())

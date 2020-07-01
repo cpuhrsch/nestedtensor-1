@@ -227,6 +227,19 @@ class NestedTensor(metaclass = NestedTensorMeta):
             return _wrap_result(
                 nestedtensor._C.cross_entropy(*impl_args, **impl_kwargs)
             )
+        # print('torch.ops.nestedtensor.is_nested_tensor_impl(impl_args[0])')
+        # print(torch.ops.nestedtensor.is_nested_tensor_impl(impl_args[0]))
+        # print('torch.ops.nestedtensor.is_nested_tensor_impl_all(impl_args[0])')
+        # print(torch.ops.nestedtensor.is_nested_tensor_impl_all(impl_args[0]))
+        # print('args[0]')
+        # print(args[0])
+        # print('args[0].nested_size()')
+        # print(args[0].nested_size())
+        # print('torch.sin(args[0])')
+        # print(torch.sin(args[0]))
+        print('torch.cos(impl_args[0])')
+        print(NestedTensor(torch.cos(impl_args[0])))
+        import sys; sys.exit(1)
         return _wrap_result(func(*impl_args, **impl_kwargs))
 
     # Might require nonzero

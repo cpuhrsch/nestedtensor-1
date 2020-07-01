@@ -52,6 +52,11 @@ static auto registry =
     torch::RegisterOperators()
         .op("nestedtensor::is_nested_tensor_impl",
             [](Tensor tensor) { return is_nested_tensor_impl(tensor); })
+        .op("nestedtensor::is_nested_tensor_impl_all",
+            [](Tensor tensor) {
+  return tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey_PreAutograd)
+  && tensor.unsafeGetTensorImpl()->key_set().has(at::NestedTensorKey);
+            })
         .op("nestedtensor::nested_dim",
             [](Tensor tensor) {
               return get_nested_tensor_impl(tensor)->nested_dim();
