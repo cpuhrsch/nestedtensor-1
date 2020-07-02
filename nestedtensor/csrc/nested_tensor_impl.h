@@ -124,6 +124,13 @@ struct NestedTensorImpl : public c10::TensorImpl {
   }
   at::Tensor to_tensor();
 
+  c10::intrusive_ptr<c10::TensorImpl> shallow_copy_and_detach(
+      const c10::VariableVersion& version_counter,
+      bool allow_tensor_metadata_change) const override;
+
+  // TODO:
+  // void shallow_copy_from(const c10::intrusive_ptr<TensorImpl>& impl) override;
+
   std::vector<c10::optional<int64_t>> opt_sizes() const;
   IntArrayRef sizes() const override {
     return IntArrayRef(_sizes);
