@@ -101,23 +101,29 @@ def get_extensions():
         else:
             nvcc_flags = nvcc_flags.split(" ")
         extra_compile_args["nvcc"] = nvcc_flags
+        print("COMPILING CUDA")
 
     if sys.platform == "win32":
         define_macros += [("nestedtensor_EXPORTS", None)]
 
     this_dir = os.path.dirname(os.path.abspath(__file__))
     extensions_dir = os.path.join(this_dir, "nestedtensor", "csrc")
+    cuda_dir = os.path.join(this_dir, "nestedtensor", "csrc", "cuda")
     utils_dir = os.path.join(extensions_dir, "utils")
 
     extension_sources = set(
         os.path.join(extensions_dir, p)
         for p in glob.glob(os.path.join(extensions_dir, "*.cpp"))
     )
+    cuda_sources = set(
+        os.path.join(cuda_dir, p)
+        for p in glob.glob(os.path.join(cuda_dir, "*.cu"))
+    )
     utils_sources = set(
         os.path.join(utils_dir, p) for p in glob.glob(os.path.join(utils_dir, "*.cpp"))
     )
 
-    sources = list(set(extension_sources) | set(utils_sources))
+    sources = list(set(extension_sources) | set(utils_sources) | set(cuda_sources))
 
     include_dirs = [extensions_dir, utils_dir]
 

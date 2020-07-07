@@ -1,5 +1,6 @@
 #include <ATen/core/op_registration/op_registration.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
+#include <nestedtensor/csrc/cuda/UnaryOps.h>
 #include <torch/library.h>
 
 namespace at {
@@ -27,9 +28,11 @@ Tensor& NestedTensor_unary_method_(Tensor& self) {
 
 template <class F, F func>
 Tensor NestedTensor_unary(const Tensor& self) {
-  return wrap_tensor_node(
-      map([](at::Tensor tensor) { return func(tensor); },
-          get_nested_tensor_structure(self)));
+  std::cout << "CUDAAA" << std::endl;
+  return NestedTensor_cos_cuda(self);
+  // return wrap_tensor_node(
+  //     map([](at::Tensor tensor) { return func(tensor); },
+  //         get_nested_tensor_structure(self)));
 }
 
 template <class F, F func>

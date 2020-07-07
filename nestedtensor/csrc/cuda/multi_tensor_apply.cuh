@@ -2,7 +2,7 @@
 #include <ATen/AccumulateType.h>
 #include <ATen/cuda/CUDAContext.h>
 #include <ATen/cuda/Exceptions.h>
-#include "compat.h"
+#include <nestedtensor/csrc/cuda/compat.h>
 
 #include <assert.h>
 
