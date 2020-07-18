@@ -37,6 +37,7 @@ def _wrap_result(result):
         else result
     )
 
+
 def _filter_impl(args, kwargs):
     if kwargs is None:
         kwargs = {}
