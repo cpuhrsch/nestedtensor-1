@@ -441,7 +441,7 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl_UNBOXED("clone", NestedTensor_clone);
   m.impl_UNBOXED("copy_", NestedTensor_copy_);
   m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
