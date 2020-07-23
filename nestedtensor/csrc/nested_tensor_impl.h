@@ -18,7 +18,7 @@ namespace at {
 
 using namespace torch::nested_tensor;
 
-constexpr auto NestedTensorKey = DispatchKey::PrivateUse1_PreAutograd;
+constexpr auto NestedTensorKey = DispatchKey::PrivateUse1;
 
 struct NestedTensorImpl;
 
@@ -126,6 +126,12 @@ struct NestedTensorImpl : public c10::TensorImpl {
         get_structure(),
         get_nested_tensor_impl(gradient)->get_structure());
   }
+  c10::intrusive_ptr<c10::TensorImpl> shallow_copy_and_detach(
+      const c10::VariableVersion& version_counter,
+      bool allow_tensor_metadata_change) const override;
+
+  // TODO:
+  // void shallow_copy_from(const c10::intrusive_ptr<TensorImpl>& impl) override;
   int64_t nested_dim() const {
     return get_structure().height();
   }

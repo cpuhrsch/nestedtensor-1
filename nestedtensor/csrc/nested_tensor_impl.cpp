@@ -49,6 +49,30 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
   return result;
 }
 
+c10::intrusive_ptr<c10::TensorImpl> NestedTensorImpl::shallow_copy_and_detach(
+    const c10::VariableVersion& version_counter,
+    bool allow_tensor_metadata_change) const {
+  auto impl = c10::make_intrusive<NestedTensorImpl>(_structure);
+  copy_tensor_metadata(
+      /*src_impl=*/this,
+      /*dest_impl=*/impl.get(),
+      /*version_counter=*/version_counter,
+      /*allow_tensor_metadata_change=*/allow_tensor_metadata_change);
+  return impl;
+}
+
+// void XLATensorImpl::shallow_copy_from(
+//     const c10::intrusive_ptr<TensorImpl>& impl) {
+//   XLATensorImpl* xla_impl = dynamic_cast<XLATensorImpl*>(impl.get());
+//   copy_tensor_metadata(
+//       /*src_impl=*/xla_impl,
+//       /*dest_impl=*/this,
+//       /*version_counter=*/version_counter(),
+//       /*allow_tensor_metadata_change=*/allow_tensor_metadata_change());
+//   xla_impl->tensor_.ShallowCopyTo(&tensor_);
+//   generation_ = 0;
+// }
+
 std::vector<c10::optional<int64_t>> NestedTensorImpl::opt_sizes() const {
   return construct_size(
       map([](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
