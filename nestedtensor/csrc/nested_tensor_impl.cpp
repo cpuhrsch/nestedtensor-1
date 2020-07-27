@@ -113,7 +113,9 @@ TensorNode _unbind_tensors(TensorNode structure) {
 
 NestedTensorImpl::NestedTensorImpl(TensorNode structure)
     : TensorImpl(
-          c10::DispatchKeySet(NestedTensorKey),
+          c10::DispatchKeySet({NestedTensorKey_PreAutograd,
+                               DispatchKey::Autograd,
+                               NestedTensorKey}),
           get_first_leaf(structure) ? get_first_leaf(structure)->dtype()
                                     : at::ones({}).dtype(),
           get_first_leaf(structure) ? get_first_leaf(structure)->device()
@@ -465,7 +467,7 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
-TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("clone", NestedTensor_clone);
   m.impl_UNBOXED("copy_", NestedTensor_copy_);
   m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
