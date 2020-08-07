@@ -30,29 +30,43 @@ template <
     std::vector<Tensor> (*list_func)(TensorList, TensorList)>
 Tensor NestedTensor_binary_list(const Tensor& self, const Tensor& other) {
   if (is_nested_tensor_impl(self, other)) {
-    if (self.dim() == other.dim() &&
-        get_nested_tensor_impl(self)->nested_dim() ==
-            get_nested_tensor_impl(other)->nested_dim()) {
-      std::cout << "HERE" << std::endl;
-      auto flat_self = flatten(get_nested_tensor_structure(self));
-      auto flat_other = flatten(get_nested_tensor_structure(other));
-      std::vector<at::Tensor> flat_self_tensors;
-      for (size_t i = 0; i < flat_self.size(); i++) {
-        flat_self_tensors.push_back(flat_self[i]);
-      }
-      std::vector<at::Tensor> flat_other_tensors;
-      for (size_t i = 0; i < flat_other.size(); i++) {
-        flat_other_tensors.push_back(flat_other[i]);
-      }
-      auto flat_result_tensors = list_func(
-          TensorList(flat_self_tensors), TensorList(flat_other_tensors));
-      c10::List<at::Tensor> flat_result;
-      for (auto node : flat_result_tensors) {
-        flat_result.push_back(node);
-      }
-      return wrap_tensor_node(
-          unflatten(get_nested_tensor_structure(self), flat_result));
-    }
+    // // if (self.dim() == other.dim() &&
+    // //     get_nested_tensor_impl(self)->nested_dim() ==
+    // //         get_nested_tensor_impl(other)->nested_dim()) {
+    //   std::cout << "HERE" << std::endl;
+    //   auto flat_self = flatten(get_nested_tensor_structure(self));
+    //   auto flat_other = flatten(get_nested_tensor_structure(other));
+    //   std::vector<at::Tensor> flat_self_tensors;
+    //   for (size_t i = 0; i < flat_self.size(); i++) {
+    //     flat_self_tensors.push_back(flat_self[i]);
+    //   }
+    //   for (size_t i = 0; i < flat_self.size(); i++) {
+    //     std::cout << " flat_self[" << i << "].dim(): " <<
+    //     flat_self_tensors[i].dim(); std::cout << " flat_self[" << i <<
+    //     "].size(0): " << flat_self_tensors[i].size(0); std::cout << "
+    //     flat_self[" << i << "].size(1): " << flat_self_tensors[i].size(1);
+    //   }
+    //   std::cout << std::endl;
+    //   std::vector<at::Tensor> flat_other_tensors;
+    //   for (size_t i = 0; i < flat_other.size(); i++) {
+    //     flat_other_tensors.push_back(flat_other[i]);
+    //   }
+    //   for (size_t i = 0; i < flat_other.size(); i++) {
+    //     std::cout << " flat_other[" << i << "].dim(): " <<
+    //     flat_other_tensors[i].dim(); std::cout << " flat_other[" << i <<
+    //     "].size(0): " << flat_other_tensors[i].size(0); std::cout << "
+    //     flat_other[" << i << "].size(1): " << flat_other_tensors[i].size(1);
+    //   }
+    //   std::cout << std::endl;
+    //   auto flat_result_tensors = list_func(
+    //       TensorList(flat_self_tensors), TensorList(flat_other_tensors));
+    //   c10::List<at::Tensor> flat_result;
+    //   for (auto node : flat_result_tensors) {
+    //     flat_result.push_back(node);
+    //   }
+    //   return wrap_tensor_node(
+    //       unflatten(get_nested_tensor_structure(self), flat_result));
+    // // }
     return map_nested_tensor(
         [](Tensor self, Tensor other) { return func(self, other); },
         self,
@@ -85,6 +99,50 @@ Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
 template <typename S, Tensor (*func)(const Tensor&, const Tensor&, S)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other, S scalar) {
   if (is_nested_tensor_impl(self, other)) {
+    // std::cout << "IS SCALAR" << std::endl;
+    // int64_t scalar_value = scalar.to<int64_t>();
+    if ((self.dim() == other.dim()) &&
+        (get_nested_tensor_impl(self)->nested_dim() ==
+         get_nested_tensor_impl(other)->nested_dim())) {
+//        scalar_value == 1) {
+      // std::cout << "HERE" << std::endl;
+      auto flat_self = flatten(get_nested_tensor_structure(self));
+      auto flat_other = flatten(get_nested_tensor_structure(other));
+      std::vector<at::Tensor> flat_self_tensors;
+      for (size_t i = 0; i < flat_self.size(); i++) {
+        flat_self_tensors.push_back(flat_self[i]);
+      }
+      // for (size_t i = 0; i < flat_self.size(); i++) {
+      //   std::cout << " flat_self[" << i
+      //             << "].dim(): " << flat_self_tensors[i].dim();
+      //   std::cout << " flat_self[" << i
+      //             << "].size(0): " << flat_self_tensors[i].size(0);
+      //   std::cout << " flat_self[" << i
+      //             << "].size(1): " << flat_self_tensors[i].size(1);
+      // }
+      // std::cout << std::endl;
+      std::vector<at::Tensor> flat_other_tensors;
+      for (size_t i = 0; i < flat_other.size(); i++) {
+        flat_other_tensors.push_back(flat_other[i]);
+      }
+      // for (size_t i = 0; i < flat_other.size(); i++) {
+      //   std::cout << " flat_other[" << i
+      //             << "].dim(): " << flat_other_tensors[i].dim();
+      //   std::cout << " flat_other[" << i
+      //             << "].size(0): " << flat_other_tensors[i].size(0);
+      //   std::cout << " flat_other[" << i
+      //             << "].size(1): " << flat_other_tensors[i].size(1);
+      // }
+      // std::cout << std::endl;
+      auto flat_result_tensors = at::_foreach_add(
+          TensorList(flat_self_tensors), TensorList(flat_other_tensors));
+      c10::List<at::Tensor> flat_result;
+      for (auto node : flat_result_tensors) {
+        flat_result.push_back(node);
+      }
+      return wrap_tensor_node(
+          unflatten(get_nested_tensor_structure(self), flat_result));
+    }
     return wrap_tensor_node(map_nested_tensor(
         [&scalar](Tensor tensor, Tensor other) {
           return func(tensor, other, scalar);
@@ -253,7 +311,7 @@ Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
   m.impl_UNBOXED(#NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
-  BINARY_OP(div)
+  BINARY_OP_LIST(div)
   BINARY_OP_LIST(mul)
   BINARY_OP(remainder)
 
