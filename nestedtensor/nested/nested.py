@@ -5,7 +5,6 @@ from . import masking
 from . import creation
 
 import nestedtensor
-from torch._C import _disabled_torch_function_impl
 
 
 def _new_torch_stack(tensors, dim=0, out=None):
@@ -61,7 +60,6 @@ class NestedTensorMeta(type):
 
 
 class NestedTensor(metaclass=NestedTensorMeta):
-    __torch_function__ = _disabled_torch_function_impl
     # The attributes must match across all constiuents
     #
     # The NestedTensor's attributes then become that of its

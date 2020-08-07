@@ -25,20 +25,61 @@ Tensor& NestedTensor_binary_(Tensor& self, const Tensor& other) {
   return self;
 }
 
+template <
+    Tensor (*func)(const Tensor&, const Tensor&),
+    std::vector<Tensor> (*list_func)(TensorList, TensorList)>
+Tensor NestedTensor_binary_list(const Tensor& self, const Tensor& other) {
+  if (is_nested_tensor_impl(self, other)) {
+    if (self.dim() == other.dim() &&
+        get_nested_tensor_impl(self)->nested_dim() ==
+            get_nested_tensor_impl(other)->nested_dim()) {
+      std::cout << "HERE" << std::endl;
+      auto flat_self = flatten(get_nested_tensor_structure(self));
+      auto flat_other = flatten(get_nested_tensor_structure(other));
+      std::vector<at::Tensor> flat_self_tensors;
+      for (size_t i = 0; i < flat_self.size(); i++) {
+        flat_self_tensors.push_back(flat_self[i]);
+      }
+      std::vector<at::Tensor> flat_other_tensors;
+      for (size_t i = 0; i < flat_other.size(); i++) {
+        flat_other_tensors.push_back(flat_other[i]);
+      }
+      auto flat_result_tensors = list_func(
+          TensorList(flat_self_tensors), TensorList(flat_other_tensors));
+      c10::List<at::Tensor> flat_result;
+      for (auto node : flat_result_tensors) {
+        flat_result.push_back(node);
+      }
+      return wrap_tensor_node(
+          unflatten(get_nested_tensor_structure(self), flat_result));
+    }
+    return map_nested_tensor(
+        [](Tensor self, Tensor other) { return func(self, other); },
+        self,
+        other);
+  }
+  if (is_nested_tensor_impl(other)) {
+    return wrap_tensor_node(map_nested_tensor(
+        [&self](Tensor other) { return func(self, other); }, other));
+  }
+  return wrap_tensor_node(map_nested_tensor(
+      [&other](Tensor self) { return func(self, other); }, self));
+}
+
 template <Tensor (*func)(const Tensor&, const Tensor&)>
 Tensor NestedTensor_binary(const Tensor& self, const Tensor& other) {
   if (is_nested_tensor_impl(self, other)) {
-    return wrap_tensor_node(
-        map_nested_tensor([](Tensor self, Tensor other) { return func(self, other); },
-            self,
-            other));
+    return wrap_tensor_node(map_nested_tensor(
+        [](Tensor self, Tensor other) { return func(self, other); },
+        self,
+        other));
   }
   if (is_nested_tensor_impl(other)) {
-    return wrap_tensor_node(
-        map_nested_tensor([&self](Tensor other) { return func(self, other); }, other));
+    return wrap_tensor_node(map_nested_tensor(
+        [&self](Tensor other) { return func(self, other); }, other));
   }
-  return wrap_tensor_node(
-      map_nested_tensor([&other](Tensor self) { return func(self, other); }, self));
+  return wrap_tensor_node(map_nested_tensor(
+      [&other](Tensor self) { return func(self, other); }, self));
 }
 
 template <typename S, Tensor (*func)(const Tensor&, const Tensor&, S)>
@@ -178,8 +219,8 @@ Tensor& NestedTensor_pow_out_2(Tensor& result, const Tensor& base, Scalar exp) {
 
 Tensor NestedTensor_pow_2(const Tensor& base, Scalar exp) {
   is_nested_tensor_impl(base);
-  return wrap_tensor_node(
-      map_nested_tensor([exp](Tensor base) { return at::pow(base, exp); }, base));
+  return wrap_tensor_node(map_nested_tensor(
+      [exp](Tensor base) { return at::pow(base, exp); }, base));
 }
 
 Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
@@ -195,8 +236,8 @@ Tensor& NestedTensor_pow_out_3(Tensor& result, Scalar base, const Tensor& exp) {
 
 Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
   is_nested_tensor_impl(exp);
-  return wrap_tensor_node(
-      map_nested_tensor([&base](Tensor exp) { return at::pow(base, exp); }, exp));
+  return wrap_tensor_node(map_nested_tensor(
+      [&base](Tensor exp) { return at::pow(base, exp); }, exp));
 }
 
 #define BINARY_OP(NAME)                                                        \
@@ -204,9 +245,16 @@ Tensor NestedTensor_pow_3(Scalar base, const Tensor& exp) {
   m.impl_UNBOXED(#NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
   m.impl_UNBOXED(#NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
 
+#define BINARY_OP_LIST(NAME)                                                   \
+  m.impl_UNBOXED(                                                              \
+      #NAME ".Tensor",                                                         \
+      NestedTensor_binary_list<at::NAME, at::_foreach_##NAME>);                \
+  m.impl_UNBOXED(#NAME "_.Tensor", NestedTensor_binary_<at::native::NAME##_>); \
+  m.impl_UNBOXED(#NAME ".out", NestedTensor_binary_out<at::NAME##_out>);
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   BINARY_OP(div)
-  BINARY_OP(mul)
+  BINARY_OP_LIST(mul)
   BINARY_OP(remainder)
 
   // floor_divide has an inconsistent signature
