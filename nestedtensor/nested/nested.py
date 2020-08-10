@@ -16,6 +16,7 @@ def _new_torch_stack(tensors, dim=0, out=None):
         return result
     out.copy_(result)
 
+
 def _new_torch_cat(tensors, dim=0, out=None):
     result = torch.ops.nestedtensor.cat(list(
         t._impl if isinstance(t, NestedTensor) else t for t in tensors), dim)
@@ -23,6 +24,7 @@ def _new_torch_cat(tensors, dim=0, out=None):
     if out is None:
         return result
     out.copy_(result)
+
 
 def _wrap_result(result):
     if isinstance(result, list):
@@ -34,6 +36,21 @@ def _wrap_result(result):
         if torch.is_tensor(result) and torch.ops.nestedtensor.is_nested_tensor_impl(result)
         else result
     )
+
+
+def nt_vmap(fn_):
+    def lifted_fn_(t):
+        def fn(x):
+            print(x)
+            return fn_(x)
+        vmaped_fn = torch.vmap(fn)
+        if isinstance(t, nestedtensor.NestedTensor):
+            if t.nested_dim() > 1:
+                raise RuntimeError(
+                    "Not implemented for nested dim higher than 1.")
+            return nestedtensor.NestedTensor(vmaped_fn(t._impl))
+        return vmaped_fn(t)
+    return lifted_fn_
 
 
 def _filter_impl(args, kwargs):
@@ -78,6 +95,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
     #     is_pinned()
     # Neighbors may share data, maybe all share data.
     # Levels of contiguity
+
     def __init__(self, impl):
         if not torch.ops.nestedtensor.is_nested_tensor_impl(impl):
             raise TypeError("Got unexpected type " + str(type(impl)))
@@ -278,7 +296,7 @@ class NestedTensor(metaclass=NestedTensorMeta):
             "NestedTensor doesn't support function __bool__")
 
     def __getitem__(self, key):
-         return _wrap_result(nestedtensor._C.get_item(self._impl, key))
+        return _wrap_result(nestedtensor._C.get_item(self._impl, key))
 
     def __iter__(self):
         return iter(self.unbind())

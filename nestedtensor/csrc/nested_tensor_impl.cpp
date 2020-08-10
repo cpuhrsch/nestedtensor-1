@@ -6,6 +6,7 @@
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/csrc/jit/runtime/operator.h>
 #include <torch/library.h>
+#include <ATen/BatchedTensorImpl.h>
 
 namespace at {
 
@@ -441,6 +442,11 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
+int64_t NestedTensor_size_int(const Tensor& tensor, int64_t dim) {
+  // dim = maybe_wrap_dim(tensor.dim(), dim);
+  return get_nested_tensor_impl(tensor)->size(dim);
+}
+
 static auto fallback = torch::CppFunction::makeFallthrough();
 
 void errorFallback(const c10::OperatorHandle& op, torch::jit::Stack* stack) {
@@ -455,21 +461,31 @@ TORCH_LIBRARY_IMPL(_, PrivateUse1_PreAutograd, m) {
 }
 
 Tensor NestedTensor_addBatchDim(const Tensor& tensor, int64_t level, int64_t dim) {
-  const auto* batched = maybeGetBatched(tensor);
-  if (!batched) {
-    BatchDims bdims;
-    bdims.emplace_back(level, dim);
-    return at::detail::make_tensor<BatchedTensorImpl>(tensor, std::move(bdims));
+  return addBatchDim(tensor, level, dim);
+}
+
+Tensor NestedTensor_remove_batch_dim(const Tensor& self, int64_t level, int64_t batch_size, int64_t out_dim) {
+  if (!has_level(self, level)) {
+    std::cout << "HDHDHD" << std::endl;
+    auto self_sizes = self.sizes();
+    VmapDimVector expanded_sizes(self_sizes.begin(), self_sizes.end());
+    expanded_sizes.insert(expanded_sizes.begin() + out_dim, batch_size);
+    return self.expand(expanded_sizes);
   }
-  BatchDims new_bdims(batched->bdims().begin(), batched->bdims().end());
-  auto actual_bdim = batched->actualDim(dim, /*wrap_dim=*/true);
-  new_bdims.emplace_back(level, actual_bdim);
-  return makeBatched(batched->value(), std::move(new_bdims));
+
+  // Must be batched if has_level(self, /*any_level*/)
+  const auto* batched = maybeGetBatched(self);
+  TORCH_INTERNAL_ASSERT(batched != nullptr);
+
+  Tensor self_without_bdim;
+  int64_t newly_exposed_logical_dim;
+  std::tie(self_without_bdim, newly_exposed_logical_dim) = remove_existing_batch_dim(batched, level);
+  return movedim(self_without_bdim, newly_exposed_logical_dim, out_dim);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("_add_batch_dim", NestedTensor_addBatchDim);
-  // m.impl("_remove_batch_dim", at::native::_remove_batch_dim);
+  m.impl_UNBOXED("_remove_batch_dim", NestedTensor_removeBatchDim);
   m.impl_UNBOXED("clone", NestedTensor_clone);
   m.impl_UNBOXED("copy_", NestedTensor_copy_);
   m.impl_UNBOXED("squeeze_", NestedTensor_squeeze_);
@@ -482,5 +498,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("select.int", NestedTensor_select);
   m.impl_UNBOXED("slice.Tensor", NestedTensor_slice);
   m.impl_UNBOXED("unsqueeze", NestedTensor_unsqueeze);
+  m.impl_UNBOXED("size.int", NestedTensor_size_int);
 }
 } // namespace at
