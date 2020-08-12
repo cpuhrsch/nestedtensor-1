@@ -220,15 +220,24 @@ struct NestedTensorFunction_mapper
     // 4. Output of differentiable function given Tensor from step 3.
     at::Tensor autograd_output = c10::guts::apply(
         [&fn](A... a) {
-          return map_nested_tensor([&](A... t) { return fn(t...); }, a...);
+          return map_nested_tensor([&](A... t) { 
+              c10::guts::apply([](at::Tensor ti) { std::cout << "ti: " << ti << std::endl;}, 
+                  std::tuple<A...>(t..));
+              auto result = fn(t...); 
+              std::cout << "result: " << result << std::endl;
+              std::cout << "result.requires_grad(): " << result.requires_grad() << std::endl;
+              return result;
+              }, a...);
         },
         std::move(autograd_input_tuple_));
     // auto autograd_output = map_nested_tensor_tuple(
     //     [&](A... t) { return fn(t...); }, autograd_input_tuple);
     // ctx->saved_data["autograd_input_tuple"] = autograd_input_tuple;
     // ctx->saved_data["autograd_output"] = autograd_output;
-    save_args(ctx->saved_data, autograd_input_tuple);
-    ctx->saved_data[std::to_string(sizeof...(A))] = autograd_output;
+   //  save_args(ctx->saved_data, autograd_input_tuple);
+    ctx->saved_data["0"] = autograd_input_tuple;
+    ctx->saved_data["1"] = autograd_output;
+    // ctx->saved_data[std::to_string(sizeof...(A))] = autograd_output;
 
     // 5. Constituents of output NestedTensor
     auto output = map_nested_tensor(
@@ -242,33 +251,47 @@ struct NestedTensorFunction_mapper
       // doesn't require gradients.
       torch::autograd::variable_list grad_output_) {
     std::cout << "grad_output_.size(): " << grad_output_.size() << std::endl;
-    // TORCH_CHECK(grad_output_.size() == 1, "Unexpected number of grad
-    // outputs."); auto autograd_input = ctx->get_saved_variables();
-    // at::Tensor result = saved[saved.size() - 1]; auto input_grad_output =
-    // c10::guts::tuple_map(
-    //     to_tuple(std::index_sequence_for<A...>{}),
-    //     [&](int64_t i) { return std::make_tuple(saved[i], grad_output_[i]);
-    //     });
-    // auto grad_input_ = c10::guts::tuple_map(
-    //     std::move(input_grad_output),
-    //     [&](std::tuple<at::Tensor, at::Tensor>&& input_grad_output) {
-    //       return map_nested_tensor(
-    //           [](at::Tensor r, at::Tensor i, at::Tensor g) {
-    //             // TODO: Might have to retain graph in many to one
-    //             settings. return torch::autograd::grad({r}, {i}, {g})[0];
-    //           },
-    //           result,
-    //           std::get<0>(input_grad_output),
-    //           std::get<1>(input_grad_output));
-    //     });
-    // torch::autograd::variable_list grad_input =
-    //     to_vector<at::Tensor>(grad_input_);
+    auto autograd_input_tuple = ctx->saved_data["0"].toTuple();
+    auto autograd_output = ctx->saved_data["1"].toTensor();
+    auto grad_input = map_nested_tensor(
+        [](at::Tensor r, at::Tensor i, at::Tensor g) {
+          // TODO: Might have to retain graph in many to one settings.
+        std::cout << "r: " << r << std::endl;
+        std::cout << "r.requires_grad(): " << r.requires_grad() << std::endl;
+        std::cout << "i: " << i << std::endl;
+        std::cout << "i.requires_grad(): " << i.requires_grad() << std::endl;
+        std::cout << "g: " << g << std::endl;
+        std::cout << "g.requires_grad(): " << g.requires_grad() << std::endl;
+          auto result = torch::autograd::grad({r}, {i}, {g})[0];
+        std::cout << "result: " << result << std::endl;
+          return result;
+        },
+        autograd_output,
+//        autograd_input_tuple[0].toTensor(),
+        autograd_input_tuple->elements()[0].toTensor(),
+        grad_output_[0]);
+
     at::Tensor undef;
+    // at::Tensor grad_input;
     // grad_input.insert(grad_input.begin(), undef);
     // return grad_input;
-    return {undef};
+    return {undef, grad_input};
   }
 };
+
+// TORCH_CHECK(grad_output_.size() == 1, "Unexpected number of grad
+// outputs."); auto autograd_input = ctx->get_saved_variables();
+// at::Tensor result = saved[saved.size() - 1]; auto input_grad_output =
+// c10::guts::tuple_map(
+//     to_tuple(std::index_sequence_for<A...>{}),
+//     [&](int64_t i) { return std::make_tuple(saved[i], grad_output_[i]);
+//     });
+// auto grad_input_ = c10::guts::tuple_map(
+//     std::move(input_grad_output),
+//     [&](std::tuple<at::Tensor, at::Tensor>&& input_grad_output) {
+//     });
+// torch::autograd::variable_list grad_input =
+//     to_vector<at::Tensor>(grad_input_);
 
 template <class F, class... A>
 static inline at::Tensor autograd_map_nested_tensor(F&& fn, A... a) {
