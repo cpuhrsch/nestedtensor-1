@@ -154,13 +154,11 @@ class TestFunctional(TestCase):
             nt, running_mean, running_var)
         self.assertEqual(nestedtensor.nested_tensor(
             tensor_res, requires_grad=True), nt_res)
-        # nt_res.backward(nt)
         s = nt_res.sum()
         s.backward()
 
-        # print(inputs[0].grad)
-        # print(inputs[1].grad)
-        # print(nt.grad)
+        self.assertEqual(nt.grad[0], inputs[0].grad)
+        self.assertEqual(nt.grad[1], inputs[1].grad)
 
     def test_nn_max_pool2d(self):
         data = [
