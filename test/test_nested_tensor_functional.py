@@ -184,8 +184,8 @@ class TestFunctional(TestCase):
 
     def test_nn_functional_max_pool2d(self):
         inputs = [
-            torch.randn(3, 500, 600),
-            torch.randn(3, 128, 128)
+            torch.randn(3, 500, 600, requires_grad=True),
+            torch.randn(3, 128, 128, requires_grad=True)
         ]
 
         tensor_res = []
@@ -193,15 +193,22 @@ class TestFunctional(TestCase):
             t_res = torch.nn.functional.max_pool2d(inputs[i].unsqueeze(0).contiguous(), kernel_size=(
                 3, 3), stride=(2, 2), padding=(1, 1), dilation=(1, 1), ceil_mode=False)
             tensor_res.append(t_res.squeeze(0))
+            t_res.sum().backward()
 
-        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = torch.nn.functional.max_pool2d(nt, kernel_size=(3, 3), stride=(
-                2, 2), padding=(1, 1), dilation=(1, 1), ceil_mode=False)
-            self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+        nt = nestedtensor.nested_tensor(inputs, requires_grad=True)
+        nt_res = torch.nn.functional.max_pool2d(nt, kernel_size=(3, 3), stride=(
+            2, 2), padding=(1, 1), dilation=(1, 1), ceil_mode=False)
+        self.assertEqual(nestedtensor.nested_tensor(tensor_res, requires_grad=True), nt_res)
+        nt_res.sum().backward()
+
+        self.assertEqual(nt.grad[0], inputs[0].grad)
+        self.assertEqual(nt.grad[1], inputs[1].grad)
+
+
 
     def test_functional_relu_(self):
-        orig_t1 = torch.tensor([-2, -1, 0, 1, 2])
-        expected_t = torch.tensor([0, 0, 0, 1, 2])
+        orig_t1 = torch.tensor([-2, -1, 0, 1, 2], dtype=torch.float, requires_grad=True)
+        expected_t = torch.tensor([0, 0, 0, 1, 2], dtype=torch.float, requires_grad=True)
         expected_nt = nestedtensor.nested_tensor([expected_t])
 
         t_clone = orig_t1.clone()
@@ -214,28 +221,29 @@ class TestFunctional(TestCase):
         self.assertEqual(nt1, expected_nt)
         self.assertEqual(t_clone, orig_t1)
 
-        t_clone = orig_t1.clone()
-        nt1 = nestedtensor.as_nested_tensor([t_clone])
-        torch.nn.functional.relu_(nt1)
-        self.assertEqual(nt1, expected_nt)
-        self.assertNotEqual(t_clone, expected_t)
 
     def test_nn_relu(self):
         inputs = [
-            torch.randn(3, 500, 600),
-            torch.randn(3, 128, 128)
+            torch.randn(3, 500, 600, requires_grad=True),
+            torch.randn(3, 128, 128, requires_grad=True)
         ]
 
+        # TODO: What about inplace? It's used by resnet
         relu = torch.nn.ReLU()
 
         tensor_res = []
         for i in range(2):
             t_res = relu(inputs[i].unsqueeze(0).contiguous())
             tensor_res.append(t_res.squeeze(0))
+            t_res.sum().backward()
 
-        for nt in [nestedtensor.nested_tensor(inputs), nestedtensor.as_nested_tensor(inputs)]:
-            nt_res = relu(nt)
-            self.assertEqual(nestedtensor.nested_tensor(tensor_res), nt_res)
+        nt = nestedtensor.nested_tensor(inputs, requires_grad=True)
+        nt_res = relu(nt)
+        self.assertEqual(nestedtensor.nested_tensor(tensor_res, requires_grad=True), nt_res)
+        nt_res.sum().backward()
+
+        self.assertEqual(inputs[0].grad, nt.grad[0])
+        self.assertEqual(inputs[1].grad, nt.grad[1])
 
     def test_nn_functional_relu(self):
         inputs = [
