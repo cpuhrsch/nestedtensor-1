@@ -80,6 +80,7 @@ class TestIntegration(TestCase):
 
         output1 = model(t_input)
         output1 = output1["out"]
+        print('output1.requires_grad():', output1.requires_grad)
 
         confmat.update(t_target.flatten(), output1.argmax(1).flatten())
         confmat.reduce_from_all_processes()
@@ -96,7 +97,12 @@ class TestIntegration(TestCase):
 
         output2 = model(nt_input)
         output2 = output2["out"]
-
+        print('output2.requires_grad():', output2.requires_grad)
+        import torchviz
+        # print(list(n for (n, p) in model.named_parameters()))
+        dot = torchviz.make_dot(output2.sum()) #, params=dict(model.named_parameters()))
+        dot.format = 'svg'
+        dot.render()
         for a, b in zip(nt_target, output2):
             confmat2.update(a.flatten(), b.argmax(0).flatten())
 
@@ -107,6 +113,7 @@ class TestIntegration(TestCase):
         output1_sum = output1[0].sum()
         output2_sum = output2[0].sum()
         self.assertEqual(output1_sum, output2_sum)
+
 
         output1_sum.backward()
         output2_sum.backward()

@@ -1,3 +1,4 @@
+#include <ATen/ATen.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/csrc/autograd/autograd.h>
@@ -101,7 +102,8 @@ Tensor NestedTensor_batch_norm(
         // std::cout << "A" << std::endl;
         // std::cout << "t.requires_grad(): " << t.requires_grad() << std::endl;
         auto t0 = t.unsqueeze(0);
-        // std::cout << "t0.requires_grad(): " << t0.requires_grad() << std::endl;
+        // std::cout << "t0.requires_grad(): " << t0.requires_grad() <<
+        // std::endl;
         auto res = at::batch_norm(
             t0,
             weight,
@@ -112,9 +114,11 @@ Tensor NestedTensor_batch_norm(
             momentum,
             eps,
             cudnn_enabled);
-        // std::cout << "res.requires_grad(): " << res.requires_grad() << std::endl;
+        // std::cout << "res.requires_grad(): " << res.requires_grad() <<
+        // std::endl;
         auto res1 = res.squeeze(0);
-        // std::cout << "res1.requires_grad(): " << res1.requires_grad() << std::endl;
+        // std::cout << "res1.requires_grad(): " << res1.requires_grad() <<
+        // std::endl;
         return res1;
       },
       input);
@@ -448,6 +452,22 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result)));
 }
 
+Tensor NestedTensor_threshold_backward(
+    const Tensor& grad,
+    const Tensor& self,
+    Scalar threshold) {
+  return map_nested_tensor(
+      [threshold](at::Tensor grad, at::Tensor self) {
+        // c10::impl::ExcludeDispatchKeyGuard guard0(
+        //     c10::DispatchKey::PrivateUse1_PreAutograd);
+        // c10::impl::ExcludeDispatchKeyGuard guard1(
+        //     c10::DispatchKey::PrivateUse1);
+        return at::threshold_backward(grad, self, threshold);
+      },
+      grad,
+      self);
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   // TODO: Composite op
   m.impl_UNBOXED("batch_norm", NestedTensor_batch_norm);
@@ -483,5 +503,6 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl_UNBOXED("stack.out", NestedTensor_stack_out);
   m.impl_UNBOXED("cat", NestedTensor_cat);
   m.impl_UNBOXED("cat.out", NestedTensor_cat_out);
+  m.impl_UNBOXED("threshold_backward", NestedTensor_threshold_backward);
 }
 } // namespace at
