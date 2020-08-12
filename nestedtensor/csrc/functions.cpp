@@ -53,25 +53,25 @@ Tensor NestedTensor_max_pool2d(
     IntArrayRef padding,
     IntArrayRef dilation,
     bool ceil_mode) {
-  auto self_impl = get_nested_tensor_impl(self);
-  auto tensor_node = get_nested_tensor_structure(self);
+  // auto self_impl = get_nested_tensor_impl(self);
+  // auto tensor_node = get_nested_tensor_structure(self);
 
-  if (is_tensor_shape(self)) {
-    std::vector<at::Tensor> tensors;
-    for (auto tn : tensor_node.unbind()) {
-      tensors.push_back(tn.payload());
-    }
+  // if (is_tensor_shape(self)) {
+  //   std::vector<at::Tensor> tensors;
+  //   for (auto tn : tensor_node.unbind()) {
+  //     tensors.push_back(tn.payload());
+  //   }
 
-    auto res_ = at::max_pool2d(
-        at::stack(tensors), kernel_size, stride, padding, dilation, ceil_mode);
-    std::vector<at::Tensor> res = res_.unbind();
-    std::vector<TensorNode> result;
-    for (size_t i = 0; i < res.size(); i++) {
-      result.push_back(TensorNode(std::move(res[i])));
-    }
-    return NestedTensorImpl(TensorNode(std::move(result)))
-        .to_nested_tensor(self_impl->nested_dim() - 1);
-  }
+  //   auto res_ = at::max_pool2d(
+  //       at::stack(tensors), kernel_size, stride, padding, dilation, ceil_mode);
+  //   std::vector<at::Tensor> res = res_.unbind();
+  //   std::vector<TensorNode> result;
+  //   for (size_t i = 0; i < res.size(); i++) {
+  //     result.push_back(TensorNode(std::move(res[i])));
+  //   }
+  //   return NestedTensorImpl(TensorNode(std::move(result)))
+  //       .to_nested_tensor(self_impl->nested_dim() - 1);
+  // }
 
   return autograd_map_nested_tensor(
       [&](at::Tensor t) {
@@ -99,11 +99,7 @@ Tensor NestedTensor_batch_norm(
     bool cudnn_enabled) {
   return autograd_map_nested_tensor(
       [&](at::Tensor t) -> at::Tensor {
-        // std::cout << "A" << std::endl;
-        // std::cout << "t.requires_grad(): " << t.requires_grad() << std::endl;
         auto t0 = t.unsqueeze(0);
-        // std::cout << "t0.requires_grad(): " << t0.requires_grad() <<
-        // std::endl;
         auto res = at::batch_norm(
             t0,
             weight,
@@ -114,11 +110,7 @@ Tensor NestedTensor_batch_norm(
             momentum,
             eps,
             cudnn_enabled);
-        // std::cout << "res.requires_grad(): " << res.requires_grad() <<
-        // std::endl;
         auto res1 = res.squeeze(0);
-        // std::cout << "res1.requires_grad(): " << res1.requires_grad() <<
-        // std::endl;
         return res1;
       },
       input);
@@ -217,12 +209,11 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   TORCH_CHECK(
       dim0 >= nested_dim && dim1 >= nested_dim,
       "Transposition of nested dimensions is not implemented yet.");
-  auto out_node = autograd_map_nested_tensor(
+  return autograd_map_nested_tensor(
       [dim0, dim1, nested_dim](const at::Tensor t) {
         return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
       },
       self);
-  return wrap_tensor_node(std::move(out_node));
 }
 
 Tensor NestedTensor_softmax(
