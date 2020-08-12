@@ -97,18 +97,25 @@ Tensor NestedTensor_batch_norm(
     double eps,
     bool cudnn_enabled) {
   return autograd_map_nested_tensor(
-      [&](at::Tensor t) {
-        return at::batch_norm(
-                   t.unsqueeze(0),
-                   weight,
-                   bias,
-                   running_mean,
-                   running_var,
-                   training,
-                   momentum,
-                   eps,
-                   cudnn_enabled)
-            .squeeze(0);
+      [&](at::Tensor t) -> at::Tensor {
+        // std::cout << "A" << std::endl;
+        // std::cout << "t.requires_grad(): " << t.requires_grad() << std::endl;
+        auto t0 = t.unsqueeze(0);
+        // std::cout << "t0.requires_grad(): " << t0.requires_grad() << std::endl;
+        auto res = at::batch_norm(
+            t0,
+            weight,
+            bias,
+            running_mean,
+            running_var,
+            training,
+            momentum,
+            eps,
+            cudnn_enabled);
+        // std::cout << "res.requires_grad(): " << res.requires_grad() << std::endl;
+        auto res1 = res.squeeze(0);
+        // std::cout << "res1.requires_grad(): " << res1.requires_grad() << std::endl;
+        return res1;
       },
       input);
 }
