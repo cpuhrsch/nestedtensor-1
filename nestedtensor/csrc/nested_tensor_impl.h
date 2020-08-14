@@ -189,6 +189,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
 
   std::vector<c10::optional<int64_t>> opt_sizes() const;
   IntArrayRef sizes() const override {
+    // throw std::runtime_error("sizes() is not defined. Please use size(int64_t)");
     return IntArrayRef(_sizes);
   }
   int64_t size(int64_t dim) const override;
