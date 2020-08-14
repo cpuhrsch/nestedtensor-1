@@ -17,7 +17,10 @@ Tensor& NestedTensor_unary_(Tensor& self) {
 // NOTE: Missing at::sign_ etc. -> very annoying. not clear why.
 template <class F, F func>
 Tensor& NestedTensor_unary_method_(Tensor& self) {
-  apply_nested_tensor([](at::Tensor& tensor) { (tensor.*func)(); }, self);
+  apply_nested_tensor([](at::Tensor& tensor) { std::cout << "t0.requires_grad(): " << tensor.requires_grad() << std::endl;
+      (tensor.*func)(); 
+      std::cout << "t1.requires_grad(): " << tensor.requires_grad() << std::endl;
+      }, self);
   return self;
 }
 

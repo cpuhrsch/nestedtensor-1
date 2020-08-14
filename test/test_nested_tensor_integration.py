@@ -78,12 +78,12 @@ class TestIntegration(TestCase):
         t_target = torch.stack([tr1, tr2])
         confmat = ConfusionMatrix(num_classes)
 
-        output1 = model(t_input)
-        output1 = output1["out"]
-        print('output1.requires_grad():', output1.requires_grad)
+        # output1 = model(t_input)
+        # output1 = output1["out"]
+        # print('output1.requires_grad():', output1.requires_grad)
 
-        confmat.update(t_target.flatten(), output1.argmax(1).flatten())
-        confmat.reduce_from_all_processes()
+        # confmat.update(t_target.flatten(), output1.argmax(1).flatten())
+        # confmat.reduce_from_all_processes()
 
         # nt run
         nt_t1 = t1.clone().detach()
@@ -95,7 +95,9 @@ class TestIntegration(TestCase):
         nt_target = nestedtensor.nested_tensor([nt_tr1, nt_tr2], requires_grad=True)
         confmat2 = ConfusionMatrix(num_classes)
 
+        print("START0")
         output2 = model(nt_input)
+        print("START1")
         output2 = output2["out"]
         print('output2.requires_grad():', output2.requires_grad)
         import torchviz

@@ -50,6 +50,7 @@ class NestedTensorMeta(type):
     def __getattr__(cls, name):
         if getattr(torch.Tensor, name):
             def _wrapped_fn(*args, **kwargs):
+                print("Name: ", name)
                 impl_args, impl_kwargs = _filter_impl(args, kwargs)
                 result = getattr(impl_args[0], name)(
                     *(impl_args[1:]), **impl_kwargs)
@@ -85,7 +86,9 @@ class NestedTensor(metaclass=NestedTensorMeta):
 
     def __getattr__(self, name):
         if getattr(self._impl, name):
+            print("Name2: ", name)
             def _wrapped_fn(*args, **kwargs):
+                print("Name1: ", name)
                 impl_args, impl_kwargs = _filter_impl(args, kwargs)
                 result = getattr(self._impl, name)(*impl_args, **impl_kwargs)
                 return _wrap_result(result)
@@ -186,6 +189,13 @@ class NestedTensor(metaclass=NestedTensorMeta):
         calls to backward() will accumulate (add) gradients into it.
         """
         return _wrap_result(self._impl.grad)
+
+    def dim(self):
+        return self._impl.dim()
+
+    @property
+    def grad_fn(self):
+        return self._impl.grad_fn
 
     def requires_grad_(self, requires_grad=True):
         """

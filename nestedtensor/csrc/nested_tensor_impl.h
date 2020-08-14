@@ -84,6 +84,8 @@ inline void torch_check_tensor_shape_matches(A... a) {
 
 template <class F, class... A>
 static inline void apply_nested_tensor(F&& fn, A... a) {
+  // throw std::runtime_error("DDD");
+  std::cout << "CALLING APPLY: " << typeid(F).name() << std::endl;
   torch_check_tensor_shape_matches(a...);
   apply(std::move(fn), get_nested_tensor_structure(a)...);
 }
@@ -277,14 +279,13 @@ struct NestedTensorFunction_mapper
     auto grad_input = map_nested_tensor(
         [](at::Tensor r, at::Tensor i, at::Tensor g) {
           // TODO: Might have to retain graph in many to one settings.
-          // std::cout << "r: " << r << std::endl;
-          // std::cout << "r.requires_grad(): " << r.requires_grad() << std::endl;
-          // std::cout << "i: " << i << std::endl;
-          // std::cout << "i.requires_grad(): " << i.requires_grad() << std::endl;
-          // std::cout << "g: " << g << std::endl;
-          // std::cout << "g.requires_grad(): " << g.requires_grad() << std::endl;
+          std::cout << "r: " << r << std::endl;
+          std::cout << "r.requires_grad(): " << r.requires_grad() << std::endl;
+          std::cout << "i: " << i << std::endl;
+          std::cout << "i.requires_grad(): " << i.requires_grad() << std::endl;
+          std::cout << "g: " << g << std::endl;
+          std::cout << "g.requires_grad(): " << g.requires_grad() << std::endl;
           auto result = torch::autograd::grad({r}, {i}, {g})[0];
-          // std::cout << "result: " << result << std::endl;
           return result;
         },
         autograd_output,
