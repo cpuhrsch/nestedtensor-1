@@ -22,19 +22,20 @@ Tensor NestedTensor_cumsum(
       self);
 }
 
-Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
-  auto tensors = flatten(
-      map([&dtype](at::Tensor tensor) { return at::sum(tensor, dtype); },
-          get_nested_tensor_structure(self)));
-  if (tensors.size() == 0) {
-    if (dtype) {
-      return at::ones({0}, *dtype);
-    }
-    return at::ones({0});
-  }
-  auto all_tensor = at::stack(tensors.vec());
-  return at::sum(all_tensor, dtype);
-}
+// // TODO: Needs explicit autograd support. Option 1: Add autograd support to flatten.
+// Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
+//   auto tensors = flatten(
+//       map([&dtype](at::Tensor tensor) { return at::sum(tensor, dtype); },
+//           get_nested_tensor_structure(self)));
+//   if (tensors.size() == 0) {
+//     if (dtype) {
+//       return at::ones({0}, *dtype);
+//     }
+//     return at::ones({0});
+//   }
+//   auto all_tensor = at::stack(tensors.vec());
+//   return at::sum(all_tensor, dtype);
+// }
 
 Tensor NestedTensor_mean(const Tensor& self, c10::optional<ScalarType> dtype) {
   auto tensors = flatten(
@@ -66,14 +67,7 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   m.impl_UNBOXED("cumsum", NestedTensor_cumsum);
-  m.impl_UNBOXED("sum", NestedTensor_sum);
-  m.impl_UNBOXED("mean", NestedTensor_mean);
-  m.impl_UNBOXED("prod", NestedTensor_prod);
-}
-
-} // namespace at
-  m.impl_UNBOXED("cumsum", NestedTensor_cumsum);
-  m.impl_UNBOXED("sum", NestedTensor_sum);
+  // m.impl_UNBOXED("sum", NestedTensor_sum);
   m.impl_UNBOXED("mean", NestedTensor_mean);
   m.impl_UNBOXED("prod", NestedTensor_prod);
 }

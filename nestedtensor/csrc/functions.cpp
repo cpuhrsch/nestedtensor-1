@@ -11,7 +11,7 @@ namespace F = torch::nn::functional;
 namespace at {
 
 Tensor NestedTensor_dropout(const Tensor& input, double p, bool train) {
-  return map_nested_tensor([&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
+  return autograd_map_nested_tensor([&](const at::Tensor t) { return at::dropout(t, p, train); }, input);
 }
 
 Tensor& NestedTensor_dropout_(Tensor& input, double p, bool train) {
@@ -24,10 +24,10 @@ Tensor NestedTensor_embedding(const Tensor & weight, const Tensor & indices,
                  int64_t padding_idx, bool scale_grad_by_freq, bool sparse) {
   if (is_nested_tensor_impl(weight)) {
     //TODO: Needs test coverage
-    return map_nested_tensor([&](at::Tensor w, at::Tensor i) {
+    return autograd_map_nested_tensor([&](at::Tensor w, at::Tensor i) {
         return at::embedding(w, i, padding_idx, scale_grad_by_freq, sparse); }, weight, indices);
   }
-  return map_nested_tensor([&](at::Tensor i) {
+  return autograd_map_nested_tensor([&](at::Tensor i) {
       return at::embedding(weight, i, padding_idx, scale_grad_by_freq, sparse); }, indices);
 }
 
@@ -126,7 +126,6 @@ Tensor NestedTensor_batch_norm(
       input);
 }
 
-<<<<<<< HEAD
 struct NestedTensorFunction_sum
     : public torch::autograd::Function<NestedTensorFunction_sum> {
   static Tensor forward(
@@ -184,8 +183,6 @@ Tensor NestedTensor_sum(const Tensor& self, c10::optional<ScalarType> dtype) {
   return NestedTensorFunction_sum::apply(self, dtype);
 }
 
-=======
->>>>>>> master
 Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   auto self_data = get_nested_tensor_impl(self);
   TORCH_CHECK(
@@ -485,15 +482,12 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   // TODO: Composite op
   m.impl_UNBOXED("dropout", NestedTensor_dropout);
   m.impl_UNBOXED("dropout_", NestedTensor_dropout_);
-<<<<<<< HEAD
   // TODO: Composite op
-=======
   m.impl_UNBOXED("embedding", NestedTensor_embedding);
   m.impl_UNBOXED("add_.Tensor", NestedTensor_add_);
   m.impl_UNBOXED("any", NestedTensor_any);
   m.impl_UNBOXED("all", NestedTensor_all);
   m.impl_UNBOXED("_log_softmax", NestedTensor__log_softmax);
->>>>>>> master
   m.impl_UNBOXED("reshape", NestedTensor_reshape);
   // TODO: Composite op
   m.impl_UNBOXED("softmax.int", NestedTensor_softmax);
