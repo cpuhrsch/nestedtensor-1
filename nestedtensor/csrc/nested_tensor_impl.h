@@ -1,7 +1,11 @@
 #pragma once
 #include <ATen/ATen.h>
+#include <c10/util/Metaprogramming.h>
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
+#include <torch/csrc/autograd/autograd.h>
+#include <torch/extension.h>
+#include <torch/library.h>
 
 namespace torch {
 namespace nested_tensor {
@@ -75,7 +79,6 @@ static inline void apply_nested_tensor(F&& fn, A... a) {
   torch_check_tensor_shape_matches(a...);
   apply(std::move(fn), get_nested_tensor_structure(a)...);
 }
-
 
 at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor);
 torch::nested_tensor::TensorNode get_nested_tensor_structure(
@@ -200,6 +203,98 @@ struct NestedTensorImpl : public c10::TensorImpl {
   SizeNode _nested_size;
   std::vector<int64_t> _sizes;
 };
+
+template <class F, F func, class R, class TypeList>
+struct _Function_no_bw
+    : public torch::autograd::Function<_Function_no_bw<F, func, R, TypeList>> {
+};
+
+template <class F, F func, class R, class... Args>
+struct _Function_no_bw<F, func, R, c10::guts::typelist::typelist<Args...>>
+    : public torch::autograd::Function<_Function_no_bw<F, func, R, Args...>> {
+  static typename c10::guts::infer_function_traits<F>::type::return_type forward(
+      torch::autograd::AutogradContext* ctx,
+      Args... args) {
+    return (*func)(args...);
+  }
+  static torch::autograd::variable_list backward(
+      torch::autograd::AutogradContext* ctx,
+      torch::autograd::variable_list grad_output_) {
+    TORCH_CHECK(false, "Backward not implemented for ", typeid(F).name());
+    return {};
+  }
+};
+
+// #define NO_BW(FUNC) \
+// #define impl_UNBOXED_NO_BW(NAME< FUNC)
+// template <class F, F func, class R, class... Args>
+// struct _Function_no_bw<F, func, R, c10::guts::typelist::typelist<Args...>>
+//     : public torch::autograd::Function<_Function_no_bw<F, func, R, Args...>> {
+//   static typename c10::guts::infer_function_traits<F>::type::return_type forward(
+//       torch::autograd::AutogradContext* ctx,
+//       Args... args) {
+//     return (*func)(args...);
+//   }
+//   static torch::autograd::variable_list backward(
+//       torch::autograd::AutogradContext* ctx,
+//       torch::autograd::variable_list grad_output_) {
+//     TORCH_CHECK(false, "Backward not implemented for ", typeid(F).name());
+//     return {};
+//   }
+// };
+//   static_cast<decltype(FUNC)>( \
+//   _Function_no_bw<decltype(&FUNC),&FUNC,typename c10::guts::infer_function_traits<decltype(&FUNC)>::type::return_type,\ 
+//       typename c10::guts::infer_function_traits<decltype(&FUNC)>::type::parameter_types>::apply)
+
+// template <class F, F fn, class R, class TypeList>
+// struct __Function_no_bw;
+//
+// template <class F, F fn, class R, class... Args>
+// struct __Function_no_bw<F, fn, R, c10::guts::typelist::typelist<Args...>> {
+//  public:
+//   static R function(Args... args) {
+//     std::cout << "WTFFF" << std::endl;
+//     return fn(args...);
+//   }
+// };
+//
+// template <class F, F fn>
+// struct _Function_no_bw {
+//   static auto f = __Function_no_bw<
+//       F,
+//       fn,
+//       typename c10::guts::infer_function_traits<F>::type::return_type,
+//       typename
+//       c10::guts::infer_function_traits<F>::type::parameter_types>::function;
+// };
+
+// template <typename Fn, Fn func>
+// typename std::result_of<Fn(Args...)>::type callfunc(Args&&... args) {
+//   // do something else here
+//   std::cout << "WTFFFF" << std::endl;
+//   apply(args...);
+// }
+
+//  public:
+//   static typename c10::guts::infer_function_traits<F>::type::return_type
+//   function(typename c10::guts::infer_function_traits<
+//            F>::type::parameter_types... args) {
+//     std::cout << "WTF" << std::endl;
+//     return fn(args...);
+//   }
+// };
+
+// template <class F, F fn>
+// static inline NestedNode<
+//     typename c10::guts::infer_function_traits<F>::type::return_type>
+//   public:
+//   static auto _helper =  _Function_no_bw<
+//       F,
+//     fn,
+//       typename c10::guts::infer_function_traits<F>::type::return_type,
+//       typename
+//       c10::guts::infer_function_traits<F>::type::parameter_types>::
+//       function;
 
 inline bool is_tensor_shape(const at::Tensor tensor) {
   auto nt = get_nested_tensor_impl(tensor);
