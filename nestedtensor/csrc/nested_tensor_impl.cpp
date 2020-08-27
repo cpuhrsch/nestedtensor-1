@@ -463,7 +463,13 @@ Tensor NestedTensor_pin_memory(const Tensor& self) {
       [](Tensor tensor) { return at::native::pin_memory(tensor); }, self);
 }
 
-Tensor expand(const Tensor& self, IntArrayRef size, bool implicit) {
+Tensor NestedTensor_expand(const Tensor& self, IntArrayRef size, bool implicit) {
+  TORCH_CHECK(false, "Expand is not implemented.");
+  return self;
+}
+
+Tensor NestedTensor_expand_as(const Tensor& self, const Tensor& other) {
+  TORCH_CHECK(false, "Expand_as is not implemented.");
   return self;
 }
 
@@ -492,6 +498,8 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "squeeze.dim", NestedTensor_squeeze_dim);
 }
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  nt_impl(m, "expand", NestedTensor_expand);
+  nt_impl(m, "expand_as", NestedTensor_expand_as);
   nt_impl(m, "copy_", NestedTensor_copy_);
   nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "unbind.int", NestedTensor_unbind);

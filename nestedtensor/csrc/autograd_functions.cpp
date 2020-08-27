@@ -223,26 +223,42 @@ struct NestedTensorFunction_sum
     : public torch::autograd::Function<NestedTensorFunction_sum> {
   static Tensor forward(
       torch::autograd::AutogradContext* ctx,
-      const Tensor& input,
+      const Tensor& input_,
       c10::optional<ScalarType> dtype) {
-    ctx->save_for_backward({input});
-    auto tensors = flatten(
-        map([&dtype](at::Tensor tensor) { return at::sum(tensor, dtype); },
-            get_nested_tensor_structure(input)));
-    at::Tensor result;
-    if (tensors.size() == 0) {
-      if (dtype) {
-        return at::ones({0}, *dtype);
+    auto input = map_nested_tensor(
+        [](Tensor t) {
+          auto alias = t.alias();
+          alias.requires_grad_();
+          return alias;
+        },
+        input_);
+    auto tensors = flatten(map(
+        [&dtype](at::Tensor tensor) {
+          AutoGradMode autogradmode(true);
+          return at::sum(tensor, dtype);
+        },
+        get_nested_tensor_structure(input)));
+    Tensor result;
+    {
+      AutoGradMode autogradmode(true);
+      if (tensors.size() == 0) {
+        if (dtype) {
+          return at::ones({0}, *dtype);
+        }
+        return at::ones({0});
       }
-      return at::ones({0});
+      auto all_tensor = at::stack(tensors);
+      result = at::sum(all_tensor, dtype);
     }
-    return at::sum(at::stack(tensors), dtype);
+    ctx->save_for_backward({result, input});
+    return result.alias();
   }
   static torch::autograd::variable_list backward(
       torch::autograd::AutogradContext* ctx,
       torch::autograd::variable_list grad_output_) {
     auto saved = ctx->get_saved_variables();
-    at::Tensor input = saved[0];
+    at::Tensor result = saved[0];
+    at::Tensor input = saved[1];
     at::Tensor grad_output = grad_output_[0];
     TORCH_CHECK(
         !grad_output.requires_grad(),
@@ -253,9 +269,8 @@ struct NestedTensorFunction_sum
     //
     at::Tensor tensor = map_nested_tensor(
         [&](Tensor i) {
-          return grad_output.expand(i.sizes());
-          // return torch::autograd::grad({result}, {i}, {grad_output},
-          // true)[0];
+          // return grad_output.expand(i.sizes());
+          return torch::autograd::grad({result}, {i}, {grad_output}, true)[0];
         },
         input);
     return {tensor, undef};
@@ -334,7 +349,7 @@ Tensor NestedTensor_upsample_bilinear2d(
 Tensor NestedTensor_clone(
     const Tensor& src,
     c10::optional<c10::MemoryFormat> optional_memory_format) {
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [&optional_memory_format](Tensor a) {
         return at::clone(a, optional_memory_format);
       },
@@ -346,11 +361,11 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "max_pool2d", NestedTensor_max_pool2d);
   nt_impl(m, "sum", NestedTensor_sum);
   // nt_impl(m, "upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
+  nt_impl(m, "clone", NestedTensor_clone);
   nt_impl(m, "dropout", NestedTensor_dropout);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
-  nt_impl(m, "clone", NestedTensor_clone);
   nt_impl(m, "add.Tensor", NestedTensor_add);
   nt_impl(m, "add_.Tensor", NestedTensor_add_);
   nt_impl(m, "relu", NestedTensor_relu);
