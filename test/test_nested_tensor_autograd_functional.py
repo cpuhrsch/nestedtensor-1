@@ -12,6 +12,7 @@ from torch.nn import functional as F
 
 
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+def ntnt_nograd(x): return nestedtensor.nested_tensor(x)
 
 
 class TestAutogradFunctional(TestCase):
@@ -142,6 +143,7 @@ class TestAutogradFunctional(TestCase):
 
     def test_resnet_bottleneck(self):
         import torchvision
+
         def _test(Bottleneck):
             inputs_ = [
                 torch.randn(256, 50, 60, requires_grad=True)
@@ -179,6 +181,7 @@ class TestAutogradFunctional(TestCase):
 
     def test_resnet_classification(self):
         import torchvision
+
         def _test(FCNHead):
             inputs_ = [
                 torch.randn(256, 50, 60, requires_grad=True)
@@ -186,7 +189,7 @@ class TestAutogradFunctional(TestCase):
             inputs = ntnt(inputs_)
 
             b = FCNHead()
-            list(b.children())[3].eval() # dropout is stochastic otherwise
+            list(b.children())[3].eval()  # dropout is stochastic otherwise
             b(inputs).sum().backward()
             g0 = list(p.grad for (n, p) in b.named_parameters())
 
@@ -242,66 +245,65 @@ class TestAutogradFunctional(TestCase):
         scalar2.backward()
         self.assertEqual(attn_output.squeeze(1), nt_attn_output[0])
 
-    def test_fzbn2d(self):
-        class FrozenBatchNorm2d(torch.nn.Module):
-            """
-            BatchNorm2d where the batch statistics and the affine parameters are fixed.
-        
-            Copy-paste from torchvision.misc.ops with added eps before rqsrt,
-            without which any other models than torchvision.models.resnet[18,34,50,101]
-            produce nans.
-            """
-        
-            def __init__(self, n):
-                super(FrozenBatchNorm2d, self).__init__()
-                self.register_buffer("weight", torch.ones(n))
-                self.register_buffer("bias", torch.zeros(n))
-                self.register_buffer("running_mean", torch.zeros(n))
-                self.register_buffer("running_var", torch.ones(n))
-        
-            def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
-                                      missing_keys, unexpected_keys, error_msgs):
-                num_batches_tracked_key = prefix + 'num_batches_tracked'
-                if num_batches_tracked_key in state_dict:
-                    del state_dict[num_batches_tracked_key]
-        
-                super(FrozenBatchNorm2d, self)._load_from_state_dict(
-                    state_dict, prefix, local_metadata, strict,
-                    missing_keys, unexpected_keys, error_msgs)
-        
-            def forward(self, x):
-                # move reshapes to the beginning
-                # to make it fuser-friendly
-                print("0: ", x.requires_grad)
-                w = self.weight.reshape(1, -1, 1, 1)
-                b = self.bias.reshape(1, -1, 1, 1)
-                rv = self.running_var.reshape(1, -1, 1, 1)
-                rm = self.running_mean.reshape(1, -1, 1, 1)
-                eps = 1e-5
-                scale = w * (rv + eps).rsqrt()
-                bias = b - rm * scale
-                res0 = (x * scale + bias)
-                # res0 = (x + bias)
-                # return res0
-                # print("res0: ", res0.requires_grad)
-                res = res0.squeeze(1)
-                # print("res: ", res.requires_grad)
-                return res
+    def test_squeeze(self):
+        t = torch.randn(2, 3)
+        result = ntnt_nograd([t])
 
-        b = FrozenBatchNorm2d(64) #.cuda()
-        import random
-        random.seed(1010)
-        RAND_INTS = [random.randint(100, 300) for _ in range(20)]
-        nested_tensor = nestedtensor.nested_tensor(
-            [torch.rand(64, i, 256) for i in RAND_INTS], device=torch.device('cpu'), dtype=torch.float, requires_grad=True)
-        s = b(nested_tensor).sum()
-        # import torchviz
-        # dot = torchviz.make_dot(s) # , params=dict(b.named_parameters()))
-        # dot.format = 'svg'
-        # dot.render('asdf.svg')
-        print(s)
-        s.backward()
-        print(nested_tensor.grad.sum())
+        nt = ntnt_nograd([[t.reshape(1, 2, 1, 3)]])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([t.reshape(2, 3)])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([[t.reshape(2, 3)]])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([t.reshape(1, 2, 3)])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([t.reshape(1, 2, 1, 3, 1)])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        nt = ntnt_nograd([[[t.reshape(1, 2, 3)]]])
+        # self.assertEqual(nt.squeeze(), result)
+        self.assertRaises(RuntimeError, lambda: nt.squeeze())
+        nt.squeeze_()
+        self.assertEqual(nt, result)
+
+        result = ntnt([t])
+        nt = ntnt([t.reshape(1, 2, 3)])
+        self.assertEqual(nt.squeeze(1), result)
+        self.assertRaisesRegex(RuntimeError, "Cannot squeeze first dimension.", lambda: nt.squeeze(0))
+        self.assertRaisesRegex(RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(2))
+        self.assertRaisesRegex(RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(3))
+        self.assertRaises(IndexError, lambda: nt.squeeze(4))
+        a = nt.squeeze(1)
+        a.sum().backward()
+        self.assertEqual(nt.grad, ntnt_nograd([t.reshape(1, 2, 3).mul(0).add(1)]))
+
+        nt = ntnt([[t.reshape(1, 2, 1, 3)]])
+        self.assertRaisesRegex(RuntimeError, "Cannot squeeze nested dimension.", lambda: nt.squeeze(1))
+        # self.assertEqual(nt.squeeze(1), ntnt(
+        #     [t.reshape(1, 2, 1, 3)]))
+        self.assertEqual(nt.squeeze(
+            2), ntnt([[t.reshape(2, 1, 3)]]))
+        self.assertEqual(nt.squeeze(
+            4), ntnt([[t.reshape(1, 2, 3)]]))
 
 
 if __name__ == "__main__":
