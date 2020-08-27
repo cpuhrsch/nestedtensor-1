@@ -221,12 +221,19 @@ std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
 }
 
 int64_t NestedTensorImpl::size(int64_t dim) const {
+#ifdef TRACEPACKED
+    std::cout << "Using NestedTensorImpl size." << std::endl;
+#endif
   std::vector<c10::optional<int64_t>> size = opt_sizes();
   if (size[dim]) {
     return *(size[dim]);
   }
   throw std::runtime_error(
       "NestedTensor size at dim is not Tensor shape compliant.");
+}
+
+int64_t NestedTensor_size_int(const Tensor& self, int64_t dim) {
+  return get_nested_tensor_impl(self)->size(dim);
 }
 
 IntArrayRef NestedTensorImpl::strides() const {
@@ -496,6 +503,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "squeeze_.dim", NestedTensor_squeeze__dim);
   nt_impl(m, "squeeze", NestedTensor_squeeze);
   nt_impl(m, "squeeze.dim", NestedTensor_squeeze_dim);
+  nt_impl(m, "size.int", NestedTensor_size_int);
 }
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   nt_impl(m, "expand", NestedTensor_expand);

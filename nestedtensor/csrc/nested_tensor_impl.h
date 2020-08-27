@@ -7,7 +7,7 @@
 #include <torch/extension.h>
 #include <torch/library.h>
 
-// #define TRACEPACKED 1
+#define TRACEPACKED 1
 
 namespace torch {
 namespace nested_tensor {
@@ -229,7 +229,9 @@ struct NestedTensorImpl : public c10::TensorImpl {
 
   std::vector<c10::optional<int64_t>> opt_sizes() const;
   IntArrayRef sizes() const override {
-    // std::cout << "Using nestedtensorimpl sizes." << std::endl;
+#ifdef TRACEPACKED
+    std::cout << "Using NestedTensorImpl sizes." << std::endl;
+#endif
     return IntArrayRef(_sizes);
   }
   int64_t size(int64_t dim) const override;

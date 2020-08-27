@@ -16,14 +16,14 @@ Tensor NestedTensor_embedding(
     bool sparse) {
   if (is_nested_tensor_impl(weight)) {
     // TODO: Needs test coverage
-    return map_nested_tensor(
+    return autograd_map_nested_tensor(
         [&](at::Tensor w, at::Tensor i) {
           return at::embedding(w, i, padding_idx, scale_grad_by_freq, sparse);
         },
         weight,
         indices);
   }
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [&](at::Tensor i) {
         return at::embedding(
             weight, i, padding_idx, scale_grad_by_freq, sparse);
@@ -264,11 +264,11 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "transpose.int", NestedTensor_transpose);
   nt_impl(m, "softmax.int", NestedTensor_softmax);
   nt_impl(m, "layer_norm", NestedTensor_layer_norm);
-  nt_impl(m, "flatten.using_ints", NestedTensor_flatten);
+  nt_impl(m, "embedding", NestedTensor_embedding);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
-  nt_impl(m, "embedding", NestedTensor_embedding);
+  nt_impl(m, "flatten.using_ints", NestedTensor_flatten);
   nt_impl(m, "any", NestedTensor_any);
   nt_impl(m, "all", NestedTensor_all);
   nt_impl(m, "stack", NestedTensor_stack);
