@@ -134,13 +134,6 @@ Tensor& NestedTensor_matmul_out(
   return result;
 }
 
-at::Tensor mm_mat1_backward(
-    at::Tensor grad,
-    at::Tensor other,
-    c10::Scalar alpha) {
-  return at::mul(at::matmul(grad, other.transpose(0, 1)), alpha);
-}
-
 // TODO: Technically this has the wrong semantics and shouldn't accept NTs of
 // 3dim, but there's not addmatml
 struct NestedTensorFunction_addmm
@@ -215,7 +208,7 @@ struct NestedTensorFunction_addmm
         [&grad_other](at::Tensor& t) { grad_other.add_(t); }, grad_other_nt);
     at::Tensor undef;
     return {at::mul(input, beta),
-            mm_mat1_backward(grad, other, alpha),
+            at::mul(at::matmul(grad, other.transpose(0, 1)), alpha),
             grad_other,
             undef,
             undef};

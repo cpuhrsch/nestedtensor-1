@@ -79,8 +79,9 @@ class TestIntegration(TestCase):
         t_target = torch.stack([tr1, tr2])
         confmat = ConfusionMatrix(num_classes)
 
-        output1 = model(t_input)
-        output1 = output1["out"]
+        output1_out = model(t_input)
+        output1 = output1_out["out"]
+        output1_aux = output1_out["aux"]
 
         confmat.update(t_target.flatten(), output1.argmax(1).flatten())
         confmat.reduce_from_all_processes()
@@ -95,8 +96,9 @@ class TestIntegration(TestCase):
         nt_target = nestedtensor.nested_tensor([nt_tr1, nt_tr2], requires_grad=True)
         confmat2 = ConfusionMatrix(num_classes)
 
-        output2 = model(nt_input)
-        output2 = output2["out"]
+        output2_out = model(nt_input)
+        output2 = output2_out["out"]
+        output2_aux = output2_out["aux"]
 
         for a, b in zip(nt_target, output2):
             confmat2.update(a.flatten(), b.argmax(0).flatten())
@@ -109,8 +111,17 @@ class TestIntegration(TestCase):
         output2_sum = output2.sum()
         self.assertEqual(output1_sum, output2_sum)
 
-        output1_sum.backward()
-        output2_sum.backward()
+        output1_aux_sum = output1_aux.sum()
+        output2_aux_sum = output2_aux.sum()
+        self.assertEqual(output1_aux_sum, output2_aux_sum)
+
+        # output1_sum.backward()
+        # output2_sum.backward()
+        output1_aux_sum.backward()
+        output2_aux_sum.backward()
+        for (n, v) in model.named_parameters():
+            if v.grad is None:
+                print(n)
 
         # TODO: Re-enable under autograd support
         self.assertEqual(t1.grad, nt_input.grad[0])

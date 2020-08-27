@@ -223,42 +223,26 @@ struct NestedTensorFunction_sum
     : public torch::autograd::Function<NestedTensorFunction_sum> {
   static Tensor forward(
       torch::autograd::AutogradContext* ctx,
-      const Tensor& input_,
+      const Tensor& input,
       c10::optional<ScalarType> dtype) {
-    auto input = map_nested_tensor(
-        [](Tensor t) {
-          auto alias = t.alias();
-          alias.requires_grad_();
-          return alias;
-        },
-        input_);
-    auto tensors = flatten(map(
-        [&dtype](at::Tensor tensor) {
-          AutoGradMode autogradmode(true);
-          return at::sum(tensor, dtype);
-        },
-        get_nested_tensor_structure(input)));
-    Tensor result;
-    {
-      AutoGradMode autogradmode(true);
-      if (tensors.size() == 0) {
-        if (dtype) {
-          return at::ones({0}, *dtype);
-        }
-        return at::ones({0});
+    ctx->save_for_backward({input});
+    auto tensors = flatten(
+        map([&dtype](at::Tensor tensor) { return at::sum(tensor, dtype); },
+            get_nested_tensor_structure(input)));
+    at::Tensor result;
+    if (tensors.size() == 0) {
+      if (dtype) {
+        return at::ones({0}, *dtype);
       }
-      auto all_tensor = at::stack(tensors);
-      result = at::sum(all_tensor, dtype);
+      return at::ones({0});
     }
-    ctx->save_for_backward({result, input});
-    return result.alias();
+    return at::sum(at::stack(tensors), dtype);
   }
   static torch::autograd::variable_list backward(
       torch::autograd::AutogradContext* ctx,
       torch::autograd::variable_list grad_output_) {
     auto saved = ctx->get_saved_variables();
-    at::Tensor result = saved[0];
-    at::Tensor input = saved[1];
+    at::Tensor input = saved[0];
     at::Tensor grad_output = grad_output_[0];
     TORCH_CHECK(
         !grad_output.requires_grad(),
@@ -269,8 +253,9 @@ struct NestedTensorFunction_sum
     //
     at::Tensor tensor = map_nested_tensor(
         [&](Tensor i) {
-          // return grad_output.expand(i.sizes());
-          return torch::autograd::grad({result}, {i}, {grad_output}, true)[0];
+          return grad_output.expand(i.sizes());
+          // return torch::autograd::grad({result}, {i}, {grad_output},
+          // true)[0];
         },
         input);
     return {tensor, undef};

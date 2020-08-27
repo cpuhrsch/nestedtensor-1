@@ -109,7 +109,7 @@ Tensor NestedTensor_layer_norm(
       input_data->opt_sizes()[input.dim() - 1],
       "Cannot normalize across irregular dimension ",
       std::to_string(input.dim() - 1));
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [normalized_shape, &weight, &bias, eps](const at::Tensor t) {
         return at::layer_norm(t, normalized_shape, weight, bias, eps, true);
       },
@@ -160,13 +160,8 @@ Tensor NestedTensor__log_softmax(
     const Tensor& self,
     const int64_t dim_,
     const bool half_to_float) {
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [&](Tensor a) { return at::_log_softmax(a, dim_, half_to_float); }, self);
-}
-
-Tensor NestedTensor_pin_memory(const Tensor& self) {
-  return map_nested_tensor(
-      [](Tensor tensor) { return at::native::pin_memory(tensor); }, self);
 }
 
 Tensor NestedTensor_flatten(
@@ -181,7 +176,7 @@ Tensor NestedTensor_flatten(
       start_dim >= nested_dim, "Cannot flatten nested dimension ", start_dim);
   TORCH_CHECK(
       end_dim >= nested_dim, "Cannot flatten nested dimension ", end_dim);
-  return map_nested_tensor(
+  return autograd_map_nested_tensor(
       [start_dim, end_dim, nested_dim](at::Tensor tensor) {
         return at::flatten(
             tensor, start_dim - nested_dim, end_dim - nested_dim);
@@ -264,19 +259,18 @@ Tensor NestedTensor_cat(TensorList tensors, int64_t dim) {
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  nt_impl(m, "embedding", NestedTensor_embedding);
-  nt_impl(m, "any", NestedTensor_any);
-  nt_impl(m, "all", NestedTensor_all);
   nt_impl(m, "_log_softmax", NestedTensor__log_softmax);
   nt_impl(m, "reshape", NestedTensor_reshape);
   nt_impl(m, "transpose.int", NestedTensor_transpose);
   nt_impl(m, "softmax.int", NestedTensor_softmax);
   nt_impl(m, "layer_norm", NestedTensor_layer_norm);
-  nt_impl(m, "pin_memory", NestedTensor_pin_memory);
+  nt_impl(m, "flatten.using_ints", NestedTensor_flatten);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
-  nt_impl(m, "flatten.using_ints", NestedTensor_flatten);
+  nt_impl(m, "embedding", NestedTensor_embedding);
+  nt_impl(m, "any", NestedTensor_any);
+  nt_impl(m, "all", NestedTensor_all);
   nt_impl(m, "stack", NestedTensor_stack);
   nt_impl(m, "stack.out", NestedTensor_stack_out);
   nt_impl(m, "cat", NestedTensor_cat);

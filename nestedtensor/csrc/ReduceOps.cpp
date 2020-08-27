@@ -39,11 +39,11 @@ Tensor NestedTensor_cumsum(
               std::to_string(dim));                                           \
       newdims.push_back(dim - nested_dim);                                    \
     }                                                                         \
-    return wrap_tensor_node(map_nested_tensor(                                \
+    return autograd_map_nested_tensor(                                        \
         [nested_dim, newdims, keepdims](at::Tensor tensor) {                  \
           return FUNC(tensor, c10::ArrayRef<int64_t>(newdims), keepdims);     \
         },                                                                    \
-        self));                                                               \
+        self);                                                                \
   }
 
 REDUCE_DIM_LIST_FUNC(mean_dim, at::mean, "mean");
@@ -81,11 +81,11 @@ Tensor NestedTensor_prod(const Tensor& self, c10::optional<ScalarType> dtype) {
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "sum.dim_IntList", NestedTensor_sum_dim);
   nt_impl(m, "mean.dim", NestedTensor_mean_dim);
-  nt_impl(m, "mean", NestedTensor_mean);
-  nt_impl(m, "prod", NestedTensor_prod);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  nt_impl(m, "mean", NestedTensor_mean);
+  nt_impl(m, "prod", NestedTensor_prod);
   nt_impl(m, "cumsum", NestedTensor_cumsum);
 }
 

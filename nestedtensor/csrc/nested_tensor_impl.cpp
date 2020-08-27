@@ -447,6 +447,12 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
   return wrap_tensor_node(TensorNode(std::move(result_nodes)));
 }
 
+Tensor NestedTensor_pin_memory(const Tensor& self) {
+  return map_nested_tensor(
+      [](Tensor tensor) { return at::native::pin_memory(tensor); }, self);
+}
+
+
 void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
   std::cerr << "Calling autograd fallback for " << op.schema() << std::endl;
   c10::impl::ExcludeDispatchKeyGuard guard(
@@ -468,6 +474,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   // nt_impl("contiguous", no_bw(TORCH_FN(NestedTensor_contiguous)));
   nt_impl(m, "is_pinned", NestedTensor_is_pinned);
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
+  nt_impl(m, "pin_memory", NestedTensor_pin_memory);
 }
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   nt_impl(m, "contiguous", NestedTensor_contiguous);
