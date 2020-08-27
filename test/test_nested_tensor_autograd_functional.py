@@ -281,20 +281,27 @@ class TestAutogradFunctional(TestCase):
                 scale = w * (rv + eps).rsqrt()
                 bias = b - rm * scale
                 res0 = (x * scale + bias)
-                print("res0: ", res0.requires_grad)
-                # res = res0.squeeze(1)
+                # res0 = (x + bias)
+                # return res0
+                # print("res0: ", res0.requires_grad)
+                res = res0.squeeze(1)
                 # print("res: ", res.requires_grad)
-                return res0
+                return res
 
-        b = FrozenBatchNorm2d(64).cuda()
+        b = FrozenBatchNorm2d(64) #.cuda()
         import random
         random.seed(1010)
         RAND_INTS = [random.randint(100, 300) for _ in range(20)]
         nested_tensor = nestedtensor.nested_tensor(
-            [torch.rand(64, i, 256) for i in RAND_INTS], device=torch.device('cuda'), dtype=torch.float, requires_grad=True)
+            [torch.rand(64, i, 256) for i in RAND_INTS], device=torch.device('cpu'), dtype=torch.float, requires_grad=True)
         s = b(nested_tensor).sum()
+        # import torchviz
+        # dot = torchviz.make_dot(s) # , params=dict(b.named_parameters()))
+        # dot.format = 'svg'
+        # dot.render('asdf.svg')
         print(s)
         s.backward()
+        print(nested_tensor.grad.sum())
 
 
 if __name__ == "__main__":

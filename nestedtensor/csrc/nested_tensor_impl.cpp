@@ -122,16 +122,17 @@ NestedTensorImpl::NestedTensorImpl(TensorNode structure)
   TORCH_CHECK(
       !_structure.is_leaf(),
       "NestedTensorImpl must be given structure of at least height 1.")
-  for (auto opt_int : construct_size(_nested_size)) {
-    if (opt_int) {
-      _sizes.push_back(*opt_int);
-    } else {
-      // TODO: Should we prefer this over opt_sizes?
-      // TODO: Using -1 here is of of a similar thought as using -1 in reshape
-      // as a placeholder. Unfortunatly using -1 here interacts very badly with
-      // the rest of the functions that consume size.
-      _sizes.push_back(0);
-    }
+  // NOTE: This is and must always be defined. There is no "raggedness" here.
+  _sizes.push_back(_structure.degree());
+  for (int64_t i = 1; i < _structure.height(); i++) {
+    // TODO: Should we prefer this over opt_sizes?
+    // TODO: Using -1 here is of of a similar thought as using -1 in reshape
+    // as a placeholder. Unfortunatly using -1 here interacts very badly with
+    // the rest of the functions that consume size.
+    // NOTE: This needs to happend for backwards in autograd/engine.cpp, which
+    // calls into expandable_to(a.sizes(), b.sizes()), which cannot be
+    // overwritten.
+    _sizes.push_back(0);
   }
 }
 
@@ -452,6 +453,9 @@ Tensor NestedTensor_pin_memory(const Tensor& self) {
       [](Tensor tensor) { return at::native::pin_memory(tensor); }, self);
 }
 
+Tensor expand(const Tensor& self, IntArrayRef size, bool implicit) {
+  return self;
+}
 
 void traceFallbackPre(const c10::OperatorHandle& op, Stack* stack) {
   std::cerr << "Calling autograd fallback for " << op.schema() << std::endl;
@@ -470,13 +474,15 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "is_pinned", NestedTensor_is_pinned);
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
   nt_impl(m, "pin_memory", NestedTensor_pin_memory);
-}
-TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
-  nt_impl(m, "copy_", NestedTensor_copy_);
+  // NOTE: This *must* live above autograd, because the backward pass uses unsqueeze_to, which
+  // requires a homogenous definition of .sizes()
   nt_impl(m, "squeeze_", NestedTensor_squeeze_);
   nt_impl(m, "squeeze_.dim", NestedTensor_squeeze__dim);
   nt_impl(m, "squeeze", NestedTensor_squeeze);
   nt_impl(m, "squeeze.dim", NestedTensor_squeeze_dim);
+}
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  nt_impl(m, "copy_", NestedTensor_copy_);
   nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "unbind.int", NestedTensor_unbind);
   nt_impl(m, "select.int", NestedTensor_select);
