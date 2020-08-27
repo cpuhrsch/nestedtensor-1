@@ -288,22 +288,88 @@ class TestAutogradFunctional(TestCase):
         result = ntnt([t])
         nt = ntnt([t.reshape(1, 2, 3)])
         self.assertEqual(nt.squeeze(1), result)
-        self.assertRaisesRegex(RuntimeError, "Cannot squeeze first dimension.", lambda: nt.squeeze(0))
-        self.assertRaisesRegex(RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(2))
-        self.assertRaisesRegex(RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(3))
+        self.assertRaisesRegex(
+            RuntimeError, "Cannot squeeze first dimension.", lambda: nt.squeeze(0))
+        self.assertRaisesRegex(
+            RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(2))
+        self.assertRaisesRegex(
+            RuntimeError, "Given dimension is either undefined or not a singleton.", lambda: nt.squeeze(3))
         self.assertRaises(IndexError, lambda: nt.squeeze(4))
         a = nt.squeeze(1)
         a.sum().backward()
-        self.assertEqual(nt.grad, ntnt_nograd([t.reshape(1, 2, 3).mul(0).add(1)]))
+        self.assertEqual(nt.grad, ntnt_nograd(
+            [t.reshape(1, 2, 3).mul(0).add(1)]))
 
         nt = ntnt([[t.reshape(1, 2, 1, 3)]])
-        self.assertRaisesRegex(RuntimeError, "Cannot squeeze nested dimension.", lambda: nt.squeeze(1))
+        self.assertRaisesRegex(
+            RuntimeError, "Cannot squeeze nested dimension.", lambda: nt.squeeze(1))
         # self.assertEqual(nt.squeeze(1), ntnt(
         #     [t.reshape(1, 2, 1, 3)]))
         self.assertEqual(nt.squeeze(
             2), ntnt([[t.reshape(2, 1, 3)]]))
         self.assertEqual(nt.squeeze(
             4), ntnt([[t.reshape(1, 2, 3)]]))
+
+    def test_fzbn2d(self):
+        class FrozenBatchNorm2d(torch.nn.Module):
+            """
+            BatchNorm2d where the batch statistics and the affine parameters are fixed.
+
+            Copy-paste from torchvision.misc.ops with added eps before rqsrt,
+            without which any other models than torchvision.models.resnet[18,34,50,101]
+            produce nans.
+            """
+
+            def __init__(self, n):
+                super(FrozenBatchNorm2d, self).__init__()
+                self.register_buffer("weight", torch.ones(n))
+                self.register_buffer("bias", torch.zeros(n))
+                self.register_buffer("running_mean", torch.zeros(n))
+                self.register_buffer("running_var", torch.ones(n))
+
+            def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
+                                      missing_keys, unexpected_keys, error_msgs):
+                num_batches_tracked_key = prefix + 'num_batches_tracked'
+                if num_batches_tracked_key in state_dict:
+                    del state_dict[num_batches_tracked_key]
+
+                super(FrozenBatchNorm2d, self)._load_from_state_dict(
+                    state_dict, prefix, local_metadata, strict,
+                    missing_keys, unexpected_keys, error_msgs)
+
+            def forward(self, x):
+                # move reshapes to the beginning
+                # to make it fuser-friendly
+                print("0: ", x.requires_grad)
+                w = self.weight.reshape(1, -1, 1, 1)
+                b = self.bias.reshape(1, -1, 1, 1)
+                rv = self.running_var.reshape(1, -1, 1, 1)
+                rm = self.running_mean.reshape(1, -1, 1, 1)
+                eps = 1e-5
+                scale = w * (rv + eps).rsqrt()
+                bias = b - rm * scale
+                res0 = (x * scale + bias)
+                # res0 = (x + bias)
+                # return res0
+                # print("res0: ", res0.requires_grad)
+                res = res0.squeeze(1)
+                # print("res: ", res.requires_grad)
+                return res
+
+        b = FrozenBatchNorm2d(64)  # .cuda()
+        import random
+        random.seed(1010)
+        RAND_INTS = [random.randint(100, 300) for _ in range(20)]
+        nested_tensor = nestedtensor.nested_tensor(
+            [torch.rand(64, i, 256) for i in RAND_INTS], device=torch.device('cpu'), dtype=torch.float, requires_grad=True)
+        s = b(nested_tensor).sum()
+        # import torchviz
+        # dot = torchviz.make_dot(s) # , params=dict(b.named_parameters()))
+        # dot.format = 'svg'
+        # dot.render('asdf.svg')
+        print(s)
+        s.backward()
+        print(nested_tensor.grad.sum())
 
 
 if __name__ == "__main__":
