@@ -466,17 +466,17 @@ TORCH_LIBRARY_IMPL(_, PrivateUse1_PreAutograd, m) {
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
-  nt_impl(m, "copy_", NestedTensor_copy_);
-  nt_impl(m, "squeeze_", NestedTensor_squeeze_);
-  nt_impl(m, "squeeze_.dim", NestedTensor_squeeze__dim);
-  nt_impl(m, "squeeze", NestedTensor_squeeze);
-  nt_impl(m, "squeeze.dim", NestedTensor_squeeze_dim);
   // nt_impl("contiguous", no_bw(TORCH_FN(NestedTensor_contiguous)));
   nt_impl(m, "is_pinned", NestedTensor_is_pinned);
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
   nt_impl(m, "pin_memory", NestedTensor_pin_memory);
 }
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  nt_impl(m, "copy_", NestedTensor_copy_);
+  nt_impl(m, "squeeze_", NestedTensor_squeeze_);
+  nt_impl(m, "squeeze_.dim", NestedTensor_squeeze__dim);
+  nt_impl(m, "squeeze", NestedTensor_squeeze);
+  nt_impl(m, "squeeze.dim", NestedTensor_squeeze_dim);
   nt_impl(m, "contiguous", NestedTensor_contiguous);
   nt_impl(m, "unbind.int", NestedTensor_unbind);
   nt_impl(m, "select.int", NestedTensor_select);

@@ -334,7 +334,7 @@ Tensor NestedTensor_upsample_bilinear2d(
 Tensor NestedTensor_clone(
     const Tensor& src,
     c10::optional<c10::MemoryFormat> optional_memory_format) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&optional_memory_format](Tensor a) {
         return at::clone(a, optional_memory_format);
       },
@@ -346,11 +346,11 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1_PreAutograd, m) {
   nt_impl(m, "max_pool2d", NestedTensor_max_pool2d);
   nt_impl(m, "sum", NestedTensor_sum);
   // nt_impl(m, "upsample_bilinear2d", NestedTensor_upsample_bilinear2d);
-  nt_impl(m, "clone", NestedTensor_clone);
   nt_impl(m, "dropout", NestedTensor_dropout);
 }
 
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  nt_impl(m, "clone", NestedTensor_clone);
   nt_impl(m, "add.Tensor", NestedTensor_add);
   nt_impl(m, "add_.Tensor", NestedTensor_add_);
   nt_impl(m, "relu", NestedTensor_relu);
