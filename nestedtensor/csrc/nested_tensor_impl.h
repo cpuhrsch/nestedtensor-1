@@ -146,11 +146,24 @@ at::Tensor wrap_tensor_node(NestedTensorImpl);
 at::Tensor wrap_tensor_node(TensorNode&&);
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
 
+template<typename T> struct TD;
+
 template <class F, class... A>
 static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
-  torch_check_tensor_shape_matches(a...);
-  return wrap_tensor_node(
-      map(std::move(fn), get_nested_tensor_structure(a)...));
+  // torch_check_tensor_shape_matches(a...);
+  // return wrap_tensor_node(
+  //     map(std::move(fn), get_nested_tensor_structure(a)...));
+  return c10::guts::apply(
+      [&fn](auto... filtered) {
+        return wrap_tensor_node(map(std::move(fn), filtered...));
+      },
+      c10::guts::tuple_map(std::make_tuple(a...), [](auto a) {
+	//	TD<decltype(a)> td;
+        return c10::guts::if_constexpr<
+            std::is_same<at::Tensor, std::remove_const<std::remove_reference<decltype(a)>>>::value>(
+            [&a](auto) -> TensorNode { return get_nested_tensor_structure(a); },
+            [&a](auto) -> decltype(a) { return a; });
+      }));
 }
 
 struct NestedTensorImpl : public c10::TensorImpl {
