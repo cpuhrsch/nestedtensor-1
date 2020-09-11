@@ -90,17 +90,18 @@ def get_extensions():
     if int(os.environ.get("DEBUG", 0)):
         extra_compile_args = {"cxx": ["-O0", "-fno-inline", "-g", "-std=c++14"]}
         extra_link_args = ["-O0", "-g"]
-    if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv(
-        "FORCE_CUDA", "0"
-    ) == "1":
-        extension = CUDAExtension
-        define_macros += [("WITH_CUDA", None)]
-        nvcc_flags = os.getenv("NVCC_FLAGS", "")
-        if nvcc_flags == "":
-            nvcc_flags = []
-        else:
-            nvcc_flags = nvcc_flags.split(" ")
-        extra_compile_args["nvcc"] = nvcc_flags
+
+    if not torch.cuda.is_available():
+        raise RuntimeError("NestedTensor requires CUDA")
+
+    extension = CUDAExtension
+    define_macros += [("WITH_CUDA", None)]
+    nvcc_flags = os.getenv("NVCC_FLAGS", "")
+    if nvcc_flags == "":
+        nvcc_flags = []
+    else:
+        nvcc_flags = nvcc_flags.split(" ")
+    extra_compile_args["nvcc"] = nvcc_flags
 
     if sys.platform == "win32":
         define_macros += [("nestedtensor_EXPORTS", None)]
@@ -108,6 +109,7 @@ def get_extensions():
     this_dir = os.path.dirname(os.path.abspath(__file__))
     extensions_dir = os.path.join(this_dir, "nestedtensor", "csrc")
     utils_dir = os.path.join(extensions_dir, "utils")
+    cuda_dir = os.path.join(extensions_dir, "cuda")
 
     extension_sources = set(
         os.path.join(extensions_dir, p)
@@ -116,8 +118,11 @@ def get_extensions():
     utils_sources = set(
         os.path.join(utils_dir, p) for p in glob.glob(os.path.join(utils_dir, "*.cpp"))
     )
+    cuda_sources = set(
+        os.path.join(cuda_dir, p) for p in glob.glob(os.path.join(cuda_dir, "*.cu"))
+    )
 
-    sources = list(set(extension_sources) | set(utils_sources))
+    sources = list(set(extension_sources) | set(utils_sources) | set(cuda_sources))
 
     include_dirs = [extensions_dir, utils_dir]
 
