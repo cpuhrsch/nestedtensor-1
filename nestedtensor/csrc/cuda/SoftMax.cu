@@ -1,5 +1,61 @@
 #include <nestedtensor/csrc/cuda/functions.h>
 
+#include <cooperative_groups.h>
+#include <cuda.h>
+// #include <cuda_fp16.h>
+// #include <curand_kernel.h>
+// #include <stdio.h>
+// #include <stdlib.h>
+#include <limits>
+// #include <stdexcept>
+#include <algorithm>
+
+#define FINAL_MASK 0xffffffff
+#define MAX_THREADS 1024
+// Maximum sequence-length support based on the number of threads (2048) allowed
+// in each block and this MAX is 8K For higher sequence length we need to use
+// higher Max, like for 64K : 32
+#define MAX_THREAD_ITERATIONS 8 // Maximum 8K
+#define MAX_THREAD_STRIDE 32
+#define MAX_WARP_NUM 32
+#define THREADS 256
+#define TILE_DIM 32
+#define minus_infinity -1 * std::numeric_limits<float>::infinity()
+
+#define WARP_SIZE 32
+
+// #define CUDA_CHECK(callstr)                                                 \
+//   {                                                                         \
+//     cudaError_t error_code = callstr;                                       \
+//     if (error_code != cudaSuccess) {                                        \
+//       std::cerr << "CUDA error " << error_code << " at " << __FILE__ << ":" \
+//                 << __LINE__;                                                \
+//       assert(0);                                                            \
+//     }                                                                       \
+//   }
+
+#define CUDA_1D_KERNEL_LOOP(i, n)                                 \
+  for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
+       i += blockDim.x * gridDim.x)
+
+#define CUDA_2D_KERNEL_LOOP(i, n, j, m)                             \
+  for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n);   \
+       i += blockDim.x * gridDim.x)                                 \
+    for (size_t j = blockIdx.y * blockDim.y + threadIdx.y; j < (m); \
+         j += blockDim.y * gridDim.y)
+
+#define DS_CUDA_NUM_THREADS 512
+#define DS_MAXIMUM_NUM_BLOCKS 4096
+
+inline int DS_GET_BLOCKS(const int N) {
+  return std::max(
+      std::min(
+          (N + DS_CUDA_NUM_THREADS - 1) / DS_CUDA_NUM_THREADS,
+          DS_MAXIMUM_NUM_BLOCKS),
+      // Use at least 1 block, since CUDA does not allow empty block
+      1);
+}
+
 // From deepspeed https://github.com/microsoft/DeepSpeed/blob/e549be607c0f85fc3eb91b3ce977f1d063d65f3c/csrc/transformer/softmax_kernels.cu
 
 namespace cg = cooperative_groups;
@@ -197,10 +253,11 @@ void launch_attn_softmax<float>(float* vals,
         else if (sequence_length < (MAX_THREADS * MAX_THREAD_ITERATIONS * 4))
             attn_softmax<32, 1, 128><<<grid_dim, block_dim, 0, stream>>>(
                 vals, attn_mask, heads, seq_length4, iterations);
-        else
-            throw std::runtime_error(
-                "Unsupport Seq_Length! Check the restriction of the max_threads and "
-                "max_thread_iterations!");
+        //else
+        //    exit(1);
+        //    // throw std::runtime_error(
+        //    //     "Unsupport Seq_Length! Check the restriction of the max_threads and "
+        //    //     "max_thread_iterations!");
     }
 }
 
@@ -314,8 +371,8 @@ void launch_attn_softmax_backward_v2(T* out_grad,
                                      int seq_length,
                                      cudaStream_t stream)
 {
-    if ((seq_length % WARP_SIZE) != 0 || seq_length > 2048)
-        throw std::runtime_error("Invalid sequence length found in softmax backward.");
+    // if ((seq_length % WARP_SIZE) != 0 || seq_length > 2048)
+    //     throw std::runtime_error("Invalid sequence length found in softmax backward.");
 
     const int warps_per_block = 4;
     dim3 grid_dim(batch_size * heads * seq_length / warps_per_block);
@@ -358,10 +415,10 @@ void launch_attn_softmax_backward_v2(T* out_grad,
             softmax_backward_kernel_v2<T, 64>
                 <<<grid_dim, block_dim, 0, stream>>>(out_grad, soft_inp, seq_length);
             break;
-        default:
-            throw std::runtime_error(
-                std::string("Special sequence length found in softmax backward, seq_length: ") +
-                std::to_string(seq_length));
+        // default:
+        //     throw std::runtime_error(
+        //         std::string("Special sequence length found in softmax backward, seq_length: ") +
+        //         std::to_string(seq_length));
     }
 }
 
@@ -371,3 +428,21 @@ template void launch_attn_softmax_backward_v2<float>(float* out_grad,
                                                      int heads,
                                                      int seq_length,
                                                      cudaStream_t stream);
+
+
+
+void launch_softmax_backward(
+    at::Tensor vals,
+    int batch_size,
+    int heads,
+    int sequence_length) {
+    return vals;
+}
+
+void launch_softmax(
+    at::Tensor vals,
+    int batch_size,
+    int heads,
+    int sequence_length) {
+    return vals;
+}
