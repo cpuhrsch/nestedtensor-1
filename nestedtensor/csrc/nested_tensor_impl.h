@@ -155,10 +155,14 @@ static inline void apply_nested_tensor(F&& fn, A... a) {
 }
 
 struct NestedTensorImpl : public c10::TensorImpl {
-  explicit NestedTensorImpl(TensorNode structure);
+  explicit NestedTensorImpl(
+      TensorNode,
+      int64_t,
+      const caffe2::TypeMeta&,
+      c10::optional<c10::Device>);
 
   int64_t dim() const override {
-    return _first_variable.dim() + nested_dim();
+    return _tensor_dim + nested_dim();
   }
   int64_t numel() const override {
     auto fn = [](at::Tensor leaf, int64_t input) {
@@ -192,7 +196,8 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return get_structure().height();
   }
   bool is_pinned() const {
-    return _first_variable.is_pinned();
+    TORCH_CHECK(false, "NestedTensors currently don't support pinned memory.");
+    return false;
   }
   // This is a C++ representation of a nested list of torch.Sizes
   //

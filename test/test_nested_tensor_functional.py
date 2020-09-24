@@ -366,6 +366,7 @@ class TestFunctional(TestCase):
             self.assertEqual(result2[1][0], torch.matmul(t22, t1))
             self.assertEqual(result2[1][1], torch.matmul(t21, t1))
 
+    @unittest.skip("no")
     def test_nn_embedding_bag(self):
         t1 = torch.tensor([1, 4])
         t2 = torch.tensor([2, 5])

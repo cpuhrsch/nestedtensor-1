@@ -53,7 +53,8 @@ std::vector<c10::optional<int64_t>> construct_size(const SizeNode& size_node) {
 c10::intrusive_ptr<c10::TensorImpl> NestedTensorImpl::shallow_copy_and_detach(
     const c10::VariableVersion& version_counter,
     bool allow_tensor_metadata_change) const {
-  auto impl = c10::make_intrusive<NestedTensorImpl>(_structure);
+  auto impl = c10::make_intrusive<NestedTensorImpl>(
+      _structure, _tensor_dim, dtype(), device());
   copy_tensor_metadata(
       /*src_impl=*/this,
       /*dest_impl=*/impl.get(),
@@ -151,10 +152,16 @@ at::Tensor wrap_tensor_node(TensorNode&& result) {
   if (result.is_leaf()) {
     return result.payload();
   }
-  at::Tensor first_leaf = get_first_leaf(result);
-  auto dtype = first_leaf.dtype();
+  c10::optional<at::Tensor> first_leaf = get_first_leaf(result);
+  if (!first_leaf || !(*first_leaf).defined()) {
+    at::Tensor undef;
+    return undef;
+  }
   return at::detail::make_tensor<NestedTensorImpl>(
-      result, first_leaf.dim(), dtype);
+      result,
+      (*first_leaf).dim(),
+      (*first_leaf).dtype(),
+      (*first_leaf).device());
 }
 
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
