@@ -48,10 +48,7 @@ Tensor NestedTensor_layer_norm(
       std::to_string(input.dim() - 1));
   if (weight && bias) {
     return autograd_map_nested_tensor(
-        [normalized_shape, eps](
-            const at::Tensor t,
-            Tensor w,
-            Tensor b) {
+        [normalized_shape, eps](const at::Tensor t, Tensor w, Tensor b) {
           return at::layer_norm(t, normalized_shape, w, b, eps, true);
         },
         input,

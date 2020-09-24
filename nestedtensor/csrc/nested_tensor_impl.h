@@ -235,9 +235,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
 
  private:
   TensorNode _structure;
-  at::Tensor _first_variable;
+  // at::Tensor _first_variable;
   SizeNode _nested_size;
   std::vector<int64_t> _sizes;
+  int64_t _tensor_dim;
 };
 
 inline at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {

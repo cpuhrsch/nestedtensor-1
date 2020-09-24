@@ -16,7 +16,14 @@ def _iter_constructors():
     yield nestedtensor.nested_tensor
 
 
-def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
+def ntnt(x, dtype=None):
+    return nestedtensor.nested_tensor(
+        x, requires_grad=True, dtype=dtype)
+
+
+def ntnt_nograd(x, dtype=None):
+    return nestedtensor.nested_tensor(
+        x, dtype=dtype)
 
 
 class TestFunctional(TestCase):
@@ -358,6 +365,15 @@ class TestFunctional(TestCase):
             self.assertEqual(result2[0][1], torch.matmul(t22, t1))
             self.assertEqual(result2[1][0], torch.matmul(t22, t1))
             self.assertEqual(result2[1][1], torch.matmul(t21, t1))
+
+    def test_nn_embedding_bag(self):
+        t1 = torch.tensor([1, 4])
+        t2 = torch.tensor([2, 5])
+        a = ntnt_nograd([t1, t2], dtype=torch.int64)
+        print(a)
+        t3 = torch.arange(5 * 3).reshape(5, 3).float()
+        print(t3)
+        print(torch.nn.functional.embedding_bag(a, t3, mode='sum'))
 
     def test_transpose(self):
         t0 = torch.randn(3, 3, 4)

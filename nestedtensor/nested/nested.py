@@ -55,7 +55,6 @@ def _nn_functional_linear(input, weight, bias=None):
         output = output + bias
     return output
 
-
 def _wrap_result(result):
     if isinstance(result, list):
         return list(_wrap_result(r) for r in result)
@@ -310,6 +309,8 @@ class NestedTensor(metaclass=NestedTensorMeta):
         # TODO:This was disabled for now to focus on DETR
         if func is torch.nn.functional.linear:
             return _wrap_result(_nn_functional_linear(*impl_args, **impl_kwargs))
+        if func is torch.nn.functional.embedding_bag:
+            return _wrap_result(nestedtensor.nn.functional.embedding_bag(*impl_args, **impl_kwargs))
         if func is torch.nn.functional.multi_head_attention_forward:
             return _wrap_result(nestedtensor.nn.mha.multi_head_attention_forward(*args, **kwargs))
         if func is torch.nn.functional.interpolate:

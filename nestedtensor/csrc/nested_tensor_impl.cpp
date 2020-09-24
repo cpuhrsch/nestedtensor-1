@@ -97,20 +97,20 @@ SizeNode infer_nested_size(const TensorNode& _structure) {
       _structure);
 }
 
-NestedTensorImpl::NestedTensorImpl(TensorNode structure)
+NestedTensorImpl::NestedTensorImpl(
+    TensorNode structure,
+    int64_t tensor_dim,
+    const caffe2::TypeMeta& data_type,
+    c10::optional<c10::Device> device_opt)
     : TensorImpl(
           c10::DispatchKeySet({NestedTensorKey_PreAutograd, NestedTensorKey}),
-          get_first_leaf(structure) ? get_first_leaf(structure)->dtype()
-                                    : at::ones({}).dtype(),
-          get_first_leaf(structure) ? get_first_leaf(structure)->device()
-                                    : at::ones({}).device()),
+          data_type,
+          device_opt),
       _structure(structure),
-      _first_variable(
-          get_first_leaf(_structure) ? *get_first_leaf(_structure)
-                                     : at::ones({})),
       _nested_size(map(
           [](at::Tensor tensor) { return c10::List<int64_t>(tensor.sizes()); },
-          _structure)) {
+          _structure)),
+      _tensor_dim(tensor_dim) {
   TORCH_CHECK(
       !_structure.is_leaf(),
       "NestedTensorImpl must be given structure of at least height 1.")
@@ -151,7 +151,10 @@ at::Tensor wrap_tensor_node(TensorNode&& result) {
   if (result.is_leaf()) {
     return result.payload();
   }
-  return at::detail::make_tensor<NestedTensorImpl>(result);
+  at::Tensor first_leaf = get_first_leaf(result);
+  auto dtype = first_leaf.dtype();
+  return at::detail::make_tensor<NestedTensorImpl>(
+      result, first_leaf.dim(), dtype);
 }
 
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
