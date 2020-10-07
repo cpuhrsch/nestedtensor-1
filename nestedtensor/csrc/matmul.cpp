@@ -128,7 +128,7 @@ Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
 #ifdef USEPACKED
   return NestedTensorFunction_matmul::apply(self, other);
 #else
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [](at::Tensor self, at::Tensor other) { return at::matmul(self, other); },
       self,
       other);
@@ -246,7 +246,7 @@ Tensor NestedTensor_addmm(
 #ifdef USEPACKED
   return NestedTensorFunction_addmm::apply(input, self, other, alpha, beta);
 #else
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&alpha, &beta](at::Tensor input, at::Tensor self, at::Tensor other) {
         return at::addmm(input, self, other, alpha, beta);
       },
@@ -257,8 +257,11 @@ Tensor NestedTensor_addmm(
 }
 
 TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
-  nt_impl(m, "addmm", NestedTensor_addmm);
   nt_impl(m, "matmul", NestedTensor_matmul);
   nt_impl(m, "matmul.out", NestedTensor_matmul_out);
+}
+
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
+  nt_impl(m, "addmm", NestedTensor_addmm);
 }
 } // namespace at

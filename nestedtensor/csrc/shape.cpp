@@ -71,7 +71,7 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
       dim0 >= nested_dim && dim1 >= nested_dim,
       "Transposition of nested dimensions is not implemented yet.");
   // TODO: Potential use for packed transpose, but requires custom backward.
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [dim0, dim1, nested_dim](const at::Tensor t) {
         return at::transpose(t, dim0 - nested_dim, dim1 - nested_dim);
       },
@@ -81,6 +81,9 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
 TORCH_LIBRARY_IMPL(aten, AutogradPrivateUse1, m) {
   nt_impl(m, "reshape", NestedTensor_reshape);
   nt_impl(m, "view", NestedTensor_view);
+}
+
+TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   nt_impl(m, "transpose.int", NestedTensor_transpose);
 }
 
