@@ -88,11 +88,21 @@ class TestAutogradFunctional(TestCase):
 
         _test(lambda: torch.nn.Linear(10, 6))
 
-    @unittest.skip("Not implemented")
     def test_nn_batch_norm(self):
         def _test(BatchNorm2d):
+            tensor_input = torch.randn(2, 3, 1, 2)
+            nt_input = ntnt_nograd(tensor_input.unbind())
+
+            batch_norm = BatchNorm2d()
+            tensor_output = batch_norm(tensor_input)
+            print(tensor_output)
+
+            nt_output = batch_norm(nt_input)
+            print(nt_output.unbind())
+            import sys; sys.exit(1)
+
             inputs = [
-                torch.randn(3, 50, 60, requires_grad=True),
+                torch.randn(3, 15, 16, requires_grad=True),
                 torch.randn(3, 18, 18, requires_grad=True)
             ]
 
@@ -111,7 +121,10 @@ class TestAutogradFunctional(TestCase):
             nt_res.sum().backward()
             layer_grad1 = [p.grad for (n, p) in batch_norm.named_parameters()]
 
-            self.assertEqual(ntnt(tensor_res), nt_res)
+            nt_output_ref = ntnt(tensor_res)
+            print(nt_res)
+            print(nt_output_ref)
+            self.assertEqual(nt_output_ref, nt_res)
             map(self.assertEqual, zip(layer_grad0, layer_grad1))
             self.assertEqual(nt.grad[0], inputs[0].grad)
             self.assertEqual(nt.grad[1], inputs[1].grad)
@@ -127,21 +140,21 @@ class TestAutogradFunctional(TestCase):
             self.assertEqual(nt_res[0], t_res[0])
             self.assertEqual(nt_res[1], t_res[1])
 
-        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
-                                           momentum=0.1, affine=True, track_running_stats=True))
-        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
-                                           affine=True, track_running_stats=True).eval())
-        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
-                                           momentum=0.1, affine=True, track_running_stats=False))
-        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
-                                           affine=True, track_running_stats=False).eval())
+        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+        #                                    momentum=0.1, affine=True, track_running_stats=True))
+        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+        #                                    affine=True, track_running_stats=True).eval())
+        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+        #                                    momentum=0.1, affine=True, track_running_stats=False))
+        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+        #                                    affine=True, track_running_stats=False).eval())
 
-        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
-                                           momentum=0.1, affine=False, track_running_stats=False))
+        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+        #                                    momentum=0.1, affine=False, track_running_stats=False))
         _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
                                            affine=False, track_running_stats=False).eval())
-        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
-                                           momentum=0.1, affine=False, track_running_stats=True))
+        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
+        #                                    momentum=0.1, affine=False, track_running_stats=True))
         _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
                                            affine=False, track_running_stats=True).eval())
 
