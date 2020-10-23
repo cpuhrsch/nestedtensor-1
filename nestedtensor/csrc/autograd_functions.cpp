@@ -98,10 +98,14 @@ Tensor NestedTensor_batch_norm(
   std::cout << "bias.sum(): " << bias->sum() << std::endl;
   at::Tensor result = input;
   if (weight) {
-    result = result * (*weight);
+    TORCH_CHECK((*weight).dim() == 1, "weight expected to be of dim 1.");
+    TORCH_CHECK(
+        (*weight).size(0) == num_features,
+        "weight expected to be equal to number of channels.");
+    result = result * (*weight).reshape({1, (*weight).size(0), 1, 1});
   }
   if (bias) {
-    result = result + (*bias);
+    result = result + (*bias).reshape({1, (*bias).size(0), 1, 1});
   }
   return result;
 }

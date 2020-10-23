@@ -18,7 +18,7 @@ Tensor& NestedTensor_binary_(Tensor& self_, const Tensor& other_) {
 
 template <Tensor (*func)(const Tensor&, Scalar)>
 Tensor NestedTensor_binary_scalar(const Tensor& self, Scalar other) {
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&other](Tensor self) { return func(self, other); }, self);
 }
 
@@ -28,7 +28,7 @@ Tensor NestedTensor_binary(const Tensor& self_, const Tensor& other_) {
   at::Tensor self;
   at::Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [](Tensor s, Tensor o) { return func(s, o); }, self, other);
 }
 
@@ -40,7 +40,7 @@ Tensor NestedTensor_binary(
   at::Tensor self;
   at::Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&scalar](Tensor self, Tensor other) {
         return func(self, other, scalar);
       },
@@ -114,7 +114,7 @@ Tensor NestedTensor_add(
 #endif
     return NestedTensorFunction_packed_add::apply(self, other, alpha);
   }
-  return autograd_map_nested_tensor(
+  return map_nested_tensor(
       [&alpha](at::Tensor s, at::Tensor o) { return at::add(s, o, alpha); },
       self,
       other);
