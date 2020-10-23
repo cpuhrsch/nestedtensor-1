@@ -94,6 +94,8 @@ Tensor NestedTensor_batch_norm(
     check_dims_match_num_input_features("bias", num_features, (*bias).numel());
   }
   std::cout << "ASDF" << std::endl;
+  std::cout << "weight.sum(): " << weight->sum() << std::endl;
+  std::cout << "bias.sum(): " << bias->sum() << std::endl;
   at::Tensor result = input;
   if (weight) {
     result = result * (*weight);

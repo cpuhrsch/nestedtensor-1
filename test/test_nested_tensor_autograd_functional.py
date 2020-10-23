@@ -97,6 +97,8 @@ class TestAutogradFunctional(TestCase):
             tensor_output = batch_norm(tensor_input)
             print(tensor_output)
 
+            print('nt_input.nested_size()')
+            print(nt_input.nested_size())
             nt_output = batch_norm(nt_input)
             print(nt_output.unbind())
             import sys; sys.exit(1)
@@ -146,17 +148,17 @@ class TestAutogradFunctional(TestCase):
         #                                    affine=True, track_running_stats=True).eval())
         # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
         #                                    momentum=0.1, affine=True, track_running_stats=False))
-        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
-        #                                    affine=True, track_running_stats=False).eval())
+        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+                                           affine=True, track_running_stats=False).eval())
 
         # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
         #                                    momentum=0.1, affine=False, track_running_stats=False))
-        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
-                                           affine=False, track_running_stats=False).eval())
+        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+        #                                    affine=False, track_running_stats=False).eval())
         # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05,
         #                                    momentum=0.1, affine=False, track_running_stats=True))
-        _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
-                                           affine=False, track_running_stats=True).eval())
+        # _test(lambda: torch.nn.BatchNorm2d(3, eps=1e-05, momentum=0.1,
+        #                                    affine=False, track_running_stats=True).eval())
 
         _test(lambda: torch.nn.BatchNorm2d(3))
 
