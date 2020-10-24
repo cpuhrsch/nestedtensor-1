@@ -90,15 +90,22 @@ class TestAutogradFunctional(TestCase):
 
     def test_nn_batch_norm(self):
         def _test(BatchNorm2d):
-            tensor_input = torch.randn(2, 3, 1, 2)
+            tensor_input = utils.gen_float_tensor(1, (2, 3, 1, 2))
             nt_input = ntnt_nograd(tensor_input.unbind())
 
             batch_norm = BatchNorm2d()
+            print(tensor_input)
             tensor_output = batch_norm(tensor_input)
             print(tensor_output)
+            print(tensor_output[0].sum())
+            print(tensor_output[1].sum())
+            print(tensor_output[0].var())
+            print(tensor_output[1].var())
+            print(tensor_output.var())
 
             print('nt_input.nested_size()')
             print(nt_input.nested_size())
+            print(nt_input)
             nt_output = batch_norm(nt_input)
             print(nt_output.unbind())
             import sys; sys.exit(1)
