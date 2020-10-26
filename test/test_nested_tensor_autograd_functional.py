@@ -88,7 +88,6 @@ class TestAutogradFunctional(TestCase):
 
         _test(lambda: torch.nn.Linear(10, 6))
 
-    @unittest.skip("Not implemented")
     def test_nn_batch_norm(self):
         def _test(BatchNorm2d):
             tensor_input = utils.gen_float_tensor(1, (2, 3, 1, 2))
