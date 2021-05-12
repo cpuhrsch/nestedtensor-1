@@ -187,26 +187,17 @@ Tensor NestedTensor_to_nested_tensor(
   // if dim < nested_dim() the NestedTensor is already nested
   // up to the given dimension.
   if (is_nested_tensor_impl(input) && dim >= get_nested_dim(input)) {
-    at::Tensor result = wrap_tensor_node(
-          _unbind_tensors(get_nested_tensor_structure(input)));
+    at::Tensor result =
+        wrap_tensor_node(_unbind_tensors(get_nested_tensor_structure(input)));
     return NestedTensor_to_nested_tensor(result, dim);
-    // TensorNode unbound = _unbind_tensors(get_nested_tensor_structure(input));
-    // for (int64_t i = 0; i < (dim - get_nested_dim(input)); i++) {
-    //   unbound = _unbind_tensors(unbound);
-    // }
-    // return wrap_tensor_node(std::move(unbound));
   }
   if (!is_nested_tensor_impl(input) && dim > 0) {
     std::vector<TensorNode> unbound_nodes;
     for (at::Tensor t : input.unbind()) {
       unbound_nodes.push_back(TensorNode(std::move(t)));
     }
-    return NestedTensor_to_nested_tensor(wrap_tensor_node(TensorNode(std::move(unbound_nodes))), dim);
-    // TensorNode unbound(std::move(unbound_nodes));
-    // for (int64_t i = 1; i < dim; i++) {
-    //   unbound = _unbind_tensors(unbound);
-    // }
-    // return wrap_tensor_node(std::move(unbound));
+    return NestedTensor_to_nested_tensor(
+        wrap_tensor_node(TensorNode(std::move(unbound_nodes))), dim);
   }
   return input;
 }
