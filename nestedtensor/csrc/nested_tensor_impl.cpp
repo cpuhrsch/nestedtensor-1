@@ -187,17 +187,23 @@ Tensor NestedTensor_to_nested_tensor(
   // if dim < nested_dim() the NestedTensor is already nested
   // up to the given dimension.
   if (is_nested_tensor_impl(input) && dim >= get_nested_dim(input)) {
-    at::Tensor result =
-        wrap_tensor_node(_unbind_tensors(get_nested_tensor_structure(input)));
-    return NestedTensor_to_nested_tensor(result, dim);
+    TensorNode unbound = _unbind_tensors(get_nested_tensor_structure(input));
+    Tensor result = wrap_tensor_node(std::move(unbound));
+    if (get_nested_dim(input) < dim) {
+      return NestedTensor_to_nested_tensor(result, dim);
+    }
+    return result;
   }
   if (!is_nested_tensor_impl(input) && dim > 0) {
-    std::vector<TensorNode> unbound_nodes;
+    std::vector<TensorNode> unbound;
     for (at::Tensor t : input.unbind()) {
-      unbound_nodes.push_back(TensorNode(std::move(t)));
+      unbound.push_back(TensorNode(std::move(t)));
     }
-    return NestedTensor_to_nested_tensor(
-        wrap_tensor_node(TensorNode(std::move(unbound_nodes))), dim);
+    Tensor result = wrap_tensor_node(TensorNode(std::move(unbound)));
+    if (dim > 1) {
+      return NestedTensor_to_nested_tensor(result, dim);
+    }
+    return result;
   }
   return input;
 }
