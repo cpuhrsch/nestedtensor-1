@@ -16,7 +16,6 @@ Tensor NestedTensor_gelu(const Tensor& self) {
 // Registered below autograd
 Tensor NestedTensor_relu(const Tensor& self) {
   auto impl = get_nested_tensor_impl(self);
-  auto structure = get_nested_tensor_structure(self);
   if (self.is_contiguous()) {
 #ifdef TRACEPACKED
     std::cout << "calling packed relu" << std::endl;

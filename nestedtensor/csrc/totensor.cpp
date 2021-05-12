@@ -13,7 +13,7 @@ namespace at {
 using namespace torch::nested_tensor;
 using namespace c10;
 
-at::Tensor _to_tensor(TensorNode node) {
+at::Tensor _to_tensor(const TensorNode& node) {
   // TODO: Recursive stacking is expensive.
   if (node.is_leaf()) {
     return node.payload();
@@ -22,7 +22,7 @@ at::Tensor _to_tensor(TensorNode node) {
     return at::empty({0});
   }
   std::vector<at::Tensor> flat;
-  for (auto child : node.unbind()) {
+  for (const auto& child : node.unbind()) {
     flat.push_back(_to_tensor(child));
   }
   return stack(flat);

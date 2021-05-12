@@ -29,6 +29,11 @@ struct NestedNode {
     //       "internal error: expected a full tree.");
     // }
   }
+  NestedNode(NestedNode<T>&& other)
+      : _is_leaf(std::move(other._is_leaf)),
+        _children(std::move(other._children)),
+        _payload(std::move(other._payload)),
+        _height(std::move(other._height)) {}
   // NestedNode(NestedNode&) = delete;
   // NestedNode(const NestedNode&) = delete;
   // NestedNode& operator=(NestedNode) = delete;
@@ -42,10 +47,10 @@ struct NestedNode {
   inline int64_t height() const {
     return _height;
   }
-  inline const std::vector<NestedNode<T>> unbind() const {
+  inline const std::vector<NestedNode<T>>& unbind() const {
     return _children;
   }
-  inline NestedNode<T> children(size_t i) const {
+  inline const NestedNode<T>& children(size_t i) const {
     return _children[i];
   }
   inline const T& payload() const {
@@ -64,63 +69,15 @@ struct NestedNode {
   int64_t _height;
 };
 
-template <>
-struct NestedNode<at::Tensor> {
-  // NestedNode() : _is_leaf(false), _height(1) {}
-  NestedNode<at::Tensor>() = delete;
-  NestedNode<at::Tensor>(std::vector<NestedNode<at::Tensor>>&& children)
-      : _is_leaf(false), _children(children), _height(1) {
-    for (const auto& child : children) {
-      if (child.height() + 1 > _height) {
-        _height = child.height() + 1;
-      }
-    }
-  }
-  // NestedNode(NestedNode&) = delete;
-  // NestedNode(const NestedNode&) = delete;
-  // NestedNode& operator=(NestedNode) = delete;
-  NestedNode<at::Tensor>(at::Tensor&& payload)
-      : _is_leaf(true), _payload(payload), _height(0) {}
-  inline bool is_leaf() const {
-    return _is_leaf;
-  }
-  inline size_t degree() const {
-    return _children.size();
-  }
-  inline int64_t height() const {
-    return _height;
-  }
-  inline const std::vector<NestedNode<at::Tensor>> unbind() const {
-    return _children;
-  }
-  inline NestedNode<at::Tensor> children(size_t i) const {
-    return _children[i];
-  }
-  inline const at::Tensor& payload() const {
-    return _payload;
-  }
-  inline at::Tensor& payload() {
-    return _payload;
-  }
-
- private:
-  bool _is_leaf;
-  std::vector<NestedNode<at::Tensor>> _children;
-  // TODO: Make this const?
-  // _VariableNode _variable_node;
-  at::Tensor _payload;
-  int64_t _height;
-};
-
 // TODO: Should have specialized construction check that all payloads are of
 // same size for SizeNode
-using SizeNode = NestedNode<std::vector<int64_t>>;
+using SizeNode = NestedNode<const std::vector<int64_t>>;
 using IntegerNode = NestedNode<int64_t>;
 using TensorNode = NestedNode<at::Tensor>;
 using IValueNode = NestedNode<c10::IValue>;
 
 template <typename A>
-inline c10::optional<A> get_first_leaf(NestedNode<A> nested_node) {
+inline c10::optional<A> get_first_leaf(const NestedNode<A>& nested_node) {
   if (nested_node.is_leaf()) {
     return nested_node.payload();
   }
@@ -149,7 +106,8 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
     size_t degree = 0;
     bool all_leaf = true;
     c10::guts::tuple_map(
-        std::forward_as_tuple(nested_node...), [&all_leaf, &degree](auto n) {
+        std::forward_as_tuple(nested_node...),
+        [&all_leaf, &degree](const auto& n) {
           all_leaf = all_leaf && (n.is_leaf());
           if (degree > 1 && n.degree() > 1) {
             TORCH_CHECK(degree == n.degree(), "NestedNodes don't broadcast.");
@@ -164,28 +122,28 @@ class _map<F, A, c10::guts::typelist::typelist<Args...>> {
     }
     std::vector<NestedNode<A>> result;
     for (size_t i = 0; i < degree; i++) {
-      std::tuple<NestedNode<Args>...> children = c10::guts::tuple_map(
-          std::forward_as_tuple(nested_node...), [&i](auto a) {
-            static_assert(
-                c10::guts::is_instantiation_of<NestedNode, decltype(a)>::value,
-                "Internal error.");
-            if (a.is_leaf()) {
-              return a;
-            }
-            if (a.degree() == 1 && a.height() > 0) {
-              return a.children(0);
-            }
-            TORCH_CHECK(a.degree() > 0, "Internal assert.");
-            return a.children(i);
-          });
       // TODO: Due to the experiences with to_vector and the inversion I'm a bit
       // wary of apply but I haven't been able to reproduce the  argument
       // inversion behavior in other contexts.
       c10::guts::apply(
-          [&result, &fn](NestedNode<Args>... filtered) {
+          [&result, &fn](const NestedNode<Args>&... filtered) {
             result.emplace_back(function(std::forward<F>(fn), filtered...));
           },
-          std::move(children));
+          c10::guts::tuple_map(
+              std::forward_as_tuple(nested_node...),
+              [&i](const auto& a) -> const decltype(a)& {
+                // static_assert(
+                //     c10::guts::is_instantiation_of<const NestedNode&,
+                //     decltype(a)>::value, "Internal error.");
+                if (a.is_leaf()) {
+                  return a;
+                }
+                if (a.degree() == 1 && a.height() > 0) {
+                  return a.children(0);
+                }
+                TORCH_CHECK(a.degree() > 0, "Internal assert.");
+                return a.children(i);
+              }));
     }
     return NestedNode<A>(std::move(result));
   };
@@ -202,12 +160,16 @@ map(F&& fn, const NestedNode<B>&... nested_node) {
   return _map<
       F,
       typename c10::guts::infer_function_traits<F>::type::return_type,
-      typename c10::guts::infer_function_traits<F>::type::parameter_types>::
-      function(std::move(fn), nested_node...);
+      // typename c10::guts::infer_function_traits<F>::type::parameter_types
+      c10::guts::typelist::map_t<
+          std::remove_reference_t,
+          typename c10::guts::infer_function_traits<F>::type::parameter_types>
+
+      >::function(std::move(fn), nested_node...);
 }
 
 template <typename A>
-inline std::vector<A> flatten(NestedNode<A> nested_node) {
+inline std::vector<A> flatten(const NestedNode<A>& nested_node) {
   if (nested_node.is_leaf()) {
     std::vector<A> result;
     result.push_back(nested_node.payload());
@@ -226,19 +188,16 @@ inline std::vector<A> flatten(NestedNode<A> nested_node) {
 template <class R, class A>
 inline std::pair<int64_t, NestedNode<R>> _unflatten(
     const NestedNode<A>& structure,
-    const std::vector<R>& content,
+    std::vector<R> content,
     int64_t index) {
   if (structure.is_leaf()) {
-    at::Tensor tmp = content[index];
     return std::pair<int64_t, NestedNode<R>>(
-        index + 1, NestedNode<R>(std::move(tmp)));
+        index + 1, NestedNode<R>(std::move(content[index])));
 
   } else {
     std::vector<NestedNode<R>> result;
-    for (size_t i = 0; i < structure.degree(); i++) {
-      auto result_i = _unflatten<R, A>(structure.children(i), content, index);
-      index = std::get<0>(result_i);
-      result.emplace_back(std::get<1>(result_i));
+    for (const auto& child : structure.unbind()) {
+      result.emplace_back(std::get<1>(_unflatten<R, A>(child, content, index)));
     }
     return std::pair<int64_t, NestedNode<R>>(
         index, NestedNode<R>(std::move(result)));
@@ -250,10 +209,9 @@ inline std::pair<int64_t, NestedNode<R>> _unflatten(
 // with the same shape as structure and content distributed in-order
 template <class R, class A>
 inline NestedNode<R> unflatten(
-    NestedNode<A> structure,
+    const NestedNode<A>& structure,
     std::vector<R> content) {
-  auto _result = _unflatten<R, A>(structure, content, 0);
-  return std::get<1>(_result);
+  return std::get<1>(_unflatten<R, A>(structure, content, 0));
 }
 
 template <class A>
@@ -332,13 +290,16 @@ template <typename F, typename A, typename... B>
 inline typename c10::guts::infer_function_traits<F>::type::return_type reduce(
     F fn,
     A ident,
-    NestedNode<B>... nested_node) {
-  auto first_node = std::get<0>(std::forward_as_tuple(nested_node...));
-  if (first_node.is_leaf()) {
+    const NestedNode<B>&... nested_node) {
+  bool first_node_is_leaf =
+      std::get<0>(std::forward_as_tuple(nested_node...)).is_leaf();
+  if (first_node_is_leaf) {
     return fn(nested_node.payload()..., ident);
   }
+  size_t first_node_degree =
+      std::get<0>(std::forward_as_tuple(nested_node...)).degree();
   A result = ident;
-  for (size_t i = 0; i < first_node.degree(); i++) {
+  for (size_t i = 0; i < first_node_degree; i++) {
     result = reduce<F, A, B...>(fn, result, nested_node.children(i)...);
   }
   return result;
@@ -352,7 +313,7 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
  public:
   // NOTE: We must move F to avoid copying objects if it is a lambda with
   // captures.
-  static void function(F&& fn, NestedNode<Args>... nested_node) {
+  static void function(F&& fn, const NestedNode<Args>&... nested_node) {
     size_t degree = 0;
     bool all_leaf = true;
     c10::guts::tuple_map(
@@ -370,26 +331,27 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
       std::forward<F>(fn)(nested_node.payload()...);
     } else {
       for (size_t i = 0; i < degree; i++) {
-        std::tuple<NestedNode<Args>...> children = c10::guts::tuple_map(
-            std::forward_as_tuple(nested_node...), [&i](auto a) {
-              static_assert(
-                  c10::guts::is_instantiation_of<NestedNode, decltype(a)>::
-                      value,
-                  "Internal error.");
-              if (a.is_leaf()) {
-                return a;
-              }
-              if (a.degree() == 1) {
-                return a.children(0);
-              }
-              TORCH_CHECK(a.degree() > 0, "Internal assert.");
-              return a.children(i);
-            });
         c10::guts::apply(
             [&fn](NestedNode<Args>... filtered) {
               function(std::forward<F>(fn), filtered...);
             },
-            std::move(children));
+            c10::guts::tuple_map(
+                std::forward_as_tuple(nested_node...),
+                [&i](auto a) -> decltype(a) {
+                  // static_assert(
+                  //     c10::guts::is_instantiation_of<NestedNode,
+                  //     decltype(a)>::
+                  //         value,
+                  //     "Internal error.");
+                  if (a.is_leaf()) {
+                    return a;
+                  }
+                  if (a.degree() == 1) {
+                    return a.children(0);
+                  }
+                  TORCH_CHECK(a.degree() > 0, "Internal assert.");
+                  return a.children(i);
+                }));
       }
     }
   };
@@ -401,7 +363,7 @@ class _apply<F, c10::guts::typelist::typelist<Args...>> {
 // TODO: Do we want broadcasting?
 // TODO: Add check that lambda returns void
 template <class F, class... A>
-static inline void apply(F&& fn, NestedNode<A>... nested_node) {
+static inline void apply(F&& fn, const NestedNode<A>&... nested_node) {
   _apply<
       F,
       c10::guts::typelist::map_t<
@@ -412,7 +374,7 @@ static inline void apply(F&& fn, NestedNode<A>... nested_node) {
 
 namespace impl {
 
-inline std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
+inline std::vector<int64_t> _cont_stride(const std::vector<int64_t>& size) {
   std::vector<int64_t> stride(size.size());
   int64_t p = 1;
   size_t p_i = size.size();
@@ -425,13 +387,13 @@ inline std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
 }
 
 inline int64_t num_memory(
-    std::vector<int64_t> size,
-    std::vector<int64_t> stride) {
+    const std::vector<int64_t>& size,
+    const std::vector<int64_t>& stride) {
   // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
   // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
   // but carry 0 memory.
   int64_t result = 1;
-  for (int64_t i = 0; i < size.size(); i++) {
+  for (size_t i = 0; i < size.size(); i++) {
     result = result + ((size[i] - 1) * stride[i]);
   }
   return result;
@@ -453,96 +415,6 @@ inline NestedNode<A> squeeze(
     return structure.children(0);
   }
   return NestedNode<A>(squeeze(structure, level - 1, keep_dim));
-}
-
-inline void _serialize(SizeNode nested_node, std::vector<int64_t>& out) {
-  if (nested_node.is_leaf()) {
-    out.push_back(1);
-    auto payload = nested_node.payload();
-    out.push_back(payload.size());
-    for (size_t i = 0; i < payload.size(); i++) {
-      out.push_back(payload[i]);
-    }
-  } else {
-    out.push_back(0);
-    out.push_back(nested_node.degree());
-    for (size_t i = 0; i < nested_node.degree(); i++) {
-      _serialize(nested_node.children(i), out);
-    }
-  }
-}
-
-inline std::vector<int64_t> serialize(SizeNode nested_node) {
-  std::vector<int64_t> out;
-  _serialize(nested_node, out);
-  // Three Leyland primes to indicate that this vector represents a SizeNode
-  out.push_back(32993);
-  out.push_back(2097593);
-  out.push_back(8589935681);
-  return out;
-}
-
-inline bool is_serialized_size_node(const std::vector<int64_t>& out) {
-  return out.size() > 2 && out[out.size() - 1] == 8589935681 &&
-      out[out.size() - 2] == 2097593 && out[out.size() - 3] == 32993;
-}
-
-inline bool is_serialized_size_node(at::IntArrayRef out) {
-  return is_serialized_size_node(out.vec());
-}
-
-inline bool is_serialized_size_node(at::Tensor out) {
-  std::vector<int64_t> nested_size_(
-      out.data_ptr<int64_t>(), out.data_ptr<int64_t>() + out.numel());
-  return is_serialized_size_node(nested_size_);
-}
-
-inline std::tuple<size_t, SizeNode> _deserialize_size_node(
-    std::vector<int64_t> out,
-    size_t index) {
-  if (out[index] == 1) {
-    index++;
-    std::vector<int64_t> payload;
-    int64_t payload_size = out[index];
-    index++;
-    for (int64_t i = 0; i < payload_size; i++) {
-      payload.push_back(out[index]);
-      index++;
-    }
-    return std::make_tuple(index, SizeNode(std::move(payload)));
-  } else {
-    TORCH_CHECK(
-        out[index] == 0, "Expected out[index] to be 0, got ", out[index]);
-    index++;
-    int64_t degree = out[index];
-    index++;
-    std::vector<SizeNode> children;
-    for (int64_t i = 0; i < degree; i++) {
-      auto result_i = _deserialize_size_node(out, index);
-      index = std::get<0>(result_i);
-      children.push_back(std::get<1>(result_i));
-    }
-    return std::make_tuple(index, SizeNode(std::move(children)));
-  }
-}
-
-inline SizeNode deserialize_size_node(std::vector<int64_t> out) {
-  TORCH_CHECK(is_serialized_size_node(out), "out has the wrong format.");
-  out.pop_back();
-  out.pop_back();
-  out.pop_back();
-  auto tmp = _deserialize_size_node(out, 0);
-  return std::get<1>(tmp);
-}
-
-inline SizeNode deserialize_size_node(at::IntArrayRef out) {
-  return deserialize_size_node(out.vec());
-}
-
-inline SizeNode deserialize_size_node(at::Tensor out) {
-  std::vector<int64_t> nested_size_(
-      out.data_ptr<int64_t>(), out.data_ptr<int64_t>() + out.numel());
-  return deserialize_size_node(nested_size_);
 }
 
 } // namespace nested_tensor

@@ -8,11 +8,11 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
     const at::Tensor& buffer,
     const SizeNode& nested_size,
     const SizeNode& nested_stride) {
-  std::vector<int64_t> split_sizes = flatten(
-      map([](std::vector<int64_t> a,
-             std::vector<int64_t> b) { return num_memory(a, b); },
-          nested_size,
-          nested_stride));
+  std::vector<int64_t> split_sizes = flatten(map(
+      [](const std::vector<int64_t>& a,
+         const std::vector<int64_t>& b) -> int64_t { return num_memory(a, b); },
+      nested_size,
+      nested_stride));
   std::vector<int64_t> nonzero_split_sizes;
   for (size_t i = 0; i < split_sizes.size(); i++) {
     if (split_sizes[i] > 0) {
@@ -34,18 +34,18 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
       buffers.push_back(at::empty({}, buffer.options()));
     }
   }
-  TensorNode tmp = unflatten(nested_size, std::move(buffers));
-  TensorNode result = map(
-      [](at::Tensor buffer,
-         std::vector<int64_t> size,
-         std::vector<int64_t> stride) {
-        return at::as_strided(
-            buffer, c10::IntArrayRef(size), c10::IntArrayRef(stride));
-      },
-      tmp,
-      nested_size,
-      nested_stride);
-  return std::make_tuple(result, buffer);
+  return std::make_tuple(
+      map(
+          [](at::Tensor buffer,
+             const std::vector<int64_t>& size,
+             const std::vector<int64_t>& stride) -> at::Tensor {
+            return at::as_strided(
+                buffer, c10::IntArrayRef(size), c10::IntArrayRef(stride));
+          },
+          unflatten(nested_size, buffers),
+          nested_size,
+          nested_stride),
+      buffer);
 }
 
 inline std::tuple<TensorNode, at::Tensor> build_structure(
@@ -53,17 +53,22 @@ inline std::tuple<TensorNode, at::Tensor> build_structure(
     const SizeNode& nested_size) {
   TORCH_CHECK(
       buffer.dim() == 1, "Given buffer must be vector, i.e. dim 1 Tensor.");
-  SizeNode nested_stride =
-      map([](std::vector<int64_t> size) { return _cont_stride(size); },
-          nested_size);
+  SizeNode nested_stride(map(
+      [](const std::vector<int64_t>& size) -> const std::vector<int64_t> {
+        return _cont_stride(size);
+      },
+      nested_size));
   return build_structure(buffer, nested_size, nested_stride);
 }
 
 inline at::Tensor pack(const TensorNode& structure) {
   TensorNode flat_structure =
       map([](at::Tensor tensor) { return tensor.reshape({-1}); }, structure);
-  auto nested_size =
-      map([](at::Tensor tensor) { return tensor.sizes().vec(); }, structure);
+  auto nested_size = map(
+      [](at::Tensor tensor) -> const std::vector<int64_t> {
+        return tensor.sizes().vec();
+      },
+      structure);
   auto tensors = flatten(flat_structure);
   if (tensors.size() == 0) {
     return std::get<1>(impl::build_structure(at::ones({0}), nested_size));
@@ -75,18 +80,18 @@ inline at::Tensor pack(const TensorNode& structure) {
 struct PackedStorage : public NestedTensorStorage {
   explicit PackedStorage(
       at::Tensor&& buffer,
-      SizeNode nested_size,
-      SizeNode nested_stride)
-      : _buffer(buffer),
+      const SizeNode& nested_size,
+      const SizeNode& nested_stride)
+      : _buffer(std::move(buffer)),
         _nested_size(nested_size),
         _nested_stride(nested_stride),
-        _data_type(buffer.dtype()),
-        _device(buffer.device()),
+        _data_type(_buffer.dtype()),
+        _device(_buffer.device()),
         _dim(
             get_first_leaf(_nested_size)
                 ? get_first_leaf(_nested_size)->size() + _nested_size.height()
                 : _nested_size.height()),
-        _is_pinned(buffer.is_pinned()) {
+        _is_pinned(_buffer.is_pinned()) {
     TORCH_CHECK(
         !_nested_size.is_leaf(),
         "PackedStorage must be given NestedSize of at least height 1.");
@@ -94,25 +99,24 @@ struct PackedStorage : public NestedTensorStorage {
         !_nested_stride.is_leaf(),
         "PackedStorage must be given NestedStride of at least height 1.");
   }
-  explicit PackedStorage(at::Tensor&& buffer, SizeNode nested_size)
-      : PackedStorage(
-            std::move(buffer),
-            nested_size,
-            map(
-                [](std::vector<int64_t> sizes) {
-                  return torch::nested_tensor::impl::_cont_stride(sizes);
-                },
-                nested_size)) {}
-  explicit PackedStorage(TensorNode structure)
+  explicit PackedStorage(const TensorNode& structure)
       : PackedStorage(
             impl::pack(structure),
-            map([](at::Tensor tensor) { return tensor.sizes().vec(); },
+            map(
+                [](at::Tensor tensor) -> const std::vector<int64_t> {
+                  return tensor.sizes().vec();
+                },
+                structure),
+            map(
+                [](at::Tensor tensor) -> const std::vector<int64_t> {
+                  return impl::_cont_stride(tensor.sizes().vec());
+                },
                 structure)) {}
 
   int64_t dim() const override {
     return _dim;
   }
-  TensorNode get_structure() const {
+  const TensorNode& get_structure() const {
     return std::get<0>(
         impl::build_structure(_buffer, _nested_size, _nested_stride));
   }
@@ -131,10 +135,10 @@ struct PackedStorage : public NestedTensorStorage {
   bool is_pinned() const override {
     return _is_pinned;
   }
-  const SizeNode nested_size() const override {
+  const SizeNode& nested_size() const override {
     return _nested_size;
   }
-  const SizeNode nested_stride() const override {
+  const SizeNode& nested_stride() const override {
     return _nested_stride;
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const override {
@@ -146,15 +150,15 @@ struct PackedStorage : public NestedTensorStorage {
   bool is_contiguous() const {
     return _buffer.is_contiguous() &&
         reduce(
-               [](std::vector<int64_t> sizes,
-                  std::vector<int64_t> strides,
-                  bool input) {
+               [](const std::vector<int64_t>& sizes,
+                  const std::vector<int64_t>& strides,
+                  bool input) -> bool {
                  std::vector<int64_t> cont_strides = impl::_cont_stride(sizes);
                  bool equal = true;
                  if (sizes.size() != strides.size()) {
                    TORCH_CHECK(false, "Sizes and strides don't match in size.");
                  }
-                 for (int64_t i = 0; i < sizes.size(); i++) {
+                 for (size_t i = 0; i < sizes.size(); i++) {
                    equal = equal && (strides[i] == cont_strides[i]);
                  }
                  return equal && input;
@@ -166,8 +170,8 @@ struct PackedStorage : public NestedTensorStorage {
 
  private:
   at::Tensor _buffer;
-  const SizeNode _nested_size;
-  const SizeNode _nested_stride;
+  const SizeNode& _nested_size;
+  const SizeNode& _nested_stride;
   const caffe2::TypeMeta _data_type;
   c10::Device _device;
   int64_t _dim;

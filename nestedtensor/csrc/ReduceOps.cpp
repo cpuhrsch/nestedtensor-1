@@ -126,8 +126,7 @@ std::tuple<Tensor, Tensor> NestedTensor_max_dim(
   TORCH_CHECK(
       opt_sizes[dim],
       "Current shape doesn't support reduction across nested dimension. Please open a feature request https://t.ly/62F6.");
-  auto new_nested_size = get_nested_size(output);
-  new_nested_size = squeeze(new_nested_size, dim, keepdims);
+  auto new_nested_size = squeeze(get_nested_size(output), dim, keepdims);
   auto tmp =
       at::max(NestedTensor_to_tensor(output, c10::nullopt), dim, keepdims);
   return std::make_tuple(

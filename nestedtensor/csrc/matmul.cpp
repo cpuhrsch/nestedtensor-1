@@ -39,15 +39,17 @@ Tensor NestedTensor_addmm(
                     beta)
                     .reshape({-1});
             int64_t weight_size_1 = weight.size(1);
-            auto result_nested_size = map(
-                [&weight_size_1](std::vector<int64_t> size) {
-                  std::vector<int64_t> result;
-                  result.push_back(size[0]);
-                  result.push_back(weight_size_1);
-                  return result;
-                },
-                get_nested_size(input));
-            return wrap_buffer(std::move(result_buffer), result_nested_size);
+            return wrap_buffer(
+                std::move(result_buffer),
+                map(
+                    [&weight_size_1](const std::vector<int64_t>& size)
+                        -> const std::vector<int64_t> {
+                      std::vector<int64_t> result;
+                      result.push_back(size[0]);
+                      result.push_back(weight_size_1);
+                      return result;
+                    },
+                    get_nested_size(input)));
           }
         }
       }

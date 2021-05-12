@@ -12,17 +12,6 @@
 // #define TRACEPACKED 1
 // #define USEPACKED 1
 
-namespace torch {
-namespace nested_tensor {
-
-using TensorNode = NestedNode<at::Tensor>;
-using IValueNode = NestedNode<c10::IValue>;
-using SizeNode = NestedNode<std::vector<int64_t>>;
-using IntegerNode = NestedNode<int64_t>;
-
-} // namespace nested_tensor
-} // namespace torch
-
 namespace at {
 
 using namespace torch::nested_tensor;
@@ -167,7 +156,7 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return (_storage->kind() == NestedTensorStorageKind::packed) &&
         _storage->is_contiguous();
   }
-  TensorNode get_structure() const {
+  const TensorNode& get_structure() const {
     return _storage->get_structure();
   }
   std::shared_ptr<NestedTensorStorage> get_storage() {
@@ -200,10 +189,10 @@ struct NestedTensorImpl : public c10::TensorImpl {
   //
   // That means, if the list is not empty it is either a list of
   // lists of numbers or a list of empty lists.
-  const SizeNode nested_size() const {
+  const SizeNode& nested_size() const {
     return _storage->nested_size();
   }
-  const SizeNode nested_stride() const {
+  const SizeNode& nested_stride() const {
     return _storage->nested_stride();
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const {
@@ -235,16 +224,7 @@ inline at::NestedTensorImpl* get_nested_tensor_impl(const at::Tensor tensor) {
   return static_cast<at::NestedTensorImpl*>(tensor.unsafeGetTensorImpl());
 }
 
-template <class A>
-inline NestedNode<A> get_nested_tensor_structure(A tensor) {
-  return NestedNode<A>(std::move(tensor));
-}
-
-template <>
-inline TensorNode get_nested_tensor_structure(at::Tensor tensor) {
-  if (!is_nested_tensor_impl(tensor)) {
-    return TensorNode(std::move(tensor));
-  }
+inline const TensorNode& get_nested_tensor_structure(at::Tensor tensor) {
   return get_nested_tensor_impl(tensor)->get_structure();
 }
 
@@ -265,7 +245,7 @@ static inline std::vector<c10::optional<int64_t>> get_opt_sizes(
   return get_nested_tensor_impl(tensor)->opt_sizes();
 }
 
-static inline SizeNode get_nested_size(at::Tensor tensor) {
+static inline const SizeNode& get_nested_size(at::Tensor tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
   return get_nested_tensor_impl(tensor)->nested_size();
@@ -280,7 +260,7 @@ static inline int64_t get_nested_dim(const at::Tensor& tensor) {
 at::Tensor wrap_tensor_node(NestedTensorImpl);
 at::Tensor wrap_tensor_node(TensorNode&&);
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
-at::Tensor wrap_buffer(at::Tensor&&, SizeNode nested_size);
+at::Tensor wrap_buffer(at::Tensor&&, const SizeNode& nested_size);
 
 template <class F, class... A>
 static inline at::Tensor map_nested_tensor(F&& fn, A... a) {
@@ -313,16 +293,6 @@ inline bool is_tensor_shape(const at::Tensor tensor) {
 }
 
 Tensor NestedTensor_to_tensor(Tensor tensor, c10::optional<int64_t> dim_);
-
-inline std::ostream& operator<<(
-    std::ostream& out,
-    const NestedTensorImpl& batch_tensor) {
-  auto node = batch_tensor.get_structure();
-  out << "NESTED_TENSOR";
-  apply([&out](at::Tensor tensor) { out << tensor << std::endl; }, node);
-  out << std::endl;
-  return out;
-}
 
 template <class FuncPtr, class ParameterTypes>
 struct _Function_trace_wrapper {};

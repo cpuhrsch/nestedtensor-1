@@ -12,36 +12,14 @@ namespace at {
 using namespace torch::nested_tensor;
 using namespace c10;
 
-int64_t num_memory(std::vector<int64_t> size, std::vector<int64_t> stride) {
-  // 0-dim Tensors have torch.Size of .size() 0, but carry 1 memory.
-  // Empty 1-dim Tensors (torch.tensor([])) have torch.Size of .size() 1,
-  // but carry 0 memory.
-  if (size.size() == 0) {
-    return 1;
-  }
-  return size[0] * stride[0];
-}
-
-std::vector<int64_t> _cont_stride(std::vector<int64_t> size) {
-  std::vector<int64_t> stride(size.size());
-  int64_t p = 1;
-  size_t p_i = size.size();
-  for (size_t i = 0; i < size.size(); i++) {
-    p_i--;
-    stride[p_i] = p;
-    p *= size[p_i];
-  }
-  return std::vector<int64_t>(stride);
-}
-
-TensorNode _unbind_tensors(TensorNode structure) {
+TensorNode _unbind_tensors(const TensorNode& structure) {
   std::vector<TensorNode> result_nodes;
   if (structure.is_leaf()) {
     for (at::Tensor tensor : structure.payload().unbind()) {
       result_nodes.emplace_back(TensorNode(std::move(tensor)));
     }
   } else {
-    for (TensorNode child : structure.unbind()) {
+    for (const TensorNode& child : structure.unbind()) {
       result_nodes.emplace_back(_unbind_tensors(child));
     }
   }
@@ -58,7 +36,7 @@ NestedTensorImpl::NestedTensorImpl(std::shared_ptr<NestedTensorStorage> storage)
   key_set_ = key_set_ - c10::DispatchKeySet({DispatchKey::ADInplaceOrView});
 }
 
-inline TensorNode _squeeze_nested_dim(TensorNode structure, int64_t dim) {
+inline TensorNode _squeeze_nested_dim(const TensorNode& structure, int64_t dim) {
   return squeeze(structure, dim, false);
 }
 
@@ -108,7 +86,7 @@ std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode> input) {
   return result;
 }
 
-at::Tensor wrap_buffer(at::Tensor&& buffer, SizeNode nested_size) {
+at::Tensor wrap_buffer(at::Tensor&& buffer, const SizeNode& nested_size) {
   TORCH_CHECK(buffer.is_contiguous(), "Given buffer must be contiguous.");
   if (nested_size.is_leaf()) {
     return buffer.reshape(IntArrayRef(nested_size.payload()));
@@ -385,12 +363,6 @@ Tensor NestedTensor_unsqueeze(const Tensor& self, int64_t dim) {
 //   return self;
 // }
 
-Tensor NestedTensor_serialize_nested_size(const Tensor& tensor) {
-  auto nt_impl = get_nested_tensor_impl(tensor);
-  std::vector<int64_t> out;
-  return torch::tensor(torch::nested_tensor::serialize(nt_impl->nested_size()));
-}
-
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   // nt_impl("unbind.int", no_bw(TORCH_FN(NestedTensor_unbind)));
   // nt_impl(m, "size.int", NestedTensor_size_int);
@@ -400,7 +372,6 @@ TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "copy_", NestedTensor_copy_);
   nt_impl(m, "is_pinned", NestedTensor_is_pinned);
   nt_impl(m, "select.int", NestedTensor_select);
-  nt_impl(m, "serialize_nested_size", NestedTensor_serialize_nested_size);
   nt_impl(m, "size.int", NestedTensor_size_int);
   nt_impl(m, "slice.Tensor", NestedTensor_slice);
   nt_impl(m, "squeeze", NestedTensor_squeeze);

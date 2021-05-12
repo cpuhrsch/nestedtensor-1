@@ -6,26 +6,30 @@ namespace nested_tensor {
 
 struct ListStorage : public NestedTensorStorage {
   explicit ListStorage(TensorNode&& structure)
-      : _structure(structure),
-        _nested_size(
-            map([](at::Tensor tensor) { return tensor.sizes().vec(); },
-                _structure)),
-        _nested_stride(
-            map([](at::Tensor tensor) { return tensor.strides().vec(); },
-                _structure)),
+      : _structure(std::move(structure)),
+        _nested_size(map(
+            [](at::Tensor tensor) -> const std::vector<int64_t> {
+              return tensor.sizes().vec();
+            },
+            _structure)),
+        _nested_stride(map(
+            [](at::Tensor tensor) -> const std::vector<int64_t> {
+              return tensor.strides().vec();
+            },
+            _structure)),
         _data_type(
-            get_first_leaf(structure) ? get_first_leaf(structure)->dtype()
-                                      : at::ones({}).dtype()),
+            get_first_leaf(_structure) ? get_first_leaf(_structure)->dtype()
+                                       : at::ones({}).dtype()),
         _device(
-            get_first_leaf(structure) ? get_first_leaf(structure)->device()
-                                      : at::ones({}).device()),
+            get_first_leaf(_structure) ? get_first_leaf(_structure)->device()
+                                       : at::ones({}).device()),
         _dim(
-            get_first_leaf(structure)
-                ? get_first_leaf(structure)->dim() + _structure.height()
+            get_first_leaf(_structure)
+                ? get_first_leaf(_structure)->dim() + _structure.height()
                 : _structure.height()),
         _is_pinned(
-            get_first_leaf(structure) ? get_first_leaf(structure)->is_pinned()
-                                      : false) {
+            get_first_leaf(_structure) ? get_first_leaf(_structure)->is_pinned()
+                                       : false) {
     TORCH_CHECK(
         !_structure.is_leaf(),
         "NestedTensorImpl must be given structure of at least height 1.");
@@ -33,7 +37,7 @@ struct ListStorage : public NestedTensorStorage {
   int64_t dim() const override {
     return _dim;
   }
-  TensorNode get_structure() const override {
+  const TensorNode& get_structure() const override {
     return _structure;
   }
   const caffe2::TypeMeta dtype() const override {
@@ -45,10 +49,10 @@ struct ListStorage : public NestedTensorStorage {
   bool is_pinned() const override {
     return _is_pinned;
   }
-  const SizeNode nested_size() const override {
+  const SizeNode& nested_size() const override {
     return _nested_size;
   }
-  const SizeNode nested_stride() const override {
+  const SizeNode& nested_stride() const override {
     return _nested_stride;
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const override {

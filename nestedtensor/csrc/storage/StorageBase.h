@@ -10,7 +10,7 @@ struct NestedTensorStorage {
   virtual int64_t dim() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
-  virtual TensorNode get_structure() const {
+  virtual const TensorNode& get_structure() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
   virtual const caffe2::TypeMeta dtype() const {
@@ -22,10 +22,10 @@ struct NestedTensorStorage {
   virtual bool is_pinned() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
-  virtual const SizeNode nested_size() const {
+  virtual const SizeNode& nested_size() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
-  virtual const SizeNode nested_stride() const {
+  virtual const SizeNode& nested_stride() const {
     TORCH_CHECK(false, "Not Implemented.");
   }
   virtual const std::vector<c10::optional<int64_t>> opt_sizes() const {
