@@ -105,7 +105,7 @@ struct NestedNode<at::Tensor> {
 
  private:
   bool _is_leaf;
-  std::vector<NestedNode<at::Tensor>> _children;
+  const std::vector<NestedNode<at::Tensor>> _children;
   // TODO: Make this const?
   // _VariableNode _variable_node;
   at::Tensor _payload;
