@@ -144,14 +144,15 @@ struct NestedTensorImpl : public c10::TensorImpl {
     return _storage->dim();
   }
   int64_t numel() const override {
-    int64_t result1 = reduce(
-        [](at::Tensor leaf, int64_t input) { return input + leaf.numel(); },
-        0,
-        get_structure());
-    std::cout << "result1: " << result1 << std::endl;
-    int64_t result2 =  _storage->nested_size().numel();
-    std::cout << "result2: " << result2 << std::endl;
-    return result1;
+    // int64_t result1 = reduce(
+    //     [](at::Tensor leaf, int64_t input) { return input + leaf.numel(); },
+    //     0,
+    //     get_structure());
+    // std::cout << "result1: " << result1 << std::endl;
+    // int64_t result2 =  _storage->nested_size().numel();
+    // std::cout << "result2: " << result2 << std::endl;
+    // return result1;
+    return  _storage->nested_size().numel();
   }
   bool is_contiguous(at::MemoryFormat memory_format) const override {
     // NOTE: The Tensors themselves might not be contiguous even if there is a

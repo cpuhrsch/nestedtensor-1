@@ -110,6 +110,7 @@ at::Tensor bt_min_mha(
   //   valid_word_num++;
   // }
   int valid_word_num = query.numel() / embedding_dim;
+  std::cout << "valid_word_num: " << valid_word_num << std::endl;
 
   at::Tensor query_buf = torch::zeros(
       {batch_size, head_num, seq_len, size_per_head}, float_options);

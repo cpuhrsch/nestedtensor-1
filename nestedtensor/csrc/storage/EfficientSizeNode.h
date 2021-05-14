@@ -140,14 +140,28 @@ struct EfficientSizeNode {
     return _structure;
   }
   int64_t numel() const {
-    if (_sizes.dim() == 0) {
-      return 0;
-    }
-    std::cout << "_sizes" << std::endl;
-    int64_t result = _sizes.prod(1).sum().item<int64_t>();
-    std::cout << "result: " << result << std::endl;
-    std::cout << std::endl;
-    return result;
+    return reduce(
+        [](std::vector<int64_t> sizes, int64_t input) -> int64_t {
+          if (sizes.size() == 0) {
+            return 1;
+          }
+          int64_t numel_i = sizes[0];
+          for (size_t i = 1; i < sizes.size(); i++) {
+            numel_i = numel_i * sizes[i];
+          }
+          return input + numel_i;
+          // return input + leaf.numel();
+        },
+        0,
+        to_size_node());
+    // if (_sizes.dim() == 0) {
+    //   return 0;
+    // }
+    // std::cout << "_sizes" << std::endl;
+    // int64_t result = _sizes.prod(1).sum().item<int64_t>();
+    // std::cout << "result: " << result << std::endl;
+    // std::cout << std::endl;
+    // return result;
     // return _sizes.sum().item<int64_t>();
   }
 
