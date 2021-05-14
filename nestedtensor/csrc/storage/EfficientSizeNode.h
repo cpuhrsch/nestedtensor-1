@@ -85,19 +85,6 @@ inline SizeNode efficient_deserialize(
 } // namespace impl
 
 struct EfficientSizeNode {
-  explicit EfficientSizeNode(SizeNode size_node)
-      : _height(size_node.height()),
-        _structure(impl::efficient_serialize(size_node)),
-        _sizes(impl::stack_sizes(size_node)),
-        _opt_sizes(impl::construct_efficient_size(
-            impl::efficient_deserialize(_structure, _height),
-            _sizes)) {
-          // for (size_t i = 0; i < _structure.size(); i++) {
-          //   std::cout << "_structure[" << i << "]: " << _structure[i] << std::endl;
-          // }
-          // std::cout << "---" << std::endl;
-        }
-
   explicit EfficientSizeNode(
       int64_t height,
       const std::vector<int64_t>& structure,
@@ -107,6 +94,20 @@ struct EfficientSizeNode {
         _structure(structure),
         _sizes(sizes),
         _opt_sizes(opt_sizes) {}
+
+  explicit EfficientSizeNode(SizeNode size_node)
+      : EfficientSizeNode(
+            size_node.height(),
+            impl::efficient_serialize(size_node),
+            impl::stack_sizes(size_node),
+            impl::construct_efficient_size(
+                impl::efficient_deserialize(_structure, _height),
+                _sizes)) {
+    // for (size_t i = 0; i < _structure.size(); i++) {
+    //   std::cout << "_structure[" << i << "]: " << _structure[i] << std::endl;
+    // }
+    // std::cout << "---" << std::endl;
+  }
 
   SizeNode to_size_node() const {
     std::vector<std::vector<int64_t>> _tmp_sizes;
@@ -137,6 +138,17 @@ struct EfficientSizeNode {
   }
   const std::vector<int64_t>& structure() const {
     return _structure;
+  }
+  int64_t numel() const {
+    if (_sizes.dim() == 0) {
+      return 0;
+    }
+    std::cout << "_sizes" << std::endl;
+    int64_t result = _sizes.prod(1).sum().item<int64_t>();
+    std::cout << "result: " << result << std::endl;
+    std::cout << std::endl;
+    return result;
+    // return _sizes.sum().item<int64_t>();
   }
 
  private:
