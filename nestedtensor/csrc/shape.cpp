@@ -78,10 +78,31 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
       self);
 }
 
+std::vector<Tensor> NestedTensor_chunk(const Tensor& self_, int64_t chunks, int64_t dim) {
+  at::Tensor self = NestedTensor_contiguous(self_);
+  TORCH_CHECK(dim == -1, "chunk: dim must be -1.");
+  auto opt_sizes = get_opt_sizes(self);
+  TORCH_CHECK(opt_sizes[opt_sizes.size() - 1], "chunk: last dimension must be regular.");
+  at::Tensor packed_buf = get_buffer(self).contiguous().reshape({-1, *opt_sizes[opt_sizes.size() - 1]});
+  std::vector<at::Tensor> packed_chunks = packed_buf.chunk(chunks, -1);
+  TORCH_CHECK(packed_chunks.size() > 0, "Resulting chunks less than 0.");
+  std::vector<at::Tensor> result;
+  for (const auto& packed_chunk : packed_chunks) {
+    TORCH_CHECK(packed_chunk.dim() == 2, "Expected chunk to be 2dim.");
+    int64_t last_size = packed_chunk.size(1);
+    result.push_back(wrap_buffer(packed_chunk.reshape({-1}),
+                     map([&last_size](std::vector<int64_t> sizes) {
+                       sizes[sizes.size() - 1] = last_size;
+                       return sizes; }, get_nested_size(self))));
+  }
+  return result;
+}
+
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {
   nt_impl(m, "reshape", NestedTensor_reshape);
   nt_impl(m, "view", NestedTensor_view);
   nt_impl(m, "transpose.int", NestedTensor_transpose);
+  nt_impl(m, "chunk", NestedTensor_chunk);
 }
 
 } // namespace at
