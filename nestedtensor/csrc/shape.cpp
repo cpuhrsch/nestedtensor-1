@@ -34,6 +34,7 @@ Tensor NestedTensor_view(const Tensor& self, IntArrayRef size) {
 }
 
 Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
+  //TODO: Implement reshape for padded storage and use it in mha to fix it.
   auto self_data = get_nested_tensor_impl(self);
   TORCH_CHECK(
       int64_t(size.size()) > self_data->nested_dim(),
