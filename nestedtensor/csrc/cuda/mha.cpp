@@ -63,9 +63,9 @@ at::Tensor bt_min_mha(
   at::Tensor packed = at::matmul(query, attr_kernel.t()) + attr_bias;
 
   std::vector<at::Tensor> chunks = packed.chunk(3, -1);
-  at::Tensor q = packed[0];
-  at::Tensor k = packed[1];
-  at::Tensor v = packed[2];
+  at::Tensor q = chunks[0];
+  at::Tensor k = chunks[1];
+  at::Tensor v = chunks[2];
 
   at::Tensor query_buf = to_padded_tensor(q, 0).contiguous();
   at::Tensor key_buf = to_padded_tensor(k, 0).contiguous();
