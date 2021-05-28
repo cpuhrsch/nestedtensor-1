@@ -108,7 +108,7 @@ at::Tensor wrap_buffer(
 }
 
 at::Tensor wrap_padded(at::Tensor&& padded, EfficientSizeNode nested_size) {
-  PaddedStorage* ps = new PaddedStorage(std::move(buffer), nested_size);
+  PaddedStorage* ps = new PaddedStorage(std::move(padded), nested_size);
   NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
   return at::detail::make_tensor<NestedTensorImpl>(
       std::shared_ptr<NestedTensorStorage>(ps_base));

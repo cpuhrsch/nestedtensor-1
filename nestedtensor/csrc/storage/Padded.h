@@ -52,7 +52,7 @@ struct PaddedStorage : public NestedTensorStorage {
     return _padded.is_contiguous();
   }
   bool is_cuda() const override {
-    return _buffer.is_cuda();
+    return _padded.is_cuda();
   }
   int64_t numel() const override {
     return _nested_size.numel();
