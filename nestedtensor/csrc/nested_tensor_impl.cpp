@@ -107,6 +107,13 @@ at::Tensor wrap_buffer(
       std::shared_ptr<NestedTensorStorage>(ps_base));
 }
 
+at::Tensor wrap_padded(at::Tensor&& padded, SizeNode nested_size) {
+  PaddedStorage* ps = new PaddedStorage(std::move(buffer), nested_size);
+  NestedTensorStorage* ps_base = dynamic_cast<NestedTensorStorage*>(ps);
+  return at::detail::make_tensor<NestedTensorImpl>(
+      std::shared_ptr<NestedTensorStorage>(ps_base));
+}
+
 Tensor NestedTensor_contiguous(const Tensor& self, MemoryFormat memory_format) {
   if (get_is_contiguous(self, memory_format)) {
     return self;
