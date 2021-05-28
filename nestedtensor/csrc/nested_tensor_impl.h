@@ -239,6 +239,18 @@ inline int64_t get_nested_dim(const at::Tensor& tensor) {
   return get_nested_tensor_impl(tensor)->nested_dim();
 }
 
+inline std::shared_ptr<NestedTensorStorage> get_storage(const at::Tensor& tensor) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
+  return get_nested_tensor_impl(tensor)->get_storage();
+}
+
+inline NestedTensorStorageKind get_storage_kind(const at::Tensor& tensor) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
+  return get_nested_tensor_impl(tensor)->get_storage()->kind();
+}
+
 at::Tensor wrap_tensor_node(NestedTensorImpl);
 at::Tensor wrap_tensor_node(TensorNode&&);
 std::vector<at::Tensor> wrap_tensor_node(std::vector<TensorNode>);
