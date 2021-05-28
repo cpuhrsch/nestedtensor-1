@@ -20,6 +20,10 @@ Tensor NestedTensor_softmax(
       dim >= nested_dim,
       "Cannot apply softmax across nested dimensions ",
       std::to_string(dim));
+  if (get_storage_kind(input) == NestedTensorStorageKind::padded) {
+    PaddedStorage* pas = dynamic_cast<PaddedStorage*>(get_storage(input).get());
+    return wrap_padded(at::softmax(pas->get_padded(), dim, dtype), get_efficient_nested_size(input));
+  }
   return map_nested_tensor(
       [dim, nested_dim, dtype](const at::Tensor t) {
         return at::softmax(t, dim - nested_dim, dtype);

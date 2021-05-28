@@ -66,6 +66,10 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   if (dim0 == dim1) {
     return self;
   }
+  if (get_storage_kind(self) == NestedTensorStorageKind::padded) {
+    PaddedStorage* pas = dynamic_cast<PaddedStorage*>(get_storage(self).get());
+    return wrap_padded(pas->get_padded().transpose(dim0, dim1), get_efficient_nested_size(self));
+  }
   int64_t nested_dim = self_data->nested_dim();
   TORCH_CHECK(
       dim0 >= nested_dim && dim1 >= nested_dim,
