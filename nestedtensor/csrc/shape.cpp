@@ -2,6 +2,7 @@
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/extension.h>
 #include <torch/library.h>
+#include <ATen/InferSize.h>
 
 using namespace torch::nn;
 namespace F = torch::nn::functional;
@@ -42,7 +43,7 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   for (int64_t i = 0; i < self_data->nested_dim(); i++) {
     if (size[i] >= 0) {
       throw std::runtime_error(
-          "Cannot reshape explicitly along irregular dimension " +
+          "Cannot reshape explicitly along nested dimension " +
           std::to_string(i) + ". Please use -1 as a placeholder.");
     }
   }
@@ -50,6 +51,20 @@ Tensor NestedTensor_reshape(const Tensor& self, IntArrayRef size) {
   std::vector<int64_t> target_shape;
   for (int64_t i = nested_dim; i < int64_t(size.size()); i++) {
     target_shape.push_back(size[i]);
+  }
+  std::cout << "target_shape: " << IntArrayRef(target_shape) << std::endl;
+  if (get_raw_padded_storage(self)) {
+    PaddedStorage* padded_storage = *get_raw_padded_storage(self);
+    auto new_size = map([&target_shape](std::vector<int64_t> sizes) {
+          std::cout << "0sizes: " << IntArrayRef(sizes) << std::endl;
+          int64_t numel = torch::nested_tensor::impl::count_numel(sizes);
+          std::cout << "0numel: " << numel << std::endl;
+          at::DimVector new_sizes_dv = at::infer_size_dv(target_shape, numel);
+          std::vector<int64_t> new_sizes(new_sizes_dv.begin(), new_sizes_dv.end());
+          std::cout << "1sizes: " << IntArrayRef(new_sizes) << std::endl;
+          return new_sizes;
+        }, get_nested_size(self));
+    return wrap_padded(padded_storage->get_padded(), new_size);
   }
   // TODO: Potential use for packed reshape, but requires custom backward.
   return map_nested_tensor(
@@ -67,14 +82,22 @@ Tensor NestedTensor_transpose(const Tensor& self, int64_t dim0, int64_t dim1) {
   if (dim0 == dim1) {
     return self;
   }
-  if (get_storage_kind(self) == NestedTensorStorageKind::padded) {
-    PaddedStorage* pas = dynamic_cast<PaddedStorage*>(get_storage(self).get());
-    return wrap_padded(pas->get_padded().transpose(dim0, dim1), get_efficient_nested_size(self));
-  }
   int64_t nested_dim = self_data->nested_dim();
   TORCH_CHECK(
       dim0 >= nested_dim && dim1 >= nested_dim,
-      "Transposition of nested dimensions is not implemented yet.");
+      "Transposition involving nested dimensions is not implemented yet.");
+  if (get_storage_kind(self) == NestedTensorStorageKind::padded) {
+    PaddedStorage* pas = dynamic_cast<PaddedStorage*>(get_storage(self).get());
+    std::cout << "pas->get_padded().sizes(): " << pas->get_padded().sizes() << std::endl;
+    return wrap_padded(pas->get_padded().transpose(dim0, dim1),
+                       map([dim0, dim1, nested_dim](std::vector<int64_t> sizes) {
+                         std::vector<int64_t> new_sizes = sizes;
+                         int64_t tmp = new_sizes[dim0];
+                         new_sizes[dim0] = new_sizes[dim1];
+                         new_sizes[dim1] = tmp;
+                         return new_sizes;
+                         }, get_nested_size(self)));
+  }
   // TODO: Potential use for packed transpose, but requires custom backward.
   return map_nested_tensor(
       [dim0, dim1, nested_dim](const at::Tensor t) {

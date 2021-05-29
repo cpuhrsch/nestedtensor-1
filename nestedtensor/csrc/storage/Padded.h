@@ -6,7 +6,8 @@ namespace torch {
 namespace nested_tensor {
 namespace impl {
 
-inline std::vector<int64_t> _get_max_size(const SizeNode& size_node) {
+inline std::vector<int64_t> _get_max_size(const SizeNode& size_node,
+    bool include_nested_dim = false) {
   std::vector<int64_t> result;
   if (size_node.is_leaf()) {
     for (const auto& size : size_node.payload()) {
@@ -29,19 +30,28 @@ inline std::vector<int64_t> _get_max_size(const SizeNode& size_node) {
   return result;
 }
 
-inline std::vector<int64_t> get_max_size(EfficientSizeNode nested_size) {
+inline std::vector<int64_t> get_max_size(EfficientSizeNode nested_size,
+    bool include_nested_dim = false) {
   if (nested_size.height() == 1){
+    std::cout << "get_max_size0" << std::endl;
     auto nt_opt_sizes = nested_size.opt_sizes();
     if (nt_opt_sizes.size() > 0 && *nt_opt_sizes[0] > 0) {
+    std::cout << "get_max_size1" << std::endl;
       auto sizes = nested_size.sizes();
       auto max_sizes = std::get<0>(sizes.max(0));
       std::vector<int64_t> result;
+      if (include_nested_dim) {
+        result.push_back(nested_size.height());
+      }
       for (int64_t i = 0; i < max_sizes.size(0); i++) {
         result.push_back(max_sizes[i].item<int64_t>());
       }
       return result;
     }
   }
+  TORCH_CHECK(!include_nested_dim,
+      "Can't get max size including nested_dim for this shape.");
+    std::cout << "get_max_size2" << std::endl;
   return impl::_get_max_size(nested_size.to_size_node());
 }
 
@@ -52,12 +62,24 @@ struct PaddedStorage : public NestedTensorStorage {
       at::Tensor&& padded,
       EfficientSizeNode nested_size)
       : _nested_size(nested_size),
-        _padded_size(impl::get_max_size(_nested_size)),
+        _padded_size(impl::get_max_size(_nested_size, true)),
         _padded(padded.reshape(_padded_size)) {
+    std::cout << "_padded.sizes(): " << _padded.sizes() << std::endl;
     TORCH_CHECK(
         _nested_size.height(),
         "PaddedStorage must be given NestedSize of at least height 1.");
   }
+  explicit PaddedStorage(
+      at::Tensor&& padded,
+      SizeNode nested_size) :
+    PaddedStorage(
+        std::move(padded),
+        EfficientSizeNode(nested_size)) {
+      map([](std::vector<int64_t> sizes) {
+          std::cout << "isizes: " << IntArrayRef(sizes) << std::endl;
+          return sizes;
+          }, nested_size);
+    }
   int64_t dim() const override {
     return _nested_size.dim();
   }

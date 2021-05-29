@@ -70,6 +70,9 @@ at::Tensor bt_min_mha(
   at::Tensor query_buf = wrap_padded(to_padded_tensor(q, 0).contiguous(), get_efficient_nested_size(query));
   at::Tensor key_buf = wrap_padded(to_padded_tensor(k, 0).contiguous(), get_efficient_nested_size(query));
   at::Tensor val_buf = wrap_padded(to_padded_tensor(v, 0).contiguous(), get_efficient_nested_size(query));
+  query_buf = query_buf.reshape({-1, -1, head_num, size_per_head});
+  key_buf = key_buf.reshape({-1, -1, head_num, size_per_head});
+  val_buf = val_buf.reshape({-1, -1, head_num, size_per_head});
   query_buf = query_buf.transpose(1, 2);
   key_buf =     key_buf.transpose(1, 2);
   val_buf =     val_buf.transpose(1, 2);

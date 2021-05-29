@@ -166,6 +166,16 @@ inline at::Tensor get_buffer(const at::Tensor& tensor) {
   return ps->get_buffer();
 }
 
+inline at::Tensor get_padded(const at::Tensor& tensor) {
+  auto storage = get_nested_tensor_impl(tensor)->get_storage();
+  TORCH_CHECK(
+      storage.get()->kind() == NestedTensorStorageKind::padded,
+      "Given Tensor isn't padded.");
+  NestedTensorStorage* storagep = storage.get();
+  PaddedStorage* ps = dynamic_cast<PaddedStorage*>(storagep);
+  return ps->get_padded();
+}
+
 inline const std::vector<c10::optional<int64_t>> get_opt_sizes(
     const at::Tensor& tensor) {
   TORCH_CHECK(
@@ -245,6 +255,16 @@ inline std::shared_ptr<NestedTensorStorage> get_storage(const at::Tensor& tensor
   return get_nested_tensor_impl(tensor)->get_storage();
 }
 
+inline c10::optional<PaddedStorage*> get_raw_padded_storage(const at::Tensor& tensor) {
+  TORCH_CHECK(
+      is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
+  std::shared_ptr<NestedTensorStorage> storage = get_storage(tensor);
+  if (PaddedStorage* padded_storage = dynamic_cast<PaddedStorage*>(storage.get())) {
+    return c10::make_optional(padded_storage);
+  }
+  return c10::nullopt;
+}
+
 inline NestedTensorStorageKind get_storage_kind(const at::Tensor& tensor) {
   TORCH_CHECK(
       is_nested_tensor_impl(tensor), "Given tensor must be NestedTensor.");
@@ -260,6 +280,7 @@ at::Tensor wrap_buffer(
     EfficientSizeNode efficient_nested_size,
     EfficientSizeNode efficient_nested_stride);
 at::Tensor wrap_padded(at::Tensor&&, EfficientSizeNode nested_size);
+at::Tensor wrap_padded(at::Tensor&&, SizeNode nested_size);
 
 template <class F, class... A>
 inline at::Tensor map_nested_tensor(F&& fn, A... a) {

@@ -35,5 +35,15 @@ inline std::vector<c10::optional<int64_t>> construct_size(
   return result;
 }
 
+namespace impl {
+inline int64_t count_numel(std::vector<int64_t> sizes) {
+  int64_t numel = 1;
+  for (size_t i = 0; i < sizes.size(); i++) {
+    numel = numel * sizes[i];
+  }
+  return numel;
+}
+}
+
 } // namespace nested_tensor
 } // namespace torch

@@ -360,7 +360,6 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size,
       Tensor nt_sizes_ = target_size.sizes().to(torch::kInt32);
       TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor must be of nested_dim 2.")
       Tensor nt_sizes = at::native::narrow(nt_sizes_, 1, 0, 1);
-      int max_size_1 = nt_sizes.max().item<int>();
       nt_sizes =
           at::native::cumsum(nt_sizes, 0).to(torch::kInt32).reshape({-1});
       nt_sizes = at::cat({torch::tensor({0}, torch::kInt32), nt_sizes});
