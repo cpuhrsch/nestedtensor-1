@@ -27,7 +27,7 @@ def benchmark_torch_function(iters, f, *args, **kwargs):
 
 
 @torch.inference_mode()
-def run_benchmark(iters, shapes, model, model_name, bsz):
+def run_benchmark(iters, shapes, model, model_name, bsz, include_loop):
     ts = []
     for s in shapes:
         inp = torch.randn(*s, dtype=torch.half).cuda()
@@ -54,8 +54,10 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
         # Using float16 tolerances from torch/testing/_core.yp
         assert torch.allclose(mo.squeeze(0), ntmo, rtol=1e-3, atol=1e-3)
 
-    loop_time = benchmark_torch_function(iters, _loop)
-    padded_time = benchmark_torch_function(iters, _padded)
+    if include_loop:
+        loop_time = benchmark_torch_function(iters, _loop)
+    else:
+        padded_time = benchmark_torch_function(iters, _padded)
     nt_time = benchmark_torch_function(iters, lambda: model(ts_nt))
 
     shapes_2_array = np.array([s[2] for s in shapes])
@@ -65,20 +67,43 @@ def run_benchmark(iters, shapes, model, model_name, bsz):
     print(f" mean±std shapes[2]: {shapes_2_array.mean():.2f}±{shapes_2_array.std():.2f},", end='')
     print(f" mean±std shapes[3]: {shapes_3_array.mean():.2f}±{shapes_3_array.std():.2f},", end='')
     print(f" padded_size: {tuple(ts_padded.size())},", end='')
-    print(f" loop: {loop_time / iters:7.2f}ms, nt: {nt_time / iters:7.2f}ms, padded: {padded_time / iters:7.2f}ms, speedup: {loop_time / nt_time:.2f}x")
+    print(f" nt: {nt_time / iters:7.2f}ms,", end='')
+    if include_loop:
+        print(f" loop: {loop_time / iters:7.2f}ms,", end='')
+        print(f" speedup: {loop_time / nt_time:.2f}x")
+    else:
+        print(f" padded: {padded_time / iters:7.2f}ms,", end='')
+        print(f" speedup: {padded_time / nt_time:.2f}x")
+
+
+def benchmark(model_name, bsz, min_size, include_loop):
+    iters = 20
+
+    model = build_model({"name": model_name})
+    model = model.cuda().half().eval()
+    random.seed(123)
+    shapes = []
+    for i in range(bsz):
+        H = random.randint(100, 288)
+        W = 288
+        if i % 2:
+            H, W = W, H
+        shapes.append((1, 3, H, W))
+    print(shapes)
+    run_benchmark(iters, shapes, model, model_name, bsz, include_loop)
+
 
 if __name__ == "__main__":
-    iters = 10
-
-    def _benchmark(model_name, bsz):
-        model = build_model({"name": model_name})
-        model = model.cuda().half().eval()
-        random.seed(123)
-        shapes = [(1, 3, random.randint(100, 600), random.randint(100, 600)) for _ in range(bsz)]
-        run_benchmark(iters, shapes, model, model_name, bsz)
-
-    for bsz in [16, 32, 64, 128]:
-        _benchmark("resnext101_32x4d", bsz)
-
-    for bsz in [16, 32]:
-        _benchmark("regnet_y_128gf", bsz)
+    import argparse
+    parser = argparse.ArgumentParser(description='ClassyVision benchmark')
+    parser.add_argument('model',
+                        choices=["resnext101_32x4d", "regnet_y_128gf"],
+                        help='Which model to benchmark.')
+    parser.add_argument('bsz', metavar='bsz', type=int,
+                        help='Batch size to consider')
+    parser.add_argument('min_size', metavar='min_size', type=int,
+                        help='Minimum image size to sample.')
+    parser.add_argument('--include_loop', action='store_true',
+                        help='Include outer loop as baseline.')
+    args = parser.parse_args()
+    benchmark(args.model, args.bsz, args.min_size, args.include_loop)
