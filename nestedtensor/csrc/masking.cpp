@@ -472,8 +472,10 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
         padded.size(0),
         defaultStream);
     if (got_channel_last) {
+      std::cout << "000" << std::endl;
       return wrap_buffer_channel_last(std::move(output), target_size);
     }
+    std::cout << "111" << std::endl;
     return wrap_buffer(std::move(output), target_size);
   }
 #endif
@@ -538,11 +540,15 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       }
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       Tensor output;
-      // if (get_is_channel_last(nt)) {
-      //   output = at::empty(IntArrayRef(new_size), nt_buffer.options(), at::MemoryFormat::ChannelsLast);
-      // } else {
+      if (get_is_channel_last(nt)) {
+        output = at::empty(IntArrayRef(new_size), nt_buffer.options(), at::MemoryFormat::ChannelsLast);
+        std::cout << "3 11 output.sizes(): " << output.sizes() << std::endl;
+        std::cout << "3 11 output.strides(): " << output.strides() << std::endl;
+      } else {
         output = at::empty(IntArrayRef(new_size), nt_buffer.options());
-      // }
+        std::cout << "4 11 output.sizes(): " << output.sizes() << std::endl;
+        std::cout << "4 11 output.strides(): " << output.strides() << std::endl;
+      }
       Tensor new_size_tensor = torch::tensor(new_size);
 
       int64_t input_dim = nt_sizes.size(1);
@@ -572,9 +578,16 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             new_size_tensor.data_ptr<int>(),
             batch_size,
             defaultStream);
+        std::cout << "0 11" << std::endl;
         if (get_is_channel_last(nt)) {
-          output = output.permute({0, 2, 3, 1});
+        std::cout << "1 11" << std::endl;
+        std::cout << "1 11 output.sizes(): " << output.sizes() << std::endl;
+        std::cout << "1 11 output.strides(): " << output.strides() << std::endl;
+          // output = output.permute({0, 2, 3, 1});
+        std::cout << "1 11 1 output.sizes(): " << output.sizes() << std::endl;
+        std::cout << "1 11 1 output.strides(): " << output.strides() << std::endl;
         }
+        std::cout << "2 11" << std::endl;
         return output;
       }
       if (nt_buffer.dtype() == torch::kFloat) {
@@ -588,9 +601,12 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             new_size_tensor.data_ptr<int>(),
             batch_size,
             defaultStream);
+        std::cout << "0 22" << std::endl;
         if (get_is_channel_last(nt)) {
-          output = output.permute({0, 2, 3, 1});
+        std::cout << "1 22" << std::endl;
+          output = output.permute({0, 3, 2, 1});
         }
+        std::cout << "2 22" << std::endl;
         return output;
       }
       TORCH_CHECK(false, "Input datatype ", nt_buffer.dtype(), " is not supported.");

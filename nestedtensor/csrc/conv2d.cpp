@@ -72,7 +72,9 @@ Tensor NestedTensor_conv2d(
       std::cout << "get_buffer_channel_last(input): " << get_buffer_channel_last(input) << std::endl;
       data = to_padded_tensor(input, 0);
       std::cout << "data: " << data << std::endl;
-      Tensor result = from_padded_tensor(data.reshape(-1), get_efficient_nested_size(input));
+      std::cout << "data.sizes(): " << data.sizes() << std::endl;
+      std::cout << "data.strides(): " << data.strides() << std::endl;
+      Tensor result = from_padded_tensor(data, get_efficient_nested_size(input));
       Tensor result_buffer = get_buffer_channel_last(result);
       std::cout << "result_buffer: " << result_buffer << std::endl;
       exit(1);
