@@ -75,8 +75,13 @@ class TestFunctional(TestCase):
                                      groups=groups).squeeze(0)
                 print("nt_out_i")
                 print(nt_out_i)
+                print(nt_out_i.size())
+                print(nt_out_i.stride())
                 print("t_out")
                 print(t_out)
+                print(t_out.size())
+                print(t_out.stride())
+                print("")
                 self.assertEqual(t_out, nt_out_i)
         ts = []
         for s in shapes:

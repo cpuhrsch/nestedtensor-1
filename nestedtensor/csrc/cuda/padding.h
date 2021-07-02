@@ -40,6 +40,7 @@ void remove_padding_kernelLauncher(
     T* output,
     const int* offsets,
     const int* input_sizes,
+    const int* input_strides,
     const int* output_sizes,
     const int* output_strides,
     int output_dim,
