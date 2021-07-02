@@ -64,6 +64,9 @@ Tensor NestedTensor_conv2d(
   if (input.dtype() == torch::kFloat16) {
     Tensor data = to_padded_tensor(input, 0);
     at::Tensor result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
+    std::cout << "result_data: " << result_data << std::endl;
+    std::cout << "result_data.sizes(): " << result_data.sizes() << std::endl;
+    std::cout << "result_data.strides(): " << result_data.strides() << std::endl;
     auto new_sizes = map_efficient_size([&weight, &stride, &padding, &groups, &dilation](int64_t* size_ptr, int64_t size) {
         size_ptr[0] = weight.size(0);
         size_ptr[1] = ((size_ptr[1] + 2 * padding[0] - dilation[0] * (weight.size(2) - 1) - 1) / stride[0]) + 1;

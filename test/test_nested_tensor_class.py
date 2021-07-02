@@ -831,11 +831,21 @@ class TestNestedTensor(TestCase):
                                random.randint(1, 3)).half() for _ in range(3)]
         print("tensors")
         print(tensors)
+        for t in tensors:
+            t0 = t.unsqueeze(0)
+            t0 = t0.to(memory_format=torch.channels_last)
+            print("-".join([str(t0.size()), str(t0.stride())]))
         nt = ntnt_nograd(tensors,
                          device=torch.device('cuda'),
-                         dtype=torch.float16,
-                         channels_last=True)
-        print(nestedtensor.transpose_nchw_nhwc(nt))
+                         dtype=torch.float16)
+        print(nt)
+        print(nt.is_channels_last())
+        nt_channel_last = nestedtensor.transpose_nchw_nhwc(nt)
+        print(nt_channel_last)
+        print(nt_channel_last.is_channels_last())
+        nt0 = nestedtensor.transpose_nhwc_nchw(nt_channel_last)
+        print(nt0)
+        print(nt0.is_channels_last())
         import sys; sys.exit(1)
         print(nt.is_channels_last())
         print(nt)

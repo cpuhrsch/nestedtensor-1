@@ -9,9 +9,17 @@ namespace impl {
 inline EfficientSizeNode create_strides(EfficientSizeNode nested_size) {
   TORCH_CHECK(nested_size.dim() == 4, "Channel last storage needs to be 4 dim.")
   return map_efficient_size([](int64_t* size_ptr, int64_t size) {
-    size_ptr[0] = 1;
-    size_ptr[1] = size_ptr[0] * size_ptr[1];
+      // for (int64_t i = 0; i < size; i++) {
+      // std::cout << "size_ptr[" << i << "]: " << size_ptr[i] << std::endl;
+      // }
+      // std::cout << std::endl;
+    size_ptr[1] = size_ptr[0] * size_ptr[2];
     size_ptr[2] = size_ptr[0];
+    size_ptr[0] = 1;
+      // for (int64_t i = 0; i < size; i++) {
+      // std::cout << "new size_ptr[" << i << "]: " << size_ptr[i] << std::endl;
+      // }
+      // std::cout << std::endl;
     }, nested_size);
 }
 }

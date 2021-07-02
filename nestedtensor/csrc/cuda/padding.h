@@ -41,6 +41,7 @@ void remove_padding_kernelLauncher(
     const int* offsets,
     const int* input_sizes,
     const int* output_sizes,
+    const int* output_strides,
     int output_dim,
     const int batch_size,
     const cudaStream_t stream);

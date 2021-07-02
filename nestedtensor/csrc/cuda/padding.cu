@@ -309,6 +309,7 @@ void remove_padding(
     const int* offsets,
     const int* input_sizes,
     const int* output_sizes,
+    const int* output_strides,
     int output_dim,
     const int batch_size)
 {
@@ -318,13 +319,14 @@ void remove_padding(
   const int grainsize = 16 * 256;
   const int offset = offsets[batch_id];
   const int* sizes_i = output_sizes + batch_id * output_dim;
+  const int* strides_i = output_stides + batch_id * output_dim;
   const int numel_i = sizes_i[0] * sizes_i[1] * sizes_i[2];
-  int input_offset = batch_id * input_sizes[1] * input_sizes[2] * input_sizes[3];
   for (int ii = 0; ii < (numel_i / grainsize); ii++) {
     const int i = ii * grainsize + tid;
     const int i0 = i / (sizes_i[1] * sizes_i[2]);
     const int i1 = (i % (sizes_i[1] * sizes_i[2])) / sizes_i[2];
     const int i2 = i % sizes_i[2];
+    int input_offset = batch_id * input_sizes[1] * input_sizes[2] * input_sizes[3];
     const int i0_offset = i0 * input_sizes[2] * input_sizes[3];
     const int i1_offset = i1 * input_sizes[3];
     output[offset + i] = input[input_offset + i0_offset + i1_offset + i2];
@@ -334,6 +336,7 @@ void remove_padding(
     const int i0 = i / (sizes_i[1] * sizes_i[2]);
     const int i1 = (i % (sizes_i[1] * sizes_i[2])) / sizes_i[2];
     const int i2 = i % sizes_i[2];
+    int input_offset = batch_id * input_sizes[1] * input_sizes[2] * input_sizes[3];
     const int i0_offset = i0 * input_sizes[2] * input_sizes[3];
     const int i1_offset = i1 * input_sizes[3];
     output[offset + i] = input[input_offset + i0_offset + i1_offset + i2];
@@ -347,6 +350,7 @@ void remove_padding_kernelLauncher(
     const int* offsets,
     const int* input_sizes,
     const int* output_sizes,
+    const int* output_strides,
     int output_dim,
     const int batch_size,
     const cudaStream_t stream)
@@ -361,6 +365,7 @@ void remove_padding_kernelLauncher(
     offsets,
     input_sizes,
     output_sizes,
+    output_strides,
     output_dim,
     batch_size);
 }
@@ -371,6 +376,7 @@ template void remove_padding_kernelLauncher<float>(
     const int* offsets,
     const int* input_sizes,
     const int* output_sizes,
+    const int* output_strides,
     int output_dim,
     const int batch_size,
     const cudaStream_t stream);
@@ -381,6 +387,7 @@ template void remove_padding_kernelLauncher<c10::Half>(
     const int* offsets,
     const int* input_sizes,
     const int* output_sizes,
+    const int* output_strides,
     int output_dim,
     const int batch_size,
     const cudaStream_t stream);
