@@ -523,11 +523,12 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       Tensor offsets;
       std::vector<int64_t> new_size;
       if (get_is_channel_last(nt)) {
-        auto esize = map_efficient_size([](int64_t* size_ptr, int64_t size) {
-            int64_t tmp = size_ptr[2];
-            size_ptr[2] = size_ptr[0];
-            size_ptr[0] = tmp;
-            }, get_efficient_nested_size(nt));
+        // auto esize = map_efficient_size([](int64_t* size_ptr, int64_t size) {
+        //     int64_t tmp = size_ptr[2];
+        //     size_ptr[2] = size_ptr[0];
+        //     size_ptr[0] = tmp;
+        //     }, get_efficient_nested_size(nt));
+        auto esize = get_efficient_nested_size(nt);
         // auto esize = get_efficient_nested_size(nt);
         nt_sizes = esize.sizes();
         offsets = batch_offsets_from_efficient_size(esize);
@@ -538,11 +539,13 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
         offsets = batch_offsets_from_efficient_size(esize);
         new_size = padded_size_from_efficient_size(esize);
       }
+      std::cout << "nt_sizes: " << nt_sizes << std::endl;
+      std::cout << "offsets: " << offsets << std::endl;
+      std::cout << "IntArrayRef(new_size): " << IntArrayRef(new_size) << std::endl;
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       Tensor output;
       if (get_is_channel_last(nt)) {
         output = at::empty(IntArrayRef(new_size), nt_buffer.options(), at::MemoryFormat::ChannelsLast);
-        // output = output.transpose(1, 2);
         std::cout << "3 11 output.sizes(): " << output.sizes() << std::endl;
         std::cout << "3 11 output.strides(): " << output.strides() << std::endl;
       } else {

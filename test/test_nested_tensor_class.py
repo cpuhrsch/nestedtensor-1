@@ -829,6 +829,7 @@ class TestNestedTensor(TestCase):
         tensors = [torch.randn(random.randint(1, 2),
                                random.randint(1, 2),
                                random.randint(1, 2)).half() for _ in range(2)]
+        print("tensors")
         print(tensors)
         nt = ntnt_nograd(tensors,
                          device=torch.device('cuda'),
@@ -838,11 +839,23 @@ class TestNestedTensor(TestCase):
         print(nt)
         print(nt.is_channels_last())
         data0 = nt.to_padded_tensor(padding=1)
+        print("data0")
         print(data0)
-        nt = ntnt_nograd(tensors, device=torch.device('cpu'))
-        data1, mask1 = nt.to_tensor_mask()
-        data1.masked_fill_(mask1.logical_not(), 1)
+        print("data0.is_contiguous(memory_format=torch.channels_last)")
+        print(data0.is_contiguous(memory_format=torch.channels_last))
+
+        nt = ntnt_nograd(tensors,
+                         device=torch.device('cuda'),
+                         dtype=torch.float16)
+        data1 = nt.to_padded_tensor(padding=1)
+        print("data1")
+        print(data1)
+        print("data1.is_contiguous(memory_format=torch.channels_last)")
+        print(data1.is_contiguous(memory_format=torch.channels_last))
         self.assertEqual(data0, data1)
+        # nt = ntnt_nograd(tensors, device=torch.device('cpu'))
+        # data1, mask1 = nt.to_tensor_mask()
+        # data1.masked_fill_(mask1.logical_not(), 1)
 
 
 class TestContiguous(TestCase):
