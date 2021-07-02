@@ -34,6 +34,12 @@ struct ChannelLastPackedStorage : public NestedTensorStorage {
   int64_t dim() const override {
     return _nested_size.dim();
   }
+  TensorNode get_structure() const override {
+    return std::get<0>(impl::build_structure(
+        _buffer.reshape({-1}),
+        _nested_size,
+        _nested_stride));
+  }
   at::Tensor& get_buffer() {
     return _buffer;
   }

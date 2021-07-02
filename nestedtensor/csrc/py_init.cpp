@@ -1,6 +1,7 @@
 #include <nestedtensor/csrc/creation.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <nestedtensor/csrc/python_functions.h>
+#include <nestedtensor/csrc/transpose.h>
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <nestedtensor/csrc/utils/python_nested_node.h>
 #include <torch/csrc/Size.h>
@@ -191,6 +192,16 @@ TORCH_LIBRARY(nestedtensor, m) {
   m.def("get_is_contiguous(Tensor self) -> bool");
   m.impl("get_is_contiguous", NestedTensorKey, [](Tensor self) {
     return get_is_contiguous(self);
+  });
+
+  m.def("transpose_nhwc_nchw(Tensor self) -> Tensor");
+  m.impl("transpose_nhwc_nchw", NestedTensorKey, [](Tensor self) {
+    return transpose_nhwc_nchw(self);
+  });
+
+  m.def("transpose_nchw_nhwc(Tensor self) -> Tensor");
+  m.impl("transpose_nchw_nhwc", NestedTensorKey, [](Tensor self) {
+    return transpose_nchw_nhwc(self);
   });
 
   m.def("make_contiguous(Tensor self) -> Tensor");

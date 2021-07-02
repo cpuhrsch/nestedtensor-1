@@ -835,6 +835,8 @@ class TestNestedTensor(TestCase):
                          device=torch.device('cuda'),
                          dtype=torch.float16,
                          channels_last=True)
+        print(nestedtensor.transpose_nchw_nhwc(nt))
+        import sys; sys.exit(1)
         print(nt.is_channels_last())
         print(nt)
         print(nt.is_channels_last())
