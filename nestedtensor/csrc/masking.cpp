@@ -540,15 +540,16 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       }
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       Tensor output;
-      // if (get_is_channel_last(nt)) {
-      //   output = at::empty(IntArrayRef(new_size), nt_buffer.options(), at::MemoryFormat::ChannelsLast);
-      //   std::cout << "3 11 output.sizes(): " << output.sizes() << std::endl;
-      //   std::cout << "3 11 output.strides(): " << output.strides() << std::endl;
-      // } else {
+      if (get_is_channel_last(nt)) {
+        output = at::empty(IntArrayRef(new_size), nt_buffer.options(), at::MemoryFormat::ChannelsLast);
+        // output = output.transpose(1, 2);
+        std::cout << "3 11 output.sizes(): " << output.sizes() << std::endl;
+        std::cout << "3 11 output.strides(): " << output.strides() << std::endl;
+      } else {
         output = at::empty(IntArrayRef(new_size), nt_buffer.options());
         std::cout << "4 11 output.sizes(): " << output.sizes() << std::endl;
         std::cout << "4 11 output.strides(): " << output.strides() << std::endl;
-      // }
+      }
       Tensor new_size_tensor = torch::tensor(new_size);
 
       int64_t input_dim = nt_sizes.size(1);
@@ -583,7 +584,7 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
         std::cout << "1 11" << std::endl;
         std::cout << "1 11 output.sizes(): " << output.sizes() << std::endl;
         std::cout << "1 11 output.strides(): " << output.strides() << std::endl;
-          output = output.permute({0, 2, 3, 1});
+          // output = output.permute({0, 3, 2, 1});
         std::cout << "1 11 1 output.sizes(): " << output.sizes() << std::endl;
         std::cout << "1 11 1 output.strides(): " << output.strides() << std::endl;
         }
