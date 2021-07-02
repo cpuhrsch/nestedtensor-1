@@ -119,17 +119,6 @@ void add_padding_3(
   const int* strides_i = input_strides + batch_id * input_dim;
   const int numel_i = sizes_i[0] * sizes_i[1] * sizes_i[2];
   const int output_numel = output_sizes[1] * output_sizes[2] * output_sizes[3];
-  if (threadIdx.x == 0 && grid_id == 0) {
-  printf("output_sizes: (%d, %d, %d, %d) output_strides: (%d, %d, %d, %d)\n",
-      output_sizes[0],
-      output_sizes[1],
-      output_sizes[2],
-      output_sizes[3],
-      output_strides[0],
-      output_strides[1],
-      output_strides[2],
-      output_strides[3]);
-  }
   for (int ii = 0; ii < (output_numel / grainsize); ii++) {
     const int i = ii * grainsize + tid;
     const int i0 = i / (output_sizes[2] * output_sizes[3]);
@@ -144,14 +133,6 @@ void add_padding_3(
                                i0 * strides_i[0] +
                                i1 * strides_i[1] +
                                i2 * strides_i[2];
-  printf("%d -  i, index: (%d, %d, %d, %d): %d - %d\n",
-      i,
-      batch_id,
-      i0,
-      i1,
-      i2,
-      output_offset,
-      input_offset);
       output[output_offset] = input[input_offset];
     } else {
       output[output_offset] = padding_value;
@@ -162,8 +143,6 @@ void add_padding_3(
     const int i0 = i / (output_sizes[2] * output_sizes[3]);
     const int i1 = (i % (output_sizes[2] * output_sizes[3])) / output_sizes[3];
     const int i2 = i % output_sizes[3];
-//  if (threadIdx.x == 0 && grid_id == 0) {
-//  }
     const int output_offset = batch_id * output_strides[0] + 
                                     i0 * output_strides[1] +
                                     i1 * output_strides[2] +
@@ -173,14 +152,6 @@ void add_padding_3(
                                i0 * strides_i[0] +
                                i1 * strides_i[1] +
                                i2 * strides_i[2];
-  printf("%d -  i, index: (%d, %d, %d, %d): %d - %d\n",
-      i,
-      batch_id,
-      i0,
-      i1,
-      i2,
-      output_offset,
-      input_offset);
       output[output_offset] = input[input_offset];
     } else {
       output[output_offset] = padding_value;
