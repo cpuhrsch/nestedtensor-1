@@ -471,6 +471,9 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
         padded.dim() - 1,
         padded.size(0),
         defaultStream);
+    if (got_channel_last) {
+      return wrap_buffer_channel_last(std::move(output), target_size);
+    }
     return wrap_buffer(std::move(output), target_size);
   }
 #endif
@@ -506,21 +509,24 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
     Tensor nt_buffer;
     if (get_is_channel_last(nt)) {
       nt_buffer = get_buffer_channel_last(nt);
+      // std::cout << "last nt_buffer: " << nt_buffer << std::endl;
     } else {
       TORCH_CHECK(get_is_contiguous(nt),
                   "to_padded_tensor: If input is not channel last, it must be contiguous.");
       nt_buffer = get_buffer(nt);
+      // std::cout << "reg  nt_buffer: " << nt_buffer << std::endl;
     }
     if (nt_buffer.is_cuda()) {
       at::Tensor nt_sizes;
       Tensor offsets;
       std::vector<int64_t> new_size;
       if (get_is_channel_last(nt)) {
-        auto esize = map_efficient_size([](int64_t* size_ptr, int64_t size) {
-            int64_t tmp = size_ptr[0];
-            size_ptr[0] = size_ptr[2];
-            size_ptr[2] = tmp;
-            }, get_efficient_nested_size(nt));
+        // auto esize = map_efficient_size([](int64_t* size_ptr, int64_t size) {
+        //     int64_t tmp = size_ptr[0];
+        //     size_ptr[0] = size_ptr[2];
+        //     size_ptr[2] = tmp;
+        //     }, get_efficient_nested_size(nt));
+        auto esize = get_efficient_nested_size(nt);
       nt_sizes = esize.sizes();
       offsets = batch_offsets_from_efficient_size(esize);
       new_size = padded_size_from_efficient_size(esize);
@@ -566,9 +572,9 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             new_size_tensor.data_ptr<int>(),
             batch_size,
             defaultStream);
-        if (get_is_channel_last(nt)) {
-          output = output.permute({0, 3, 1, 2});
-        }
+        // if (get_is_channel_last(nt)) {
+        //   output = output.permute({0, 3, 1, 2});
+        // }
         return output;
       }
       if (nt_buffer.dtype() == torch::kFloat) {
@@ -582,9 +588,9 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             new_size_tensor.data_ptr<int>(),
             batch_size,
             defaultStream);
-        if (get_is_channel_last(nt)) {
-          output = output.permute({0, 3, 1, 2});
-        }
+        // if (get_is_channel_last(nt)) {
+        //   output = output.permute({0, 3, 1, 2});
+        // }
         return output;
       }
       TORCH_CHECK(false, "Input datatype ", nt_buffer.dtype(), " is not supported.");

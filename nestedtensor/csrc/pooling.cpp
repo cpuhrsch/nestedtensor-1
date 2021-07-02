@@ -2,6 +2,7 @@
 #include <nestedtensor/csrc/utils/nested_node_functions.h>
 #include <torch/extension.h>
 #include <torch/library.h>
+#include <nestedtensor/csrc/transpose.h>
 
 using namespace torch::nn;
 namespace F = torch::nn::functional;
@@ -30,15 +31,24 @@ Tensor NestedTensor_adaptive_avg_pool2d_backward(
 }
 
 Tensor NestedTensor_max_pool2d(
-    const Tensor& self,
+    const Tensor& self_,
     IntArrayRef kernel_size,
     IntArrayRef stride,
     IntArrayRef padding,
     IntArrayRef dilation,
     bool ceil_mode) {
-  return map_nested_tensor(
+  Tensor self = self_;
+  bool got_channel_last = false;
+  // std::cout << "0 self.dtype(): " << self.dtype() << std::endl;
+  if (get_is_channel_last(self)) {
+    // std::cout << "1 self.dtype(): " << self.dtype() << std::endl;
+    self = transpose_nhwc_nchw(self);
+    got_channel_last = true;
+  }
+  Tensor result = map_nested_tensor(
       [&](at::Tensor t) {
-        return at::max_pool2d(
+      // std::cout << "t.dtype(): " << t.dtype() << std::endl;
+        Tensor r =  at::max_pool2d(
                    t.unsqueeze(0),
                    kernel_size,
                    stride,
@@ -46,8 +56,14 @@ Tensor NestedTensor_max_pool2d(
                    dilation,
                    ceil_mode)
             .squeeze(0);
+      // std::cout << "r.dtype(): " << r.dtype() << std::endl;
+      return r;
       },
       self);
+  if (got_channel_last) {
+    return transpose_nchw_nhwc(result);
+  }
+  return result;
 }
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {

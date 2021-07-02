@@ -4,6 +4,7 @@
 #include <nestedtensor/csrc/utils/nested_node.h>
 #include <torch/csrc/jit/python/pybind_utils.h>
 #include <torch/extension.h>
+#include <nestedtensor/csrc/transpose.h>
 
 namespace py = pybind11;
 
@@ -193,7 +194,8 @@ at::Tensor nested_tensor_impl(
     py::object dtype_,
     py::object device_,
     bool requires_grad,
-    bool pin_memory) {
+    bool pin_memory,
+    bool channels_last) {
   if (requires_grad) {
     throw std::runtime_error(
         "This version of nestedtensor currently does not support autograd. Please open an issue on https://github.com/pytorch/nestedtensor if you need this.");
@@ -212,6 +214,12 @@ at::Tensor nested_tensor_impl(
   buffer = buffer.to(device, dtype);
   if (pin_memory) {
     buffer = buffer.pin_memory();
+  }
+  if (channels_last) {
+    TORCH_CHECK(get_dim(result) == 4, "channels last requires 4 dimensional input.");
+    result = wrap_buffer(std::move(buffer), get_efficient_nested_size(result));
+    result = transpose_nchw_nhwc(result);
+    return result;
   }
   return wrap_buffer(std::move(buffer), get_efficient_nested_size(result), get_efficient_nested_stride(result));
 }

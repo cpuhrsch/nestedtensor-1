@@ -143,7 +143,7 @@ Tensor NestedTensor_batch_norm(
       at::Tensor value2 = -(mean * value - bias_cont);
 
       input_buffer = at::addcmul(value2.reshape({1, num_channel}), input_buffer, value.reshape({1, num_channel}));
-      input_buffer = input_buffer.reshape(-1);
+      input_buffer = input_buffer.view(-1);
 
       // Tensor output = input;
       // output = output - mean.reshape(IntArrayRef(scalar_shape));
@@ -156,7 +156,9 @@ Tensor NestedTensor_batch_norm(
       //   output = output + bias->reshape(IntArrayRef(scalar_shape));
       // }
       // return output;
-      return wrap_buffer_channel_last(std::move(input_buffer), get_efficient_nested_size(input));
+      Tensor result = wrap_buffer_channel_last(std::move(input_buffer), get_efficient_nested_size(input));
+      // std::cout << "get_is_channel_last(result): " << get_is_channel_last(result) << std::endl;
+      return result;
     }
 
     if (get_is_contiguous(input)) {

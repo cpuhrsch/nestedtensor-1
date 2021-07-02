@@ -17,8 +17,8 @@ def _iter_constructors():
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 
 
-def ntnt_nograd(x, device=None, dtype=None): return nestedtensor.nested_tensor(
-    x, requires_grad=False, device=device, dtype=dtype)
+def ntnt_nograd(x, device=None, dtype=None, channels_last=None): return nestedtensor.nested_tensor(
+    x, requires_grad=False, device=device, dtype=dtype, channels_last=channels_last)
 
 
 class TestFunctional(TestCase):
@@ -60,7 +60,9 @@ class TestFunctional(TestCase):
             return r
 
         def _test(ts, weight, stride, padding, dilation, groups):
-            nt = ntnt_nograd(ts, device=device, dtype=dtype)
+            print("ts")
+            print(ts)
+            nt = ntnt_nograd(ts, device=device, dtype=dtype, channels_last=True)
             nt_out = torch.conv2d(nt, weight, stride=stride,
                                   padding=padding, dilation=dilation,
                                   groups=groups)
@@ -69,10 +71,15 @@ class TestFunctional(TestCase):
                                      stride=stride, padding=padding,
                                      dilation=dilation,
                                      groups=groups).squeeze(0)
+                print("nt_out_i")
+                print(nt_out_i)
+                print("t_out")
+                print(t_out)
                 self.assertEqual(t_out, nt_out_i)
         ts = []
         for s in shapes:
-            ts.append(torch.randn(_prod(s)).reshape(*s).to(device=device, dtype=dtype))
+            # ts.append(torch.randn(_prod(s)).reshape(*s).to(device=device, dtype=dtype))
+            ts.append(torch.arange(_prod(s)).reshape(*s).to(device=device, dtype=dtype))
         weight = weight.to(device=device, dtype=dtype)
         _test(ts, weight, stride, padding, dilation, groups)
 
@@ -94,8 +101,10 @@ class TestFunctional(TestCase):
     @torch.inference_mode()
     @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
     def test_conv2d_3x3_cuda(self):
-        shapes = [(2, 4, 5), (2, 5, 3), (2, 3, 3)]
-        weight = torch.randn(3*2*3*3).reshape(3, 2, 3, 3)
+        # shapes = [(2, 4, 5), (2, 5, 3), (2, 3, 3)]
+        shapes = [(2, 2, 3), (2, 3, 2)] # , (2, 3, 3)]
+        # weight = torch.randn(3*2*3*3).reshape(3, 2, 3, 3)
+        weight = torch.arange(1*2*2*2).reshape(1, 2, 2, 2)
         self._test_conv2d_dtype(torch.float16, weight, torch.device('cuda'), shapes)
         self._test_conv2d_dtype(torch.float32, weight, torch.device('cuda'), shapes)
 

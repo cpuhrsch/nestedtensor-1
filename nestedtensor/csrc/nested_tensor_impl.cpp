@@ -126,6 +126,7 @@ at::Tensor wrap_buffer(
 at::Tensor wrap_buffer_channel_last(
     at::Tensor&& buffer,
     EfficientSizeNode efficient_nested_size) {
+  TORCH_CHECK(!is_nested_tensor_impl(buffer), "Given buffer must not be a NestedTensor.");
   TORCH_CHECK(buffer.is_contiguous(), "Given buffer must be contiguous.");
   TORCH_CHECK(
       efficient_nested_size.height() == 1,

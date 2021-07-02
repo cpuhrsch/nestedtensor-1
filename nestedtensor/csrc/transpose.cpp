@@ -70,12 +70,13 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
       sizes_dim3.data_ptr<int>(),
       defaultStream
       );
-  return output_buffer.reshape(-1);
+  return output_buffer.view(-1);
 #endif
   TORCH_CHECK(false, "transpose_buffer needs CUDA.");
 }
 
 Tensor transpose_nhwc_nchw_out(Tensor input, Tensor output) {
+  // std::cout << "0 transpose_nhwc_nchw_out" << std::endl;
 #ifdef WITH_CUDA
   TORCH_CHECK(get_dim(input) == 4, "transpose_nhwc_nchw_out needs 4d input.");
   TORCH_CHECK(get_is_channel_last(input), "transpose_nhwc_nchw_out input needs to be channel last.");
@@ -100,13 +101,14 @@ Tensor transpose_nhwc_nchw(Tensor input) {
   TORCH_CHECK(get_dim(input) == 4, "transpose_nhwc_nchw needs 4d input.");
   TORCH_CHECK(get_is_channel_last(input), "transpose_nhwc_nchw input needs to be channel last.");
   Tensor input_buffer = get_buffer_channel_last(input);
-  Tensor output = wrap_buffer(at::empty_like(input_buffer),
+  Tensor output = wrap_buffer(at::empty({input_buffer.numel()}, input_buffer.options()),
                               get_efficient_nested_size(input));
   return transpose_nhwc_nchw_out(input, output);
 }
 
 // TODO: Might actually return nwhc (same for inverse above), but for our applications this doesn't matter.
 Tensor transpose_nchw_nhwc_out(Tensor input, Tensor output) {
+  // std::cout << "1 transpose_nchw_nhwc_out" << std::endl;
 #ifdef WITH_CUDA
   TORCH_CHECK(get_dim(input) == 4, "transpose_nchw_nhwc_out needs 4d input.");
   TORCH_CHECK(get_is_contiguous(input), "transpose_nchw_nhwc_out input needs to be contiguous.");
@@ -132,7 +134,7 @@ Tensor transpose_nchw_nhwc(Tensor input) {
   TORCH_CHECK(get_dim(input) == 4, "transpose_nchw_nhwc needs 4d input.");
   TORCH_CHECK(get_is_contiguous(input), "transpose_nchw_nhwc input needs to be contiguous.");
   Tensor input_buffer = get_buffer(input);
-  Tensor output = wrap_buffer_channel_last(at::empty_like(input_buffer),
+  Tensor output = wrap_buffer_channel_last(at::empty({input_buffer.numel()}, input_buffer.options()),
                                            get_efficient_nested_size(input));
   return transpose_nchw_nhwc_out(input, output);
 }
