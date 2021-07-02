@@ -9,8 +9,12 @@ import utils
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 
 
-def ntnt_nograd(x, device=None): return nestedtensor.nested_tensor(
-    x, requires_grad=False, device=device)
+def ntnt_nograd(x, device=None, dtype=None, channels_last=None):
+    return nestedtensor.nested_tensor(x,
+                                      requires_grad=False,
+                                      device=device,
+                                      dtype=dtype,
+                                      channels_last=channels_last)
 
 # Given arguments to a constructor iterator over results for
 # as_nested_tensor and nested_tensor constructors.
@@ -817,6 +821,28 @@ class TestNestedTensor(TestCase):
         data, mask0 = nt.to_tensor_mask(mask_dim=2)
         mask1 = torch.ops.nestedtensor.to_mask(nt, 2)
         self.assertEqual(mask0, mask1)
+
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA not enabled.")
+    def test_to_padded_tensor_cuda_dim4_channels_last(self):
+        import random
+        random.seed(1010)
+        tensors = [torch.randn(random.randint(1, 2),
+                               random.randint(1, 2),
+                               random.randint(1, 2)).half() for _ in range(2)]
+        print(tensors)
+        nt = ntnt_nograd(tensors,
+                         device=torch.device('cuda'),
+                         dtype=torch.float16,
+                         channels_last=True)
+        print(nt.is_channels_last())
+        print(nt)
+        print(nt.is_channels_last())
+        data0 = nt.to_padded_tensor(padding=1)
+        print(data0)
+        nt = ntnt_nograd(tensors, device=torch.device('cpu'))
+        data1, mask1 = nt.to_tensor_mask()
+        data1.masked_fill_(mask1.logical_not(), 1)
+        self.assertEqual(data0, data1)
 
 
 class TestContiguous(TestCase):

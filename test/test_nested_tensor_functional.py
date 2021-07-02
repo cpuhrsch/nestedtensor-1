@@ -63,6 +63,8 @@ class TestFunctional(TestCase):
             print("ts")
             print(ts)
             nt = ntnt_nograd(ts, device=device, dtype=dtype, channels_last=True)
+            print("nt")
+            print(nt)
             nt_out = torch.conv2d(nt, weight, stride=stride,
                                   padding=padding, dilation=dilation,
                                   groups=groups)
@@ -80,6 +82,7 @@ class TestFunctional(TestCase):
         for s in shapes:
             # ts.append(torch.randn(_prod(s)).reshape(*s).to(device=device, dtype=dtype))
             ts.append(torch.arange(_prod(s)).reshape(*s).to(device=device, dtype=dtype))
+        ts[1] = ts[1] + ts[0].numel()
         weight = weight.to(device=device, dtype=dtype)
         _test(ts, weight, stride, padding, dilation, groups)
 

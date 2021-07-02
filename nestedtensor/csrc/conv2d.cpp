@@ -69,7 +69,13 @@ Tensor NestedTensor_conv2d(
     Tensor data;
     if (get_is_channel_last(input)) {
       got_channel_last = true;
+      std::cout << "get_buffer_channel_last(input): " << get_buffer_channel_last(input) << std::endl;
       data = to_padded_tensor(input, 0);
+      std::cout << "data: " << data << std::endl;
+      Tensor result = from_padded_tensor(data.reshape(-1), get_efficient_nested_size(input));
+      Tensor result_buffer = get_buffer_channel_last(result);
+      std::cout << "result_buffer: " << result_buffer << std::endl;
+      exit(1);
       // std::cout << "0 data: " << data << std::endl;
       // at::Tensor result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
       // std::cout << "0 result_data: " << result_data << std::endl;
@@ -90,6 +96,7 @@ Tensor NestedTensor_conv2d(
         size_ptr[1] = ((size_ptr[1] + 2 * padding[0] - dilation[0] * (weight.size(2) - 1) - 1) / stride[0]) + 1;
         size_ptr[2] = ((size_ptr[2] + 2 * padding[1] - dilation[1] * (weight.size(3) - 1) - 1) / stride[1]) + 1;
         }, get_efficient_nested_size(input));
+    result_data = result_data.contiguous();
     // std::cout << "result_data: " << result_data << std::endl;
     at::Tensor result = from_padded_tensor(result_data, new_sizes);
     // std::cout << "get_buffer(result): " << get_buffer(result) << std::endl;

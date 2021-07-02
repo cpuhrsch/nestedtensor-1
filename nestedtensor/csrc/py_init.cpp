@@ -145,6 +145,11 @@ TORCH_LIBRARY(nestedtensor, m) {
     return get_nested_tensor_impl(tensor)->nested_dim();
   });
 
+  m.def("is_channels_last(Tensor tensor) -> bool");
+  m.impl("is_channels_last", NestedTensorKey, [](Tensor tensor) {
+    return get_is_channel_last(tensor);
+  });
+
   m.def("to_nested_tensor(Tensor tensor, int? dim) -> Tensor");
   m.impl(
       "to_nested_tensor",
@@ -183,7 +188,7 @@ TORCH_LIBRARY(nestedtensor, m) {
     return get_numel(self);
   });
 
-  m.def("get_is_contiguous(Tensor self) -> int");
+  m.def("get_is_contiguous(Tensor self) -> bool");
   m.impl("get_is_contiguous", NestedTensorKey, [](Tensor self) {
     return get_is_contiguous(self);
   });

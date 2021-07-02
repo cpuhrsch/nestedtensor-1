@@ -226,7 +226,7 @@ Tensor NestedTensor_contiguous(
     const Tensor& self,
     MemoryFormat memory_format = MemoryFormat::Contiguous);
 
-inline int64_t get_is_contiguous(
+inline bool get_is_contiguous(
     const at::Tensor& tensor,
     at::MemoryFormat memory_format = MemoryFormat::Contiguous) {
   TORCH_CHECK(
@@ -238,7 +238,7 @@ inline int64_t get_is_contiguous(
   return tensor.is_contiguous();
 }
 
-inline int64_t get_is_channel_last(const at::Tensor& tensor) {
+inline bool get_is_channel_last(const at::Tensor& tensor) {
   if (is_nested_tensor_impl(tensor)) {
     auto storage = get_nested_tensor_impl(tensor)->get_storage();
     return storage.get()->kind() == NestedTensorStorageKind::channellastpacked;
@@ -246,7 +246,7 @@ inline int64_t get_is_channel_last(const at::Tensor& tensor) {
   return tensor.is_contiguous(at::MemoryFormat::ChannelsLast);
 }
 
-inline int64_t get_is_cuda(
+inline bool get_is_cuda(
     const at::Tensor& tensor,
     at::MemoryFormat memory_format = MemoryFormat::Contiguous) {
   TORCH_CHECK(

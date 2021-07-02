@@ -329,6 +329,9 @@ class NestedTensor(metaclass=NestedTensorMeta):
     def is_sparse(self):
         return self._impl.is_sparse
 
+    def is_channels_last(self):
+        return torch.ops.nestedtensor.is_channels_last(self._impl)
+
     def requires_grad_(self, requires_grad=True):
         """
         Is ```True``` if gradients need to be computed for this Tensor.
