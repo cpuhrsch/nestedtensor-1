@@ -826,9 +826,9 @@ class TestNestedTensor(TestCase):
     def test_to_padded_tensor_cuda_dim4_channels_last(self):
         import random
         random.seed(1010)
-        tensors = [torch.randn(random.randint(1, 2),
-                               random.randint(1, 2),
-                               random.randint(1, 2)).half() for _ in range(2)]
+        tensors = [torch.randn(random.randint(1, 3),
+                               random.randint(2, 4),
+                               random.randint(1, 3)).half() for _ in range(3)]
         print("tensors")
         print(tensors)
         nt = ntnt_nograd(tensors,

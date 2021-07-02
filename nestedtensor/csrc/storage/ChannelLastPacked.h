@@ -5,6 +5,16 @@
 
 namespace torch {
 namespace nested_tensor {
+namespace impl {
+inline EfficientSizeNode create_strides(EfficientSizeNode nested_size) {
+  TORCH_CHECK(nested_size.dim() == 4, "Channel last storage needs to be 4 dim.")
+  return map_efficient_size([](int64_t* size_ptr, int64_t size) {
+    size_ptr[0] = 1;
+    size_ptr[1] = size_ptr[0] * size_ptr[1];
+    size_ptr[2] = size_ptr[0];
+    }, nested_size);
+}
+}
 
 struct ChannelLastPackedStorage : public NestedTensorStorage {
   explicit ChannelLastPackedStorage(
@@ -12,6 +22,7 @@ struct ChannelLastPackedStorage : public NestedTensorStorage {
       EfficientSizeNode nested_size)
       : _buffer(buffer),
         _nested_size(nested_size),
+        _nested_stride(impl::create_strides(_nested_size)),
         _data_type(buffer.dtype()),
         _device(buffer.device()),
         _is_pinned(buffer.is_pinned()) {
@@ -41,6 +52,9 @@ struct ChannelLastPackedStorage : public NestedTensorStorage {
   const EfficientSizeNode& nested_size() const override {
     return _nested_size;
   }
+  const EfficientSizeNode& nested_stride() const override {
+    return _nested_stride;
+  }
   const std::vector<c10::optional<int64_t>> opt_sizes() const override {
     return _nested_size.opt_sizes();
   }
@@ -57,6 +71,7 @@ struct ChannelLastPackedStorage : public NestedTensorStorage {
  private:
   at::Tensor _buffer;
   EfficientSizeNode _nested_size;
+  EfficientSizeNode _nested_stride;
   const caffe2::TypeMeta _data_type;
   c10::Device _device;
   bool _is_pinned;

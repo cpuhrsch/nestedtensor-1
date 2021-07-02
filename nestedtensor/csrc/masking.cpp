@@ -520,6 +520,7 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
     }
     if (nt_buffer.is_cuda()) {
       at::Tensor nt_sizes;
+      at::Tensor nt_strides;
       Tensor offsets;
       std::vector<int64_t> new_size;
       if (get_is_channel_last(nt)) {
@@ -533,11 +534,15 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
         nt_sizes = esize.sizes();
         offsets = batch_offsets_from_efficient_size(esize);
         new_size = padded_size_from_efficient_size(esize);
+        auto estride = get_efficient_nested_stride(nt);
+        nt_strides = estride.sizes();
       } else {
         auto esize = get_efficient_nested_size(nt);
         nt_sizes = esize.sizes();
         offsets = batch_offsets_from_efficient_size(esize);
         new_size = padded_size_from_efficient_size(esize);
+        auto estride = get_efficient_nested_stride(nt);
+        nt_strides = estride.sizes();
       }
       std::cout << "nt_sizes: " << nt_sizes << std::endl;
       std::cout << "offsets: " << offsets << std::endl;
@@ -553,23 +558,28 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
         std::cout << "4 11 output.sizes(): " << output.sizes() << std::endl;
         std::cout << "4 11 output.strides(): " << output.strides() << std::endl;
       }
-      Tensor new_size_tensor = torch::tensor(new_size);
+      Tensor new_size_tensor = torch::tensor(output.sizes());
+      Tensor new_stride_tensor = torch::tensor(output.strides());
 
       int64_t input_dim = nt_sizes.size(1);
       int64_t batch_size = nt_sizes.size(0);
-      at::Tensor metadata = at::cat({new_size_tensor, offsets, nt_sizes.reshape(-1)});
+      at::Tensor metadata = at::cat({new_size_tensor, new_stride_tensor, offsets, nt_sizes.reshape(-1), nt_strides.reshape(-1)});
       metadata = metadata.to(at::Device(kCUDA), torch::kInt32, true, true);
 
       std::vector<int64_t> split_sizes;
       split_sizes.push_back(new_size_tensor.numel());
+      split_sizes.push_back(new_stride_tensor.numel());
       split_sizes.push_back(offsets.numel());
       split_sizes.push_back(nt_sizes.numel());
+      split_sizes.push_back(nt_strides.numel());
 
       std::vector<Tensor> split = at::split_with_sizes(metadata, IntArrayRef(split_sizes), 0);
 
       new_size_tensor = split[0];
-      offsets = split[1];
-      nt_sizes = split[2];
+      new_stride_tensor = split[1];
+      offsets = split[2];
+      nt_sizes = split[3];
+      nt_strides = split[4];
 
       if (nt_buffer.dtype() == torch::kFloat16) {
         nested_tensor::cuda::add_padding_kernelLauncher(
@@ -578,8 +588,10 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             (c10::Half)(padding),
             offsets.data_ptr<int>(),
             nt_sizes.data_ptr<int>(),
+            nt_strides.data_ptr<int>(),
             input_dim,
             new_size_tensor.data_ptr<int>(),
+            new_stride_tensor.data_ptr<int>(),
             batch_size,
             defaultStream);
         std::cout << "0 11" << std::endl;
@@ -601,8 +613,10 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             (float)(padding),
             offsets.data_ptr<int>(),
             nt_sizes.data_ptr<int>(),
+            nt_strides.data_ptr<int>(),
             input_dim,
             new_size_tensor.data_ptr<int>(),
+            new_stride_tensor.data_ptr<int>(),
             batch_size,
             defaultStream);
         std::cout << "0 22" << std::endl;
