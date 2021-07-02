@@ -43,8 +43,6 @@ Tensor NestedTensor_conv2d(
       auto new_sizes = map_efficient_size([&weight_size_0](int64_t* size_ptr, int64_t size) {
           size_ptr[0] = weight_size_0;
           }, get_efficient_nested_size(input));
-      // std::cout << "get_is_channel_last(input): " << get_is_channel_last(input) << std::endl;
-      // std::cout << "input.dtype(): " << input.dtype() << std::endl;
       if (get_is_channel_last(input) && input.dtype() == torch::kHalf) {
         Tensor input_buffer = get_buffer_channel_last(input);
         input_buffer = input_buffer.reshape({-1, weight.size(1)});
@@ -52,7 +50,6 @@ Tensor NestedTensor_conv2d(
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
         return wrap_buffer_channel_last(result_buffer.reshape(-1), new_sizes);
       }
-      // std::cout << "get_is_contiguous(input): " << get_is_contiguous(input) << std::endl;
       if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
         Tensor output_buffer = get_buffer_channel_last(transpose_nchw_nhwc(input));
         output_buffer = output_buffer.reshape({-1, weight.size(1)});
@@ -65,49 +62,14 @@ Tensor NestedTensor_conv2d(
   }
 #endif
   if (input.dtype() == torch::kFloat16) {
-    bool got_channel_last = false;
-    Tensor data;
-    if (get_is_channel_last(input)) {
-      got_channel_last = true;
-      std::cout << "get_buffer_channel_last(input): " << get_buffer_channel_last(input) << std::endl;
-      data = to_padded_tensor(input, 0);
-      std::cout << "data: " << data << std::endl;
-      std::cout << "data.sizes(): " << data.sizes() << std::endl;
-      std::cout << "data.strides(): " << data.strides() << std::endl;
-      Tensor result = from_padded_tensor(data, get_efficient_nested_size(input));
-      Tensor result_buffer = get_buffer_channel_last(result);
-      std::cout << "result_buffer: " << result_buffer << std::endl;
-      exit(1);
-      // std::cout << "0 data: " << data << std::endl;
-      // at::Tensor result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
-      // std::cout << "0 result_data: " << result_data << std::endl;
-      // input = transpose_nhwc_nchw(input);
-      // Tensor data1 = to_padded_tensor(input, 0);
-      // std::cout << "at::eq(data, data1): " << at::eq(data, data1) << std::endl;
-      // std::cout << "1 data1: " << data1 << std::endl;
-      // data1 = data;
-      // result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
-      // std::cout << "1 result_data: " << result_data << std::endl;
-      // exit(1);
-    } else {
-      data = to_padded_tensor(input, 0);
-    }
+    Tensor data = to_padded_tensor(input, 0);
     at::Tensor result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
     auto new_sizes = map_efficient_size([&weight, &stride, &padding, &groups, &dilation](int64_t* size_ptr, int64_t size) {
         size_ptr[0] = weight.size(0);
         size_ptr[1] = ((size_ptr[1] + 2 * padding[0] - dilation[0] * (weight.size(2) - 1) - 1) / stride[0]) + 1;
         size_ptr[2] = ((size_ptr[2] + 2 * padding[1] - dilation[1] * (weight.size(3) - 1) - 1) / stride[1]) + 1;
         }, get_efficient_nested_size(input));
-    result_data = result_data.contiguous();
-    // std::cout << "result_data: " << result_data << std::endl;
-    at::Tensor result = from_padded_tensor(result_data, new_sizes);
-    // std::cout << "get_buffer(result): " << get_buffer(result) << std::endl;
-    // exit(1);
-    
-    // if (got_channel_last) {
-    //   return wrap_buffer_channel_last(std::move(result), new_sizes);
-    // }
-    return result;
+    return from_padded_tensor(result_data, new_sizes);
   }
   if (bias) {
       return map_nested_tensor(

@@ -39,7 +39,6 @@ Tensor& NestedTensor_relu_(Tensor& self) {
   if (get_is_channel_last(self)) {
     Tensor buffer = get_buffer_channel_last(self);
     at::relu_(buffer);
-    // std::cout << "relu result: get_is_channel_last(self): " << get_is_channel_last(self) << std::endl;
     return self;
   }
   if (get_is_contiguous(self)) {

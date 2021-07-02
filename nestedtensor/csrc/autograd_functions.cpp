@@ -157,7 +157,6 @@ Tensor NestedTensor_batch_norm(
       // }
       // return output;
       Tensor result = wrap_buffer_channel_last(std::move(input_buffer), get_efficient_nested_size(input));
-      // std::cout << "get_is_channel_last(result): " << get_is_channel_last(result) << std::endl;
       return result;
     }
 
