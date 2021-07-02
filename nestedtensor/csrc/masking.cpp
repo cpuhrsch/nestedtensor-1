@@ -440,20 +440,22 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
     if (get_is_channel_last(padded)) {
       got_channel_last = true;
     }
-    Tensor target_offsets;
-    target_offsets = batch_offsets_from_efficient_size(target_size);
     Tensor padded_sizes_tensor = torch::tensor(padded.sizes());
     Tensor padded_strides_tensor = torch::tensor(padded.strides());
     Tensor output = torch::empty({target_size.numel()}, padded.options());
     Tensor target_size_sizes = target_size.sizes();
     Tensor target_size_strides;
+    Tensor target_offsets;
     if (got_channel_last) {
       auto estride = torch::nested_tensor::impl::create_strides(target_size);
       target_size_strides = estride.sizes();
+      target_offsets = batch_offsets_from_efficient_size(target_size);
     } else {
       auto estride = torch::nested_tensor::impl::_cont_stride(target_size);
       target_size_strides = estride.sizes();
+      target_offsets = batch_offsets_from_efficient_size(target_size);
     }
+    // std::cout << "target_offsets: " << target_offsets << std::endl;
 
     at::Tensor metadata = at::cat({target_size_sizes.reshape(-1), target_size_strides.reshape(-1), padded_sizes_tensor, padded_strides_tensor, target_offsets});
     metadata = metadata.to(at::Device(kCUDA), torch::kInt32, true, true);

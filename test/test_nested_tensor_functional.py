@@ -60,11 +60,11 @@ class TestFunctional(TestCase):
             return r
 
         def _test(ts, weight, stride, padding, dilation, groups):
-            print("ts")
-            print(ts)
+            # print("ts")
+            # print(ts)
             nt = ntnt_nograd(ts, device=device, dtype=dtype, channels_last=True)
-            print("nt")
-            print(nt)
+            # print("nt")
+            # print(nt)
             nt_out = torch.conv2d(nt, weight, stride=stride,
                                   padding=padding, dilation=dilation,
                                   groups=groups)
@@ -73,15 +73,15 @@ class TestFunctional(TestCase):
                                      stride=stride, padding=padding,
                                      dilation=dilation,
                                      groups=groups).squeeze(0)
-                print("nt_out_i")
-                print(nt_out_i)
-                print(nt_out_i.size())
-                print(nt_out_i.stride())
-                print("t_out")
-                print(t_out)
-                print(t_out.size())
-                print(t_out.stride())
-                print("")
+                # print("nt_out_i")
+                # print(nt_out_i)
+                # print(nt_out_i.size())
+                # print(nt_out_i.stride())
+                # print("t_out")
+                # print(t_out)
+                # print(t_out.size())
+                # print(t_out.stride())
+                # print("")
                 self.assertEqual(t_out, nt_out_i)
         ts = []
         for s in shapes:

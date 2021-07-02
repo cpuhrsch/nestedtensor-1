@@ -327,30 +327,30 @@ void remove_padding(
     const int i0 = i / (sizes_i[1] * sizes_i[2]);
     const int i1 = (i % (sizes_i[1] * sizes_i[2])) / sizes_i[2];
     const int i2 = i % sizes_i[2];
-    int output_offset = offset + batch_id * strides_i[0];
+    int output_offset = offset;
     output_offset += i0 * strides_i[0];
     output_offset += i1 * strides_i[1];
     output_offset += i2 * strides_i[2];
     int input_offset = batch_id * input_strides[0];
-    const int i0_offset = i0 * input_strides[1];
-    const int i1_offset = i1 * input_strides[2];
-    const int i2_offset = i2 * input_strides[3];
-    output[output_offset] = input[input_offset + i0_offset + i1_offset + i2_offset];
+    input_offset += i0 * input_strides[1];
+    input_offset += i1 * input_strides[2];
+    input_offset += i2 * input_strides[3];
+    output[output_offset] = input[input_offset];
   }
   const int i = (numel_i / grainsize) * grainsize + tid;
   if (i < numel_i) {
     const int i0 = i / (sizes_i[1] * sizes_i[2]);
     const int i1 = (i % (sizes_i[1] * sizes_i[2])) / sizes_i[2];
     const int i2 = i % sizes_i[2];
-    int output_offset = offset + batch_id * strides_i[0];
+    int output_offset = offset;
     output_offset += i0 * strides_i[0];
     output_offset += i1 * strides_i[1];
     output_offset += i2 * strides_i[2];
     int input_offset = batch_id * input_strides[0];
-    const int i0_offset = i0 * input_strides[1];
-    const int i1_offset = i1 * input_strides[2];
-    const int i2_offset = i2 * input_strides[3];
-    output[output_offset] = input[input_offset + i0_offset + i1_offset + i2_offset];
+    input_offset += i0 * input_strides[1];
+    input_offset += i1 * input_strides[2];
+    input_offset += i2 * input_strides[3];
+    output[output_offset] = input[input_offset];
   }
 }
 
