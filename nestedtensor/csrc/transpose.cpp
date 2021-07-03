@@ -116,7 +116,7 @@ Tensor transpose_nhwc_nchw(Tensor input) {
   TORCH_CHECK(get_dim(input) == 4, "transpose_nhwc_nchw needs 4d input.");
   TORCH_CHECK(get_is_channel_last(input), "transpose_nhwc_nchw input needs to be channel last.");
   Tensor input_buffer = get_buffer_channel_last(input);
-  Tensor output = wrap_buffer(at::empty({input_buffer.numel()}, input_buffer.options()),
+  Tensor output = wrap_buffer(at::empty_like(input_buffer),
                               get_efficient_nested_size(input));
   return transpose_nhwc_nchw_out(input, output);
 }
@@ -150,7 +150,7 @@ Tensor transpose_nchw_nhwc(Tensor input) {
   TORCH_CHECK(get_dim(input) == 4, "transpose_nchw_nhwc needs 4d input.");
   TORCH_CHECK(get_is_contiguous(input), "transpose_nchw_nhwc input needs to be contiguous.");
   Tensor input_buffer = get_buffer(input);
-  Tensor output = wrap_buffer_channel_last(at::empty({input_buffer.numel()}, input_buffer.options()),
+  Tensor output = wrap_buffer_channel_last(at::empty_like(input_buffer),
                                            get_efficient_nested_size(input));
   return transpose_nchw_nhwc_out(input, output);
 }

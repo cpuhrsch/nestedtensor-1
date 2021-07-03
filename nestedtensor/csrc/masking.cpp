@@ -254,7 +254,7 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
   if (get_dim(nt) == 3 && get_is_contiguous(nt) && mask_dim && *mask_dim == 2) {
     auto nt_opt_size = get_opt_sizes(nt);
     Tensor nt_buffer = get_buffer(nt);
-    if (nt_opt_size[2] && nt_buffer.is_cuda()) {
+    if (nt_opt_size[2] && get_is_cuda(nt_buffer)) {
       Tensor nt_sizes_ =
           get_efficient_nested_size(nt).sizes().to(torch::kInt32);
       TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor metadata of unexpected dimension.")
@@ -434,12 +434,13 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
   TORCH_CHECK(padded.dim() == target_size.dim(),
       "Target size has different dimension as input padded Tensor.");
 #ifdef WITH_CUDA
-  if (padded.dim() > 1 && padded.dim() < 5 && padded.is_cuda() &&
+  if (padded.dim() > 1 && padded.dim() < 5 && get_is_cuda(padded) &&
       padded.dtype() == torch::kFloat16) {
     bool got_channel_last = false;
     if (get_is_channel_last(padded)) {
       got_channel_last = true;
     }
+    std::cout << "from_padded_tensor get_is_channel_last(padded): " << get_is_channel_last(padded) << std::endl;
     Tensor padded_sizes_tensor = torch::tensor(padded.sizes());
     Tensor padded_strides_tensor = torch::tensor(padded.strides());
     Tensor output = torch::empty({target_size.numel()}, padded.options());
@@ -504,6 +505,7 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
     }
     TORCH_CHECK("to_padded_tensor does not support dtype ", padded.dtype());
     if (got_channel_last) {
+      std::cout << "got_channel_last: " << got_channel_last << std::endl;
       return wrap_buffer_channel_last(std::move(output), target_size);
     }
     return wrap_buffer(std::move(output), target_size);
@@ -546,7 +548,7 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
                   "to_padded_tensor: If input is not channel last, it must be contiguous.");
       nt_buffer = get_buffer(nt);
     }
-    if (nt_buffer.is_cuda()) {
+    if (get_is_cuda(nt_buffer)) {
       at::Tensor nt_sizes;
       at::Tensor nt_strides;
       Tensor offsets;
@@ -559,6 +561,7 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       nt_strides = estride.sizes();
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       Tensor output;
+      std::cout << "get_is_channel_last(nt): " << get_is_channel_last(nt) << std::endl;
       if (get_is_channel_last(nt)) {
         output = at::empty(IntArrayRef(new_size), nt_buffer.options(), at::MemoryFormat::ChannelsLast);
       } else {

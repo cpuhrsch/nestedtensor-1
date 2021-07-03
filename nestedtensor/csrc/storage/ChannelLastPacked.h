@@ -80,6 +80,7 @@ struct ChannelLastPackedStorage : public NestedTensorStorage {
     return NestedTensorStorageKind::channellastpacked;
   }
   bool is_cuda() const override {
+    TORCH_CHECK(_buffer.is_cuda(), "DJDJ");
     return _buffer.is_cuda();
   }
   int64_t numel() const override {

@@ -221,7 +221,7 @@ at::Tensor nested_tensor_impl(
     result = transpose_nchw_nhwc(result);
     return result;
   }
-  return wrap_buffer(std::move(buffer), get_efficient_nested_size(result), get_efficient_nested_stride(result));
+  return wrap_buffer(std::move(buffer), get_efficient_nested_size(result));
 }
 
 } // namespace nested_tensor

@@ -45,8 +45,6 @@ Tensor NestedTensor_conv2d(
           }, get_efficient_nested_size(input));
       if (get_is_channel_last(input) && input.dtype() == torch::kHalf) {
         Tensor input_buffer = get_buffer_channel_last(input);
-        std::cout << "input_buffer.sizes(): " << input_buffer.sizes() << std::endl;
-        std::cout << "input_buffer.strides(): " << input_buffer.strides() << std::endl;
         input_buffer = input_buffer.reshape({-1, weight.size(1)});
         at::Tensor result_buffer = at::matmul(input_buffer, 
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
@@ -63,17 +61,24 @@ Tensor NestedTensor_conv2d(
       // }
     }
   }
-  if (input.dtype() == torch::kFloat16 && input.is_cuda()) {
+  if (input.dtype() == torch::kFloat16 && get_is_cuda(input)) {
     Tensor data = to_padded_tensor(input, 0);
+    std::cout << "data.sizes():  " << data.sizes() << std::endl;
+    std::cout << "data.strides():  " << data.strides() << std::endl;
     at::Tensor result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
+    std::cout << "result_data.sizes():  " << result_data.sizes() << std::endl;
+    std::cout << "result_data.strides():  " << result_data.strides() << std::endl;
     auto new_sizes = map_efficient_size([&weight, &stride, &padding, &groups, &dilation](int64_t* size_ptr, int64_t size) {
         size_ptr[0] = weight.size(0);
         size_ptr[1] = ((size_ptr[1] + 2 * padding[0] - dilation[0] * (weight.size(2) - 1) - 1) / stride[0]) + 1;
         size_ptr[2] = ((size_ptr[2] + 2 * padding[1] - dilation[1] * (weight.size(3) - 1) - 1) / stride[1]) + 1;
         }, get_efficient_nested_size(input));
-    return from_padded_tensor(result_data, new_sizes);
+    Tensor r = from_padded_tensor(result_data, new_sizes);
+    exit(1);
+    return r;
   }
 #endif
+  TORCH_CHECK(false, "Calling conv2d fallback!.");
   if (bias) {
       return map_nested_tensor(
           [&stride, &padding, &dilation, &groups](at::Tensor input, at::Tensor weight, at::Tensor bias) {
