@@ -28,7 +28,7 @@ struct ChannelLastPackedStorage : public NestedTensorStorage {
   explicit ChannelLastPackedStorage(
       at::Tensor&& buffer,
       EfficientSizeNode nested_size)
-      : _buffer(buffer),
+      : _buffer(buffer.view(-1)),
         _nested_size(nested_size),
         _nested_stride(impl::create_strides(_nested_size)),
         _data_type(buffer.dtype()),
@@ -48,7 +48,7 @@ struct ChannelLastPackedStorage : public NestedTensorStorage {
   }
   TensorNode get_structure() const override {
     return std::get<0>(impl::build_structure(
-        _buffer.reshape({-1}),
+        _buffer.view({-1}),
         _nested_size,
         _nested_stride));
   }

@@ -45,19 +45,22 @@ Tensor NestedTensor_conv2d(
           }, get_efficient_nested_size(input));
       if (get_is_channel_last(input) && input.dtype() == torch::kHalf) {
         Tensor input_buffer = get_buffer_channel_last(input);
+        std::cout << "input_buffer.sizes(): " << input_buffer.sizes() << std::endl;
+        std::cout << "input_buffer.strides(): " << input_buffer.strides() << std::endl;
         input_buffer = input_buffer.reshape({-1, weight.size(1)});
         at::Tensor result_buffer = at::matmul(input_buffer, 
             weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
         return wrap_buffer_channel_last(result_buffer.reshape(-1), new_sizes);
       }
-      if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
-        Tensor output_buffer = get_buffer_channel_last(transpose_nchw_nhwc(input));
-        output_buffer = output_buffer.reshape({-1, weight.size(1)});
-        at::Tensor result_buffer = at::matmul(output_buffer, 
-            weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
-        int64_t weight_size_0 = weight.size(0);
-        return wrap_buffer_channel_last(result_buffer.reshape(-1), new_sizes);
-      }
+      // if (get_is_contiguous(input) && input.dtype() == torch::kHalf) {
+      //   Tensor output_buffer = get_buffer(input);
+      //   std::cout << "output_buffer.sizes(): " << output_buffer.sizes() << std::endl;
+      //   std::cout << "output_buffer.strides(): " << output_buffer.strides() << std::endl;
+      //   output_buffer = output_buffer.reshape({-1, weight.size(1)});
+      //   at::Tensor result_buffer = at::matmul(output_buffer, 
+      //       weight.reshape({weight.size(0), weight.size(1)}).transpose(0, 1));
+      //   return wrap_buffer(result_buffer.reshape(-1), new_sizes);
+      // }
     }
   }
   if (input.dtype() == torch::kFloat16 && input.is_cuda()) {

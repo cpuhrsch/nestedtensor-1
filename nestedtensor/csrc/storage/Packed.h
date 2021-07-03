@@ -64,7 +64,7 @@ struct PackedStorage : public NestedTensorStorage {
       at::Tensor&& buffer,
       EfficientSizeNode nested_size,
       EfficientSizeNode nested_stride)
-      : _buffer(buffer),
+      : _buffer(buffer.view(-1)),
         _nested_size(nested_size),
         _nested_stride(nested_stride),
         _data_type(buffer.dtype()),
@@ -115,7 +115,7 @@ struct PackedStorage : public NestedTensorStorage {
   }
   TensorNode get_structure() const override {
     return std::get<0>(impl::build_structure(
-        _buffer.reshape({-1}),
+        _buffer.view({-1}),
         _nested_size,
         _nested_stride));
   }

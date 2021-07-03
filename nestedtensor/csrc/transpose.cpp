@@ -91,6 +91,7 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
 }
 
 Tensor transpose_nhwc_nchw_out(Tensor input, Tensor output) {
+  // std::cout << "transpose_nhwc_nchw_out" << std::endl;
 #ifdef WITH_CUDA
   TORCH_CHECK(get_dim(input) == 4, "transpose_nhwc_nchw_out needs 4d input.");
   TORCH_CHECK(get_is_channel_last(input), "transpose_nhwc_nchw_out input needs to be channel last.");
@@ -122,6 +123,7 @@ Tensor transpose_nhwc_nchw(Tensor input) {
 
 // TODO: Might actually return nwhc (same for inverse above), but for our applications this doesn't matter.
 Tensor transpose_nchw_nhwc_out(Tensor input, Tensor output) {
+  // std::cout << "transpose_nchw_nhwc_out" << std::endl;
 #ifdef WITH_CUDA
   TORCH_CHECK(get_dim(input) == 4, "transpose_nchw_nhwc_out needs 4d input.");
   TORCH_CHECK(get_is_contiguous(input), "transpose_nchw_nhwc_out input needs to be contiguous.");
