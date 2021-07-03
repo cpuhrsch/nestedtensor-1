@@ -31,13 +31,17 @@ Tensor NestedTensor_adaptive_avg_pool2d_backward(
 }
 
 Tensor NestedTensor_max_pool2d(
-    const Tensor& self,
+    const Tensor& self_,
     IntArrayRef kernel_size,
     IntArrayRef stride,
     IntArrayRef padding,
     IntArrayRef dilation,
     bool ceil_mode) {
-  return map_nested_tensor(
+  Tensor self = self_;
+  if (get_is_channel_last(self)) {
+    self = transpose_nhwc_nchw(self);
+  }
+  Tensor result = map_nested_tensor(
       [&](at::Tensor t) {
         return at::max_pool2d(
                    t.unsqueeze(0),
@@ -49,6 +53,10 @@ Tensor NestedTensor_max_pool2d(
             .squeeze(0);
       },
       self);
+  if (get_is_channel_last(self_)) {
+    return transpose_nchw_nhwc(result);
+  }
+  return result;
 }
 
 TORCH_LIBRARY_IMPL(aten, NestedTensor, m) {

@@ -112,6 +112,7 @@ Tensor NestedTensor_batch_norm(
 
   at::Tensor mean = *running_mean;
   at::Tensor var = *running_var;
+  std::cout << "THIS IS BATCHNORM 0" << std::endl;
 #ifdef WITH_CUDA
   if (weight &&
       bias &&
@@ -127,6 +128,7 @@ Tensor NestedTensor_batch_norm(
       (weight->dtype() == torch::kHalf) &&
       get_is_cuda(input))
   {
+  std::cout << "THIS IS BATCHNORM 1" << std::endl;
     // Custom CUDA Half implementation.
     mean = mean.contiguous();
     Tensor bias_cont = (*bias).contiguous();
@@ -135,6 +137,8 @@ Tensor NestedTensor_batch_norm(
     auto self_opt_sizes = get_opt_sizes(input);
 
     if (get_is_channel_last(input)) {
+  std::cout << "THIS IS BATCHNORM 2" << std::endl;
+  std::cout << "get_is_channel_last(input): " << get_is_channel_last(input) << std::endl;
       Tensor input_buffer = get_buffer_channel_last(input);
       int64_t num_channel = weight_cont.size(0);
       input_buffer = input_buffer.reshape({-1, num_channel});
@@ -161,6 +165,7 @@ Tensor NestedTensor_batch_norm(
     }
 
     if (get_is_contiguous(input)) {
+  std::cout << "THIS IS BATCHNORM 3" << std::endl;
       Tensor input_buffer = get_buffer(input);
       Tensor nt_sizes_ =
           get_efficient_nested_size(input).sizes(); // .to(torch::kInt32);
@@ -207,6 +212,7 @@ Tensor NestedTensor_batch_norm(
     }
   }
 #endif
+  std::cout << "THIS IS BATCHNORM 4" << std::endl;
   auto scalar_shape = make_scalar_shape(get_dim(input), n_input);
 
   at::Tensor invstd = 1 / at::sqrt(*running_var + eps);

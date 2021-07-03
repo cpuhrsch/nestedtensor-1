@@ -24,14 +24,31 @@ Tensor NestedTensor_add_Tensor(
     if (efficient_size_matches(
             self_efficient_nested_size, other_efficient_nested_size)) {
       if (get_is_channel_last(self) && get_is_channel_last(other)) {
+        std::cout << "THIS IS ADD" << std::endl;
+        std::cout << "get_efficient_nested_size(self).sizes(): " << get_efficient_nested_size(self).sizes() << std::endl;
+        std::cout << "get_efficient_nested_stride(self).sizes(): " << get_efficient_nested_stride(self).sizes() << std::endl;
+        std::cout << "get_efficient_nested_size(other).sizes(): " << get_efficient_nested_size(other).sizes() << std::endl;
+        std::cout << "get_efficient_nested_stride(other).sizes(): " << get_efficient_nested_stride(other).sizes() << std::endl;
+        // Tensor self_buf = get_buffer_channel_last(self);
+        // Tensor other_buf = get_buffer_channel_last(other);
+        // // std::cout << "self_buf.sizes(): " << self_buf.sizes() << std::endl;
+        // // std::cout << "self_buf.strides(): " << self_buf.strides() << std::endl;
+        // // std::cout << "other_buf.sizes(): " << other_buf.sizes() << std::endl;
+        // // std::cout << "other_buf.strides(): " << other_buf.strides() << std::endl;
+        //     Tensor rbuf = at::add(
+        //         get_buffer_channel_last(self),
+        //         get_buffer_channel_last(other));
+        // std::cout << "rbuf.sizes(): " << rbuf.sizes() << std::endl;
+        // std::cout << "rbuf.strides(): " << rbuf.strides() << std::endl;
         return wrap_buffer_channel_last(
             at::add(
                 get_buffer_channel_last(self),
-                get_buffer_channel_last(other)).reshape(-1),
+                get_buffer_channel_last(other)), //.reshape(-1),
             self_efficient_nested_size);
       }
       if (get_is_channel_last(self) && !get_is_channel_last(other) &&
           get_dim(self) == get_dim(other) && get_dim(self) == 4) {
+        TORCH_CHECK(false, "Not allowed");
         return NestedTensor_add_Tensor(transpose_nhwc_nchw(self), other, alpha);
       }
       if (!get_is_contiguous(self)) {
@@ -40,6 +57,7 @@ Tensor NestedTensor_add_Tensor(
       if (!get_is_contiguous(other)) {
         other = NestedTensor_contiguous(other);
       }
+        std::cout << "THIS IS ADD 2" << std::endl;
       return wrap_buffer(
           at::add(
               get_buffer(self).reshape({-1}), get_buffer(other).reshape({-1})),
@@ -48,6 +66,7 @@ Tensor NestedTensor_add_Tensor(
     }
   }
   if (is_nested_tensor_impl(self) && !is_nested_tensor_impl(other)) {
+        std::cout << "THIS IS ADD 3" << std::endl;
     self = NestedTensor_contiguous(self);
     int64_t self_dim = get_dim(self);
     auto self_opt_sizes = get_opt_sizes(self);
@@ -100,6 +119,7 @@ Tensor NestedTensor_add_Tensor(
 #endif
     if (self_opt_sizes[self_dim - 1] && other.dim() == 1 &&
         (*(self_opt_sizes[self_dim - 1])) == other.size(0)) {
+        std::cout << "THIS IS ADD 4" << std::endl;
       Tensor self_buffer = get_buffer(self);
       Tensor result_buffer =
           at::add(self_buffer.reshape({-1, other.size(0)}), other)
@@ -111,6 +131,7 @@ Tensor NestedTensor_add_Tensor(
     }
   }
   std::tie(self, other) = _expand_other_as(self_, other_);
+        std::cout << "THIS IS ADD 5" << std::endl;
   return map_nested_tensor(
       [&alpha](Tensor s, Tensor o) { 
       return at::add(s, o, alpha); },
@@ -122,6 +143,7 @@ Tensor& NestedTensor_add__Tensor(
     Tensor& self_,
     const Tensor& other_,
     const Scalar& alpha) {
+        std::cout << "THIS IS ADD 6" << std::endl;
   at::Tensor self;
   at::Tensor other;
   std::tie(self, other) = _expand_other_as(self_, other_);

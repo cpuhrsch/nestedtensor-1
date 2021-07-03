@@ -440,7 +440,7 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
     if (get_is_channel_last(padded)) {
       got_channel_last = true;
     }
-    std::cout << "from_padded_tensor get_is_channel_last(padded): " << get_is_channel_last(padded) << std::endl;
+    // std::cout << "from_padded_tensor get_is_channel_last(padded): " << get_is_channel_last(padded) << std::endl;
     Tensor padded_sizes_tensor = torch::tensor(padded.sizes());
     Tensor padded_strides_tensor = torch::tensor(padded.strides());
     Tensor output = torch::empty({target_size.numel()}, padded.options());
@@ -505,7 +505,7 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
     }
     TORCH_CHECK("to_padded_tensor does not support dtype ", padded.dtype());
     if (got_channel_last) {
-      std::cout << "got_channel_last: " << got_channel_last << std::endl;
+      // std::cout << "got_channel_last: " << got_channel_last << std::endl;
       return wrap_buffer_channel_last(std::move(output), target_size);
     }
     return wrap_buffer(std::move(output), target_size);
@@ -561,7 +561,7 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       nt_strides = estride.sizes();
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       Tensor output;
-      std::cout << "get_is_channel_last(nt): " << get_is_channel_last(nt) << std::endl;
+      // std::cout << "get_is_channel_last(nt): " << get_is_channel_last(nt) << std::endl;
       if (get_is_channel_last(nt)) {
         output = at::empty(IntArrayRef(new_size), nt_buffer.options(), at::MemoryFormat::ChannelsLast);
       } else {
