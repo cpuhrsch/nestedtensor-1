@@ -16,6 +16,8 @@ namespace F = torch::nn::functional;
 namespace at {
 
 Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buffer) {
+  TORCH_CHECK(input_buffer.is_cuda(), "transpose_buffer needs CUDA input.");
+  TORCH_CHECK(output_buffer.is_cuda(), "transpose_buffer needs CUDA output.");
 #ifdef WITH_CUDA
   Tensor sizes_dim2 = at::native::narrow(nt_sizes_, 1, 0, 1).contiguous();
   Tensor sizes_dim3 = at::native::narrow(nt_sizes_, 1, 1, 1).contiguous();
@@ -86,7 +88,6 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
   }
   TORCH_CHECK(false, "Given dtype ", input_buffer.dtype(), " not supported.");
 #endif
-  TORCH_CHECK(false, "transpose_buffer needs CUDA.");
 }
 
 Tensor transpose_nhwc_nchw_out(Tensor input, Tensor output) {

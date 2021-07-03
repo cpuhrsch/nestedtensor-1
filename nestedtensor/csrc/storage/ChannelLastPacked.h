@@ -36,7 +36,11 @@ struct ChannelLastPackedStorage : public NestedTensorStorage {
         _is_pinned(buffer.is_pinned()) {
     TORCH_CHECK(
         _nested_size.height() == 1,
-        "PackedStorage must be given NestedSize of exactly height 1.");
+        "ChannelLastPackedStorage must be given NestedSize of exactly height 1.");
+    TORCH_CHECK(
+        _nested_size.dim() == 4,
+        "ChannelLastPackedStorage must be given NestedSize of exactly dim 4.");
+    TORCH_CHECK(buffer.is_cuda(), "ChannelLastPackedStorage buffer must be CUDA.");
   }
 
   int64_t dim() const override {

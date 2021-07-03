@@ -41,7 +41,7 @@ class TestFunctional(TestCase):
         o = o.cuda().half()
         res = nt + o
 
-    def _test_conv2d_dtype(self, dtype, weight, device, shapes,
+    def _test_conv2d_dtype(self, dtype, weight, device, shapes, channels_last,
                            stride=None, padding=None, dilation=None,
                            groups=None):
         if stride is None:
@@ -59,12 +59,8 @@ class TestFunctional(TestCase):
                 r = r * t
             return r
 
-        def _test(ts, weight, stride, padding, dilation, groups):
-            print("ts")
-            print(ts)
-            nt = ntnt_nograd(ts, device=device, dtype=dtype, channels_last=True)
-            print("nt")
-            print(nt)
+        def _test(ts, weight, stride, padding, dilation, groups, channels_last):
+            nt = ntnt_nograd(ts, device=device, dtype=dtype, channels_last=channels_last)
             nt_out = torch.conv2d(nt, weight, stride=stride,
                                   padding=padding, dilation=dilation,
                                   groups=groups)
@@ -73,55 +69,45 @@ class TestFunctional(TestCase):
                                      stride=stride, padding=padding,
                                      dilation=dilation,
                                      groups=groups).squeeze(0)
-                print("nt_out_i")
-                print(nt_out_i)
-                print(nt_out_i.size())
-                print(nt_out_i.stride())
-                print("t_out")
-                print(t_out)
-                print(t_out.size())
-                print(t_out.stride())
-                print("")
                 self.assertEqual(t_out, nt_out_i)
         ts = []
         for s in shapes:
-            # ts.append(torch.randn(_prod(s)).reshape(*s).to(device=device, dtype=dtype))
-            ts.append(torch.arange(_prod(s)).reshape(*s).to(device=device, dtype=dtype))
-        # ts[1] = ts[1] + ts[0].numel()
+            ts.append(torch.randn(_prod(s)).reshape(*s).to(device=device, dtype=dtype))
         weight = weight.to(device=device, dtype=dtype)
-        _test(ts, weight, stride, padding, dilation, groups)
+        if channels_last:
+            _test(ts, weight, stride, padding, dilation, groups, True)
+        _test(ts, weight, stride, padding, dilation, groups, False)
 
     @torch.inference_mode()
     @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
     def test_conv2d_1x1_cuda(self):
         shapes = [(2, 2, 3), (2, 4, 2), (2, 2, 2)]
         weight = torch.randn(3*2*1*1).reshape(3, 2, 1, 1)
-        self._test_conv2d_dtype(torch.float16, weight, torch.device('cuda'), shapes)
-        self._test_conv2d_dtype(torch.float32, weight, torch.device('cuda'), shapes)
+        self._test_conv2d_dtype(torch.float16, weight, torch.device('cuda'), shapes, True)
+        self._test_conv2d_dtype(torch.float32, weight, torch.device('cuda'), shapes, True)
 
     @torch.inference_mode()
     def test_conv2d_1x1_cpu(self):
         shapes = [(2, 2, 3), (2, 4, 2), (2, 2, 2)]
         weight = torch.randn(3*2*1*1).reshape(3, 2, 1, 1)
-        self._test_conv2d_dtype(torch.float16, weight, torch.device('cpu'), shapes)
-        self._test_conv2d_dtype(torch.float32, weight, torch.device('cpu'), shapes)
+        self._test_conv2d_dtype(torch.float16, weight, torch.device('cpu'), shapes, False)
+        self._test_conv2d_dtype(torch.float32, weight, torch.device('cpu'), shapes, False)
 
     @torch.inference_mode()
     @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
     def test_conv2d_3x3_cuda(self):
-        # shapes = [(2, 4, 5), (2, 5, 3), (2, 3, 3)]
-        shapes = [(3, 5, 4), (3, 4, 5)] # , (2, 3, 3)]
-        weight = torch.randn(2*3*3*3).reshape(2, 3, 3, 3)
-        # weight = torch.arange(1*2*2*2).reshape(1, 2, 2, 2)
-        self._test_conv2d_dtype(torch.float32, weight, torch.device('cuda'), shapes)
-        self._test_conv2d_dtype(torch.float16, weight, torch.device('cuda'), shapes)
+        shapes = [(2, 4, 5), (2, 5, 3), (2, 3, 3)]
+        weight = torch.randn(1*2*2*2).reshape(1, 2, 2, 2)
+        self._test_conv2d_dtype(torch.float32, weight, torch.device('cuda'), shapes, True)
+        self._test_conv2d_dtype(torch.float16, weight, torch.device('cuda'), shapes, True)
 
     @torch.inference_mode()
     def test_conv2d_3x3_cpu(self):
         shapes = [(2, 4, 5), (2, 5, 3), (2, 3, 3)]
         weight = torch.randn(3*2*3*3).reshape(3, 2, 3, 3)
-        # self._test_conv2d_dtype(torch.float16, weight, torch.device('cpu'), shapes)
-        self._test_conv2d_dtype(torch.float32, weight, torch.device('cpu'), shapes)
+        # unfolded2d_copy" not implemented for 'Half'
+        # self._test_conv2d_dtype(torch.float16, weight, torch.device('cpu'), shapes, False)
+        self._test_conv2d_dtype(torch.float32, weight, torch.device('cpu'), shapes, False)
 
     @torch.inference_mode()
     @unittest.skipIf(not torch.cuda.is_available(), "Test requires cuda")
@@ -133,8 +119,8 @@ class TestFunctional(TestCase):
             padding = [1, 1]
             dilation = [1, 1]  # default
             groups = 32
-            self._test_conv2d_dtype(dtype, weight, torch.device('cuda'),
-                                    shapes, stride=stride, padding=padding,
+            self._test_conv2d_dtype(dtype, weight, torch.device('cuda'), shapes,
+                                    True, stride=stride, padding=padding,
                                     dilation=dilation, groups=groups)
 
     @torch.inference_mode()
@@ -147,8 +133,8 @@ class TestFunctional(TestCase):
             padding = [1, 1]
             dilation = [1, 1]
             groups = 1
-            self._test_conv2d_dtype(dtype, weight, torch.device('cuda'),
-                                    shapes, stride=stride, padding=padding,
+            self._test_conv2d_dtype(dtype, weight, torch.device('cuda'), shapes,
+                                    True, stride=stride, padding=padding,
                                     dilation=dilation, groups=groups)
 
     def test_contiguousity(self):

@@ -621,6 +621,7 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
     }
   }
 #endif
+  TORCH_CHECK(get_is_contiguous(nt), "Expected input to be contiguous.");
   auto opt_sizes = get_opt_sizes(nt);
   if (opt_sizes.size() == 1 && *opt_sizes[0] == 1) {
     nt = NestedTensor_contiguous(nt);
