@@ -476,17 +476,33 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
     target_offsets = split[4];
 
     at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-    nested_tensor::cuda::remove_padding_kernelLauncher(
-        padded.data_ptr<c10::Half>(),
-        output.data_ptr<c10::Half>(),
-        target_offsets.data_ptr<int>(),
-        padded_sizes_tensor.data_ptr<int>(),
-        padded_strides_tensor.data_ptr<int>(),
-        target_size_sizes.data_ptr<int>(),
-        target_size_strides.data_ptr<int>(),
-        padded.dim() - 1,
-        padded.size(0),
-        defaultStream);
+    if (padded.dtype() == torch::kFloat16) {
+      nested_tensor::cuda::remove_padding_kernelLauncher(
+          padded.data_ptr<c10::Half>(),
+          output.data_ptr<c10::Half>(),
+          target_offsets.data_ptr<int>(),
+          padded_sizes_tensor.data_ptr<int>(),
+          padded_strides_tensor.data_ptr<int>(),
+          target_size_sizes.data_ptr<int>(),
+          target_size_strides.data_ptr<int>(),
+          padded.dim() - 1,
+          padded.size(0),
+          defaultStream);
+    }
+    if (padded.dtype() == torch::kFloat) {
+      nested_tensor::cuda::remove_padding_kernelLauncher(
+          padded.data_ptr<float>(),
+          output.data_ptr<float>(),
+          target_offsets.data_ptr<int>(),
+          padded_sizes_tensor.data_ptr<int>(),
+          padded_strides_tensor.data_ptr<int>(),
+          target_size_sizes.data_ptr<int>(),
+          target_size_strides.data_ptr<int>(),
+          padded.dim() - 1,
+          padded.size(0),
+          defaultStream);
+    }
+    TORCH_CHECK("to_padded_tensor does not support dtype ", padded.dtype());
     if (got_channel_last) {
       return wrap_buffer_channel_last(std::move(output), target_size);
     }
