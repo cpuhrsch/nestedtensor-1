@@ -60,11 +60,11 @@ class TestFunctional(TestCase):
             return r
 
         def _test(ts, weight, stride, padding, dilation, groups):
-            # print("ts")
-            # print(ts)
+            print("ts")
+            print(ts)
             nt = ntnt_nograd(ts, device=device, dtype=dtype, channels_last=True)
-            # print("nt")
-            # print(nt)
+            print("nt")
+            print(nt)
             nt_out = torch.conv2d(nt, weight, stride=stride,
                                   padding=padding, dilation=dilation,
                                   groups=groups)
@@ -73,21 +73,21 @@ class TestFunctional(TestCase):
                                      stride=stride, padding=padding,
                                      dilation=dilation,
                                      groups=groups).squeeze(0)
-                # print("nt_out_i")
-                # print(nt_out_i)
-                # print(nt_out_i.size())
-                # print(nt_out_i.stride())
-                # print("t_out")
-                # print(t_out)
-                # print(t_out.size())
-                # print(t_out.stride())
-                # print("")
+                print("nt_out_i")
+                print(nt_out_i)
+                print(nt_out_i.size())
+                print(nt_out_i.stride())
+                print("t_out")
+                print(t_out)
+                print(t_out.size())
+                print(t_out.stride())
+                print("")
                 self.assertEqual(t_out, nt_out_i)
         ts = []
         for s in shapes:
             # ts.append(torch.randn(_prod(s)).reshape(*s).to(device=device, dtype=dtype))
             ts.append(torch.arange(_prod(s)).reshape(*s).to(device=device, dtype=dtype))
-        ts[1] = ts[1] + ts[0].numel()
+        # ts[1] = ts[1] + ts[0].numel()
         weight = weight.to(device=device, dtype=dtype)
         _test(ts, weight, stride, padding, dilation, groups)
 
@@ -113,8 +113,8 @@ class TestFunctional(TestCase):
         shapes = [(3, 5, 4), (3, 4, 5)] # , (2, 3, 3)]
         weight = torch.randn(2*3*3*3).reshape(2, 3, 3, 3)
         # weight = torch.arange(1*2*2*2).reshape(1, 2, 2, 2)
-        self._test_conv2d_dtype(torch.float16, weight, torch.device('cuda'), shapes)
         self._test_conv2d_dtype(torch.float32, weight, torch.device('cuda'), shapes)
+        self._test_conv2d_dtype(torch.float16, weight, torch.device('cuda'), shapes)
 
     @torch.inference_mode()
     def test_conv2d_3x3_cpu(self):

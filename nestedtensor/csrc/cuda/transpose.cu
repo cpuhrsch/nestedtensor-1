@@ -7,18 +7,18 @@
 namespace nested_tensor {
 namespace cuda {
 
-template<int num_threads_sqrt>
+template<typename T, int num_threads_sqrt>
 __global__
 void transpose(
-    c10::Half* input,
-    c10::Half* output,
+    T* input,
+    T* output,
     const int* block_offsets,
     const int* offsets,
-    const int batch_size,
+    int batch_size,
     const int* size_dim2,
     const int* size_dim3)
 {
-  __shared__ c10::Half tile[num_threads_sqrt][num_threads_sqrt + 1];
+  __shared__ T tile[num_threads_sqrt][num_threads_sqrt + 1];
   const int block_id  = blockIdx.x;
   const int tid2 = threadIdx.x / 32;
   const int tid3 = threadIdx.x % 32;
@@ -60,7 +60,7 @@ void transpose(
     const int ii2 = offset2_tid2 + sub * 8;
     if (ii2 < size2 && ii3 < size3) {
       const int ii = ii2 * size3 + ii3;
-      tile[tid2 + sub * 8][tid3] = __ldg(reinterpret_cast<const __half*>(input) + offset + ii);
+      tile[tid2 + sub * 8][tid3] = input[offset + ii];
     }
   }
 
@@ -79,13 +79,14 @@ void transpose(
   }
 }
 
+template<typename T>
 void transpose_kernelLauncher(
-    c10::Half* input, // [batch_size x None]
-    c10::Half* output, // [batch_size x max(input.nested_size(1)) x inner_size]
+    T* input, // [batch_size x None]
+    T* output, // [batch_size x max(input.nested_size(1)) x inner_size]
     const int* block_offsets,
     const int* offsets,
-    const int batch_size,
-    const int block_numel,
+    int batch_size,
+    int block_numel,
     const int* size_dim2,
     const int* size_dim3,
     const cudaStream_t stream)
@@ -93,7 +94,7 @@ void transpose_kernelLauncher(
   dim3 grid;
   grid.x = block_numel,
 
-  transpose<32><<<grid, 256, 0, stream>>>(
+  transpose<T, 32><<<grid, 256, 0, stream>>>(
       input,
       output,
       block_offsets,
@@ -102,6 +103,28 @@ void transpose_kernelLauncher(
       size_dim2,
       size_dim3);
 }
+
+template void transpose_kernelLauncher<float>(
+    float* input,
+    float* output,
+    const int* block_offsets,
+    const int* offsets,
+    int batch_size,
+    int block_numel,
+    const int* size_dim2,
+    const int* size_dim3,
+    const cudaStream_t stream);
+
+template void transpose_kernelLauncher<c10::Half>(
+    c10::Half* input,
+    c10::Half* output,
+    const int* block_offsets,
+    const int* offsets,
+    int batch_size,
+    int block_numel,
+    const int* size_dim2,
+    const int* size_dim3,
+    const cudaStream_t stream);
 
 }
 } // namespace nested_tensor

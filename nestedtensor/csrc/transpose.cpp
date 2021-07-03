@@ -56,21 +56,35 @@ Tensor transpose_buffer(Tensor nt_sizes_, Tensor input_buffer, Tensor output_buf
   index += sizes_dim2.size(0);
   sizes_dim3 = all_meta.narrow(0, index, sizes_dim3.size(0));
 
-  c10::Half* input_ptr = input_buffer.data_ptr<c10::Half>();
-  c10::Half* output_ptr = output_buffer.data_ptr<c10::Half>();
-
-  nested_tensor::cuda::transpose_kernelLauncher(
-      input_ptr,
-      output_ptr,
-      block_offsets.data_ptr<int>(),
-      offsets.data_ptr<int>(),
-      batch_size, 
-      block_numel,
-      sizes_dim2.data_ptr<int>(),
-      sizes_dim3.data_ptr<int>(),
-      defaultStream
-      );
-  return output_buffer.view(-1);
+  if (input_buffer.dtype() == torch::kFloat16) {
+    nested_tensor::cuda::transpose_kernelLauncher(
+        input_buffer.data_ptr<c10::Half>(),
+        output_buffer.data_ptr<c10::Half>(),
+        block_offsets.data_ptr<int>(),
+        offsets.data_ptr<int>(),
+        batch_size, 
+        block_numel,
+        sizes_dim2.data_ptr<int>(),
+        sizes_dim3.data_ptr<int>(),
+        defaultStream
+        );
+    return output_buffer.view(-1);
+  }
+  if (input_buffer.dtype() == torch::kFloat) {
+    nested_tensor::cuda::transpose_kernelLauncher(
+        input_buffer.data_ptr<float>(),
+        output_buffer.data_ptr<float>(),
+        block_offsets.data_ptr<int>(),
+        offsets.data_ptr<int>(),
+        batch_size, 
+        block_numel,
+        sizes_dim2.data_ptr<int>(),
+        sizes_dim3.data_ptr<int>(),
+        defaultStream
+        );
+    return output_buffer.view(-1);
+  }
+  TORCH_CHECK(false, "Given dtype ", input_buffer.dtype(), " not supported.");
 #endif
   TORCH_CHECK(false, "transpose_buffer needs CUDA.");
 }
