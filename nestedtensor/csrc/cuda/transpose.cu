@@ -58,11 +58,19 @@ void transpose(
   const int ii21 = offset2_tid3;
   if (ii3 < size3) {
 #pragma unroll
-    for (int sub = 0; sub < 4; sub++) {
-      const int ii2 = offset2_tid2 + sub * 8;
-      if (ii2 < size2) {
+    if (offset2_tid2 + 3 * 8 < size2) {
+      for (int sub = 0; sub < 4; sub++) {
+        const int ii2 = offset2_tid2 + sub * 8;
         const int ii = ii2 * size3 + ii3;
         tile[tid2 + sub * 8][tid3] = __ldg(reinterpret_cast<const __half*>(input) + offset + ii);
+      }
+    } else {
+      for (int sub = 0; sub < 4; sub++) {
+        const int ii2 = offset2_tid2 + sub * 8;
+        if (ii2 < size2) {
+          const int ii = ii2 * size3 + ii3;
+          tile[tid2 + sub * 8][tid3] = __ldg(reinterpret_cast<const __half*>(input) + offset + ii);
+        }
       }
     }
   }
