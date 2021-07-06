@@ -55,26 +55,50 @@ void transpose(
   const int offset1_tid3 = (current_block_mod) + tid3;
   const int offset2_tid3 = (current_block_div) + tid3;
   const int ii3 = offset1_tid3;
+  if (ii3 < size3) {
+    if (offset2_tid2 + 3 * 8 < size2) {
 #pragma unroll
-  for (int sub = 0; sub < 4; sub++) {
-    const int ii2 = offset2_tid2 + sub * 8;
-    if (ii2 < size2 && ii3 < size3) {
-      const int ii = ii2 * size3 + ii3;
-      tile[tid2 + sub * 8][tid3] = __ldg(reinterpret_cast<const __half*>(input) + offset + ii);
+      for (int sub = 0; sub < 4; sub++) {
+        const int ii2 = offset2_tid2 + sub * 8;
+        const int ii = ii2 * size3 + ii3;
+        tile[tid2 + sub * 8][tid3] = __ldg(reinterpret_cast<const __half*>(input) + offset + ii);
+      }
+    } else {
+#pragma unroll
+      for (int sub = 0; sub < 4; sub++) {
+        const int ii2 = offset2_tid2 + sub * 8;
+        if (ii2 < size2) {
+          const int ii = ii2 * size3 + ii3;
+          tile[tid2 + sub * 8][tid3] = __ldg(reinterpret_cast<const __half*>(input) + offset + ii);
+        }
+      }
     }
   }
 
   __syncthreads();
 
   const int ii21 = offset2_tid3;
+  if (ii21 < size2) {
+    if (offset1_tid2 + 3 * 8 < size3) {
 #pragma unroll
-  for (int sub = 0; sub < 4; sub++) {
-    const int ii31 = offset1_tid2 + sub * 8;
-    if (ii21 < size2 && ii31 < size3) {
-      const int ii1 = ii21 * size3 + ii31;
-      const int j = (ii1 % size3) * size2;
-      const int i = (ii1 / size3);
-      output[offset + j + i] = tile[tid3][tid2 + sub * 8];
+      for (int sub = 0; sub < 4; sub++) {
+        const int ii31 = offset1_tid2 + sub * 8;
+        const int ii1 = ii21 * size3 + ii31;
+        const int j = (ii1 % size3) * size2;
+        const int i = (ii1 / size3);
+        output[offset + j + i] = tile[tid3][tid2 + sub * 8];
+      }
+    }
+  } else {
+#pragma unroll
+    for (int sub = 0; sub < 4; sub++) {
+      const int ii31 = offset1_tid2 + sub * 8;
+      if (ii31 < size3) {
+        const int ii1 = ii21 * size3 + ii31;
+        const int j = (ii1 % size3) * size2;
+        const int i = (ii1 / size3);
+        output[offset + j + i] = tile[tid3][tid2 + sub * 8];
+      }
     }
   }
 }
