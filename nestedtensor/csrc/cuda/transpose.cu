@@ -92,7 +92,7 @@ void transpose_nchw_nhwc_kernelLauncher(
     const cudaStream_t stream)
 {
   dim3 grid;
-  grid.x = block_numel,
+  grid.x = block_numel;
 
   transpose_nchw_nhwc<T, 32><<<grid, 256, 0, stream>>>(
       input,
@@ -215,7 +215,7 @@ void transpose_nhwc_nchw_kernelLauncher(
     const cudaStream_t stream)
 {
   dim3 grid;
-  grid.x = block_numel,
+  grid.x = block_numel;
 
   transpose_nhwc_nchw<T, 32><<<grid, 256, 0, stream>>>(
       input,
