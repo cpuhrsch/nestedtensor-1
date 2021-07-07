@@ -436,10 +436,12 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
 #ifdef WITH_CUDA
   if (padded.dim() > 1 && padded.dim() < 5 && get_is_cuda(padded) &&
       padded.dtype() == torch::kFloat16) {
-    bool got_channel_last = false;
-    if (get_is_channel_last(padded)) {
-      got_channel_last = true;
-    }
+    padded = padded.contiguous();
+
+    // bool got_channel_last = false;
+    // if (get_is_channel_last(padded)) {
+    //   got_channel_last = true;
+    // }
     // std::cout << "from_padded_tensor get_is_channel_last(padded): " << get_is_channel_last(padded) << std::endl;
     Tensor padded_sizes_tensor = torch::tensor(padded.sizes());
     Tensor padded_strides_tensor = torch::tensor(padded.strides());
@@ -447,15 +449,15 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
     Tensor target_size_sizes = target_size.sizes();
     Tensor target_size_strides;
     Tensor target_offsets;
-    if (got_channel_last) {
-      auto estride = torch::nested_tensor::impl::create_strides(target_size);
-      target_size_strides = estride.sizes();
-      target_offsets = batch_offsets_from_efficient_size(target_size);
-    } else {
+    // if (got_channel_last) {
+    //   auto estride = torch::nested_tensor::impl::create_strides(target_size);
+    //   target_size_strides = estride.sizes();
+    //   target_offsets = batch_offsets_from_efficient_size(target_size);
+    // } else {
       auto estride = torch::nested_tensor::impl::_cont_stride(target_size);
       target_size_strides = estride.sizes();
       target_offsets = batch_offsets_from_efficient_size(target_size);
-    }
+    // }
     // std::cout << "target_offsets: " << target_offsets << std::endl;
 
     at::Tensor metadata = at::cat({target_size_sizes.reshape(-1), target_size_strides.reshape(-1), padded_sizes_tensor, padded_strides_tensor, target_offsets});
@@ -504,10 +506,10 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
           defaultStream);
     }
     TORCH_CHECK("to_padded_tensor does not support dtype ", padded.dtype());
-    if (got_channel_last) {
-      // std::cout << "got_channel_last: " << got_channel_last << std::endl;
-      return wrap_buffer_channel_last(std::move(output), target_size);
-    }
+    // if (got_channel_last) {
+    //   // std::cout << "got_channel_last: " << got_channel_last << std::endl;
+    //   return wrap_buffer_channel_last(std::move(output), target_size);
+    // }
     return wrap_buffer(std::move(output), target_size);
   }
 #endif
@@ -537,17 +539,16 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
 
 Tensor to_padded_tensor(Tensor nt, double padding) {
 #ifdef WITH_CUDA
-  if ((get_dim(nt) >= 2 && get_dim(nt) <= 4) &&
-      (get_is_channel_last(nt) || get_is_contiguous(nt))) {
+  if ((get_dim(nt) >= 2 && get_dim(nt) <= 4)) {
     auto nt_opt_size = get_opt_sizes(nt);
     Tensor nt_buffer;
-    if (get_is_channel_last(nt)) {
-      nt_buffer = get_buffer_channel_last(nt);
-    } else {
-      TORCH_CHECK(get_is_contiguous(nt),
-                  "to_padded_tensor: If input is not channel last, it must be contiguous.");
+    // if (get_is_channel_last(nt)) {
+    //   nt_buffer = get_buffer_channel_last(nt);
+    // } else {
+    //   TORCH_CHECK(get_is_contiguous(nt),
+    //               "to_padded_tensor: If input is not channel last, it must be contiguous.");
       nt_buffer = get_buffer(nt);
-    }
+    // }
     if (get_is_cuda(nt_buffer)) {
       at::Tensor nt_sizes;
       at::Tensor nt_strides;
@@ -562,7 +563,7 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       Tensor output;
       // std::cout << "get_is_channel_last(nt): " << get_is_channel_last(nt) << std::endl;
-      if (get_is_channel_last(nt)) {
+      if (get_is_contiguous(nt, c10::MemoryFormat::ChannelsLast)) {
         output = at::empty(IntArrayRef(new_size), nt_buffer.options(), at::MemoryFormat::ChannelsLast);
       } else {
         output = at::empty(IntArrayRef(new_size), nt_buffer.options());
