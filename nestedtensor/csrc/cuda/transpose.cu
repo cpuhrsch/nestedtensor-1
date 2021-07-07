@@ -49,18 +49,18 @@ void transpose_nchw_nhwc(
   const int current_block_mod = (current_block % num_chunks_3) * num_threads_sqrt;
   const int current_block_div = (current_block / num_chunks_3) * num_threads_sqrt;
   const int offset1_tid2 = (current_block_mod) + tid2;
-  const int offset2_tid2 = (current_block_div) + tid2;
   const int offset1_tid3 = (current_block_mod) + tid3;
   const int offset2_tid3 = (current_block_div) + tid3;
   const int ii3 = offset1_tid3;
   if (ii3 < size3) {
 #pragma unroll
+    // int ii = offset + ((current_block_div) + tid2 + sub * 8) * size3 + ii3;
+    int ii = offset + (current_block_div + tid2) * size3 + ii3;
     for (int sub = 0; sub < 4; sub++) {
-      const int ii2 = offset2_tid2 + sub * 8;
-      if (ii2 < num_channel) {
-        const int ii = ii2 * size3 + ii3;
-        tile[tid2 + sub * 8][tid3] = input[offset + ii];
+      if (ii < next_offset) {
+        tile[tid2 + sub * 8][tid3] = input[ii];
       }
+      ii += 8 * size3;
     }
   }
 
