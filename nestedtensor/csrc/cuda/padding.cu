@@ -15,8 +15,10 @@ void add_padding_1(
     T padding_value,
     const int* offsets,
     const int* input_sizes,
+    const int* input_strides,
     int input_dim,
     const int* output_sizes,
+    const int* output_strides,
     const int batch_size)
 {
   const int batch_id  = blockIdx.x;
@@ -55,8 +57,10 @@ void add_padding_2(
     T padding_value,
     const int* offsets,
     const int* input_sizes,
+    const int* input_strides,
     int input_dim,
     const int* output_sizes,
+    const int* output_strides,
     const int batch_size)
 {
   const int batch_id  = blockIdx.x;
@@ -100,8 +104,10 @@ void add_padding_3(
     T padding_value,
     const int* offsets,
     const int* input_sizes,
+    const int* input_strides,
     int input_dim,
     const int* output_sizes,
+    const int* output_strides,
     const int batch_size)
 {
   const int batch_id  = blockIdx.x;
@@ -110,19 +116,26 @@ void add_padding_3(
   const int grainsize = 16 * 256;
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
+  const int* strides_i = input_strides + batch_id * input_dim;
   const int numel_i = sizes_i[0] * sizes_i[1] * sizes_i[2];
-  const int output_offset = batch_id * output_sizes[1] * output_sizes[2] * output_sizes[3];
   const int output_numel = output_sizes[1] * output_sizes[2] * output_sizes[3];
   for (int ii = 0; ii < (output_numel / grainsize); ii++) {
     const int i = ii * grainsize + tid;
     const int i0 = i / (output_sizes[2] * output_sizes[3]);
     const int i1 = (i % (output_sizes[2] * output_sizes[3])) / output_sizes[3];
     const int i2 = i % output_sizes[3];
+    const int output_offset = batch_id * output_strides[0] + 
+                                    i0 * output_strides[1] +
+                                    i1 * output_strides[2] +
+                                    i2 * output_strides[3];
     if (i0 < sizes_i[0] && i1 < sizes_i[1] && i2 < sizes_i[2]) {
-      const int input_offset = offset + i0 * (sizes_i[1] * sizes_i[2]) + i1 * sizes_i[2] + i2;
-      output[output_offset + i] = input[input_offset];
+      const int input_offset = offset +
+                               i0 * strides_i[0] +
+                               i1 * strides_i[1] +
+                               i2 * strides_i[2];
+      output[output_offset] = input[input_offset];
     } else {
-      output[output_offset + i] = padding_value;
+      output[output_offset] = padding_value;
     }
   }
   const int i = (output_numel / grainsize) * grainsize + tid;
@@ -130,11 +143,18 @@ void add_padding_3(
     const int i0 = i / (output_sizes[2] * output_sizes[3]);
     const int i1 = (i % (output_sizes[2] * output_sizes[3])) / output_sizes[3];
     const int i2 = i % output_sizes[3];
+    const int output_offset = batch_id * output_strides[0] + 
+                                    i0 * output_strides[1] +
+                                    i1 * output_strides[2] +
+                                    i2 * output_strides[3];
     if (i0 < sizes_i[0] && i1 < sizes_i[1] && i2 < sizes_i[2]) {
-      const int input_offset = offset + i0 * (sizes_i[1] * sizes_i[2]) + i1 * sizes_i[2] + i2;
-      output[output_offset + i] = input[input_offset];
+      const int input_offset = offset +
+                               i0 * strides_i[0] +
+                               i1 * strides_i[1] +
+                               i2 * strides_i[2];
+      output[output_offset] = input[input_offset];
     } else {
-      output[output_offset + i] = padding_value;
+      output[output_offset] = padding_value;
     }
   }
 }
@@ -146,8 +166,10 @@ void add_padding_kernelLauncher(
     T padding_value,
     const int* offsets,
     const int* input_sizes,
+    const int* input_strides,
     int input_dim,
     const int* output_sizes,
+    const int* output_strides,
     const int batch_size,
     const cudaStream_t stream)
 {
@@ -161,8 +183,10 @@ void add_padding_kernelLauncher(
         padding_value,
         offsets,
         input_sizes,
+        input_strides,
         input_dim,
         output_sizes,
+        output_strides,
         batch_size);
   }
   if (input_dim == 2) {
@@ -172,8 +196,10 @@ void add_padding_kernelLauncher(
         padding_value,
         offsets,
         input_sizes,
+        input_strides,
         input_dim,
         output_sizes,
+        output_strides,
         batch_size);
   }
   if (input_dim == 3) {
@@ -183,8 +209,10 @@ void add_padding_kernelLauncher(
         padding_value,
         offsets,
         input_sizes,
+        input_strides,
         input_dim,
         output_sizes,
+        output_strides,
         batch_size);
   }
 }
@@ -195,8 +223,10 @@ template void add_padding_kernelLauncher<float>(
     float padding_value,
     const int* offsets,
     const int* input_sizes,
+    const int* input_strides,
     int input_dim,
     const int* output_sizes,
+    const int* output_strides,
     const int batch_size,
     const cudaStream_t stream);
 
@@ -206,8 +236,10 @@ template void add_padding_kernelLauncher<c10::Half>(
     c10::Half padding_value,
     const int* offsets,
     const int* input_sizes,
+    const int* input_strides,
     int input_dim,
     const int* output_sizes,
+    const int* output_strides,
     const int batch_size,
     const cudaStream_t stream);
 
@@ -276,7 +308,9 @@ void remove_padding(
     T* output,
     const int* offsets,
     const int* input_sizes,
+    const int* input_strides,
     const int* output_sizes,
+    const int* output_strides,
     int output_dim,
     const int batch_size)
 {
@@ -286,25 +320,37 @@ void remove_padding(
   const int grainsize = 16 * 256;
   const int offset = offsets[batch_id];
   const int* sizes_i = output_sizes + batch_id * output_dim;
+  const int* strides_i = output_strides + batch_id * output_dim;
   const int numel_i = sizes_i[0] * sizes_i[1] * sizes_i[2];
-  int input_offset = batch_id * input_sizes[1] * input_sizes[2] * input_sizes[3];
   for (int ii = 0; ii < (numel_i / grainsize); ii++) {
     const int i = ii * grainsize + tid;
     const int i0 = i / (sizes_i[1] * sizes_i[2]);
     const int i1 = (i % (sizes_i[1] * sizes_i[2])) / sizes_i[2];
     const int i2 = i % sizes_i[2];
-    const int i0_offset = i0 * input_sizes[2] * input_sizes[3];
-    const int i1_offset = i1 * input_sizes[3];
-    output[offset + i] = input[input_offset + i0_offset + i1_offset + i2];
+    int output_offset = offset;
+    output_offset += i0 * strides_i[0];
+    output_offset += i1 * strides_i[1];
+    output_offset += i2 * strides_i[2];
+    int input_offset = batch_id * input_strides[0];
+    input_offset += i0 * input_strides[1];
+    input_offset += i1 * input_strides[2];
+    input_offset += i2 * input_strides[3];
+    output[output_offset] = input[input_offset];
   }
   const int i = (numel_i / grainsize) * grainsize + tid;
   if (i < numel_i) {
     const int i0 = i / (sizes_i[1] * sizes_i[2]);
     const int i1 = (i % (sizes_i[1] * sizes_i[2])) / sizes_i[2];
     const int i2 = i % sizes_i[2];
-    const int i0_offset = i0 * input_sizes[2] * input_sizes[3];
-    const int i1_offset = i1 * input_sizes[3];
-    output[offset + i] = input[input_offset + i0_offset + i1_offset + i2];
+    int output_offset = offset;
+    output_offset += i0 * strides_i[0];
+    output_offset += i1 * strides_i[1];
+    output_offset += i2 * strides_i[2];
+    int input_offset = batch_id * input_strides[0];
+    input_offset += i0 * input_strides[1];
+    input_offset += i1 * input_strides[2];
+    input_offset += i2 * input_strides[3];
+    output[output_offset] = input[input_offset];
   }
 }
 
@@ -314,7 +360,9 @@ void remove_padding_kernelLauncher(
     T* output,
     const int* offsets,
     const int* input_sizes,
+    const int* input_strides,
     const int* output_sizes,
+    const int* output_strides,
     int output_dim,
     const int batch_size,
     const cudaStream_t stream)
@@ -328,7 +376,9 @@ void remove_padding_kernelLauncher(
     output,
     offsets,
     input_sizes,
+    input_strides,
     output_sizes,
+    output_strides,
     output_dim,
     batch_size);
 }
@@ -338,7 +388,9 @@ template void remove_padding_kernelLauncher<float>(
     float* output,
     const int* offsets,
     const int* input_sizes,
+    const int* input_strides,
     const int* output_sizes,
+    const int* output_strides,
     int output_dim,
     const int batch_size,
     const cudaStream_t stream);
@@ -348,7 +400,9 @@ template void remove_padding_kernelLauncher<c10::Half>(
     c10::Half* output,
     const int* offsets,
     const int* input_sizes,
+    const int* input_strides,
     const int* output_sizes,
+    const int* output_strides,
     int output_dim,
     const int batch_size,
     const cudaStream_t stream);

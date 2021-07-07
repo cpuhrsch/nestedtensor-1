@@ -254,7 +254,7 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
   if (get_dim(nt) == 3 && get_is_contiguous(nt) && mask_dim && *mask_dim == 2) {
     auto nt_opt_size = get_opt_sizes(nt);
     Tensor nt_buffer = get_buffer(nt);
-    if (nt_opt_size[2] && nt_buffer.is_cuda()) {
+    if (nt_opt_size[2] && get_is_cuda(nt_buffer)) {
       Tensor nt_sizes_ =
           get_efficient_nested_size(nt).sizes().to(torch::kInt32);
       TORCH_CHECK(nt_sizes_.dim() == 2, "NestedTensor metadata of unexpected dimension.")
@@ -434,39 +434,80 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
   TORCH_CHECK(padded.dim() == target_size.dim(),
       "Target size has different dimension as input padded Tensor.");
 #ifdef WITH_CUDA
-  if (padded.dim() > 1 && padded.dim() < 5 &&
-      get_is_contiguous(padded) && padded.is_cuda() &&
+  if (padded.dim() > 1 && padded.dim() < 5 && get_is_cuda(padded) &&
       padded.dtype() == torch::kFloat16) {
-    Tensor target_offsets = batch_offsets_from_efficient_size(target_size);
-    std::vector<int64_t> padded_sizes = padded.sizes().vec();
-    Tensor padded_sizes_tensor = torch::tensor(padded_sizes);
+    bool got_channel_last = false;
+    if (get_is_channel_last(padded)) {
+      got_channel_last = true;
+    }
+    // std::cout << "from_padded_tensor get_is_channel_last(padded): " << get_is_channel_last(padded) << std::endl;
+    Tensor padded_sizes_tensor = torch::tensor(padded.sizes());
+    Tensor padded_strides_tensor = torch::tensor(padded.strides());
     Tensor output = torch::empty({target_size.numel()}, padded.options());
     Tensor target_size_sizes = target_size.sizes();
+    Tensor target_size_strides;
+    Tensor target_offsets;
+    if (got_channel_last) {
+      auto estride = torch::nested_tensor::impl::create_strides(target_size);
+      target_size_strides = estride.sizes();
+      target_offsets = batch_offsets_from_efficient_size(target_size);
+    } else {
+      auto estride = torch::nested_tensor::impl::_cont_stride(target_size);
+      target_size_strides = estride.sizes();
+      target_offsets = batch_offsets_from_efficient_size(target_size);
+    }
+    // std::cout << "target_offsets: " << target_offsets << std::endl;
 
-    at::Tensor metadata = at::cat({target_size_sizes.reshape(-1), padded_sizes_tensor, target_offsets});
+    at::Tensor metadata = at::cat({target_size_sizes.reshape(-1), target_size_strides.reshape(-1), padded_sizes_tensor, padded_strides_tensor, target_offsets});
     metadata = metadata.to(at::Device(kCUDA), torch::kInt32, true, true);
 
     std::vector<int64_t> split_sizes;
     split_sizes.push_back(target_size_sizes.numel());
+    split_sizes.push_back(target_size_strides.numel());
     split_sizes.push_back(padded_sizes_tensor.numel());
+    split_sizes.push_back(padded_strides_tensor.numel());
     split_sizes.push_back(target_offsets.numel());
 
     std::vector<Tensor> split = at::split_with_sizes(metadata, IntArrayRef(split_sizes), 0);
 
     target_size_sizes = split[0];
-    padded_sizes_tensor = split[1];
-    target_offsets = split[2];
+    target_size_strides = split[1];
+    padded_sizes_tensor = split[2];
+    padded_strides_tensor = split[3];
+    target_offsets = split[4];
 
     at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-    nested_tensor::cuda::remove_padding_kernelLauncher(
-        padded.data_ptr<c10::Half>(),
-        output.data_ptr<c10::Half>(),
-        target_offsets.data_ptr<int>(),
-        padded_sizes_tensor.data_ptr<int>(),
-        target_size_sizes.data_ptr<int>(),
-        padded.dim() - 1,
-        padded.size(0),
-        defaultStream);
+    if (padded.dtype() == torch::kFloat16) {
+      nested_tensor::cuda::remove_padding_kernelLauncher(
+          padded.data_ptr<c10::Half>(),
+          output.data_ptr<c10::Half>(),
+          target_offsets.data_ptr<int>(),
+          padded_sizes_tensor.data_ptr<int>(),
+          padded_strides_tensor.data_ptr<int>(),
+          target_size_sizes.data_ptr<int>(),
+          target_size_strides.data_ptr<int>(),
+          padded.dim() - 1,
+          padded.size(0),
+          defaultStream);
+    }
+    if (padded.dtype() == torch::kFloat) {
+      nested_tensor::cuda::remove_padding_kernelLauncher(
+          padded.data_ptr<float>(),
+          output.data_ptr<float>(),
+          target_offsets.data_ptr<int>(),
+          padded_sizes_tensor.data_ptr<int>(),
+          padded_strides_tensor.data_ptr<int>(),
+          target_size_sizes.data_ptr<int>(),
+          target_size_strides.data_ptr<int>(),
+          padded.dim() - 1,
+          padded.size(0),
+          defaultStream);
+    }
+    TORCH_CHECK("to_padded_tensor does not support dtype ", padded.dtype());
+    if (got_channel_last) {
+      // std::cout << "got_channel_last: " << got_channel_last << std::endl;
+      return wrap_buffer_channel_last(std::move(output), target_size);
+    }
     return wrap_buffer(std::move(output), target_size);
   }
 #endif
@@ -496,34 +537,58 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
 
 Tensor to_padded_tensor(Tensor nt, double padding) {
 #ifdef WITH_CUDA
-  if ((get_dim(nt) >= 2 && get_dim(nt) <= 4)) {
-    nt = NestedTensor_contiguous(nt, c10::MemoryFormat::Contiguous);
+  if ((get_dim(nt) >= 2 && get_dim(nt) <= 4) &&
+      (get_is_channel_last(nt) || get_is_contiguous(nt))) {
     auto nt_opt_size = get_opt_sizes(nt);
-    Tensor nt_buffer = get_buffer(nt);
-    if (nt_buffer.is_cuda()) {
+    Tensor nt_buffer;
+    if (get_is_channel_last(nt)) {
+      nt_buffer = get_buffer_channel_last(nt);
+    } else {
+      TORCH_CHECK(get_is_contiguous(nt),
+                  "to_padded_tensor: If input is not channel last, it must be contiguous.");
+      nt_buffer = get_buffer(nt);
+    }
+    if (get_is_cuda(nt_buffer)) {
+      at::Tensor nt_sizes;
+      at::Tensor nt_strides;
+      Tensor offsets;
+      std::vector<int64_t> new_size;
       auto esize = get_efficient_nested_size(nt);
-      at::Tensor nt_sizes = esize.sizes();
-      Tensor offsets = batch_offsets_from_efficient_size(esize);
-      std::vector<int64_t> new_size = padded_size_from_efficient_size(esize);
+      nt_sizes = esize.sizes();
+      offsets = batch_offsets_from_efficient_size(esize);
+      new_size = padded_size_from_efficient_size(esize);
+      auto estride = get_efficient_nested_stride(nt);
+      nt_strides = estride.sizes();
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-      Tensor output = at::empty(IntArrayRef(new_size), nt_buffer.options());
-      Tensor new_size_tensor = torch::tensor(new_size);
+      Tensor output;
+      // std::cout << "get_is_channel_last(nt): " << get_is_channel_last(nt) << std::endl;
+      if (get_is_channel_last(nt)) {
+        output = at::empty(IntArrayRef(new_size), nt_buffer.options(), at::MemoryFormat::ChannelsLast);
+      } else {
+        output = at::empty(IntArrayRef(new_size), nt_buffer.options());
+      }
+      Tensor new_size_tensor = torch::tensor(output.sizes());
+      Tensor new_stride_tensor = torch::tensor(output.strides());
 
       int64_t input_dim = nt_sizes.size(1);
       int64_t batch_size = nt_sizes.size(0);
-      at::Tensor metadata = at::cat({new_size_tensor, offsets, nt_sizes.reshape(-1)});
+      at::Tensor metadata = at::cat({new_size_tensor, new_stride_tensor, offsets, nt_sizes.reshape(-1), nt_strides.reshape(-1)});
       metadata = metadata.to(at::Device(kCUDA), torch::kInt32, true, true);
 
       std::vector<int64_t> split_sizes;
       split_sizes.push_back(new_size_tensor.numel());
+      split_sizes.push_back(new_stride_tensor.numel());
       split_sizes.push_back(offsets.numel());
       split_sizes.push_back(nt_sizes.numel());
+      split_sizes.push_back(nt_strides.numel());
 
       std::vector<Tensor> split = at::split_with_sizes(metadata, IntArrayRef(split_sizes), 0);
 
       new_size_tensor = split[0];
-      offsets = split[1];
-      nt_sizes = split[2];
+      new_stride_tensor = split[1];
+      offsets = split[2];
+      nt_sizes = split[3];
+      nt_strides = split[4];
 
       if (nt_buffer.dtype() == torch::kFloat16) {
         nested_tensor::cuda::add_padding_kernelLauncher(
@@ -532,8 +597,10 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             (c10::Half)(padding),
             offsets.data_ptr<int>(),
             nt_sizes.data_ptr<int>(),
+            nt_strides.data_ptr<int>(),
             input_dim,
             new_size_tensor.data_ptr<int>(),
+            new_stride_tensor.data_ptr<int>(),
             batch_size,
             defaultStream);
         return output;
@@ -545,8 +612,10 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
             (float)(padding),
             offsets.data_ptr<int>(),
             nt_sizes.data_ptr<int>(),
+            nt_strides.data_ptr<int>(),
             input_dim,
             new_size_tensor.data_ptr<int>(),
+            new_stride_tensor.data_ptr<int>(),
             batch_size,
             defaultStream);
         return output;
@@ -555,6 +624,7 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
     }
   }
 #endif
+  TORCH_CHECK(get_is_contiguous(nt), "Expected input to be contiguous.");
   auto opt_sizes = get_opt_sizes(nt);
   if (opt_sizes.size() == 1 && *opt_sizes[0] == 1) {
     nt = NestedTensor_contiguous(nt);

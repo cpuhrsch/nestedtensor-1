@@ -15,8 +15,10 @@ void add_padding_kernelLauncher(
     T padding_value,
     const int* offsets,
     const int* input_sizes,
+    const int* input_strides,
     int input_dim,
     const int* output_sizes,
+    const int* output_strides,
     const int batch_size,
     const cudaStream_t stream);
 
@@ -38,7 +40,9 @@ void remove_padding_kernelLauncher(
     T* output,
     const int* offsets,
     const int* input_sizes,
+    const int* input_strides,
     const int* output_sizes,
+    const int* output_strides,
     int output_dim,
     const int batch_size,
     const cudaStream_t stream);
