@@ -39,42 +39,44 @@ void transpose_nchw_nhwc(
       batch_id = batch_id | __shfl_down_sync(0xFFFFFFFF, batch_id, warp_offset);
   batch_id = __shfl_sync(0xFFFFFFFF, batch_id, 0, 32);
 
-  const int grain_size = num_threads_sqrt;
-  const int size2 = num_channel;
   const int block_offset = block_offsets[batch_id];
   const int offset = offsets[batch_id];
   const int next_offset = offsets[batch_id + 1];
   const int size3 = (next_offset - offset) / num_channel;
 
-  const int num_chunks_3 = (size3  + grain_size - 1) / grain_size;
+  const int num_chunks_3 = (size3 + num_threads_sqrt - 1) / num_threads_sqrt;
   const int current_block = block_id - block_offset;
-  const int current_block_mod = (current_block % num_chunks_3) * grain_size;
-  const int current_block_div = (current_block / num_chunks_3) * grain_size;
+  const int current_block_mod = (current_block % num_chunks_3) * num_threads_sqrt;
+  const int current_block_div = (current_block / num_chunks_3) * num_threads_sqrt;
   const int offset1_tid2 = (current_block_mod) + tid2;
   const int offset2_tid2 = (current_block_div) + tid2;
   const int offset1_tid3 = (current_block_mod) + tid3;
   const int offset2_tid3 = (current_block_div) + tid3;
   const int ii3 = offset1_tid3;
+  if (ii3 < size3) {
 #pragma unroll
-  for (int sub = 0; sub < 4; sub++) {
-    const int ii2 = offset2_tid2 + sub * 8;
-    if (ii2 < size2 && ii3 < size3) {
-      const int ii = ii2 * size3 + ii3;
-      tile[tid2 + sub * 8][tid3] = input[offset + ii];
+    for (int sub = 0; sub < 4; sub++) {
+      const int ii2 = offset2_tid2 + sub * 8;
+      if (ii2 < num_channel) {
+        const int ii = ii2 * size3 + ii3;
+        tile[tid2 + sub * 8][tid3] = input[offset + ii];
+      }
     }
   }
 
   __syncthreads();
 
   const int ii21 = offset2_tid3;
+  if (ii21 < num_channel) {
 #pragma unroll
-  for (int sub = 0; sub < 4; sub++) {
-    const int ii31 = offset1_tid2 + sub * 8;
-    if (ii21 < size2 && ii31 < size3) {
-      const int ii1 = ii21 * size3 + ii31;
-      const int j = (ii1 % size3) * size2;
-      const int i = (ii1 / size3);
-      output[offset + j + i] = tile[tid3][tid2 + sub * 8];
+    for (int sub = 0; sub < 4; sub++) {
+      const int ii31 = offset1_tid2 + sub * 8;
+      if (ii31 < size3) {
+        const int ii1 = ii21 * size3 + ii31;
+        const int j = (ii1 % size3) * num_channel;
+        const int i = (ii1 / size3);
+        output[offset + j + i] = tile[tid3][tid2 + sub * 8];
+      }
     }
   }
 }
