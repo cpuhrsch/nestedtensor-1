@@ -52,13 +52,11 @@ void transpose_nchw_nhwc(
   const int offset2_tid3 = (current_block_div) + tid3;
   int ii = offset + (current_block_div + tid2) * size3 + (current_block_mod) + tid3;
 #pragma unroll
-  if (ii < next_offset) {
-    for (int sub = 0; sub < 4; sub++) {
-      if (ii < next_offset) {
-        tile[tid2 + sub * 8][tid3] = input[ii];
-      }
-      ii += 8 * size3;
+  for (int sub = 0; sub < 4; sub++) {
+    if (ii < next_offset) {
+      tile[tid2 + sub * 8][tid3] = input[ii];
     }
+    ii += 8 * size3;
   }
 
   __syncthreads();
