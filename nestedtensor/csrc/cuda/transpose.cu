@@ -44,18 +44,15 @@ void transpose_nchw_nhwc(
   const int next_offset = offsets[batch_id + 1];
   const int size3 = (next_offset - offset) / num_channel;
 
-  const int num_chunks_3 = (size3 + num_threads_sqrt - 1) / num_threads_sqrt;
+  const int num_chunks = (size3 + num_threads_sqrt - 1) / num_threads_sqrt;
   const int current_block = block_id - block_offset;
-  const int current_block_mod = (current_block % num_chunks_3) * num_threads_sqrt;
-  const int current_block_div = (current_block / num_chunks_3) * num_threads_sqrt;
+  const int current_block_mod = (current_block % num_chunks) * num_threads_sqrt;
+  const int current_block_div = (current_block / num_chunks) * num_threads_sqrt;
   const int offset1_tid2 = (current_block_mod) + tid2;
-  const int offset1_tid3 = (current_block_mod) + tid3;
   const int offset2_tid3 = (current_block_div) + tid3;
-  const int ii3 = offset1_tid3;
-  if (ii3 < size3) {
+  int ii = offset + (current_block_div + tid2) * size3 + (current_block_mod) + tid3;
 #pragma unroll
-    // int ii = offset + ((current_block_div) + tid2 + sub * 8) * size3 + ii3;
-    int ii = offset + (current_block_div + tid2) * size3 + ii3;
+  if (ii < next_offset) {
     for (int sub = 0; sub < 4; sub++) {
       if (ii < next_offset) {
         tile[tid2 + sub * 8][tid3] = input[ii];
