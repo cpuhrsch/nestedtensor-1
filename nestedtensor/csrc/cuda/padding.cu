@@ -48,7 +48,7 @@ void add_padding_1(
   }
 }
 
-template<typename T, int num_threads>
+template<typename T, int num_threads, int num_unroll>
 __global__
 void add_padding_2(
     const T* input,
@@ -67,14 +67,20 @@ void add_padding_2(
   const int sizes_0 = sizes_i[0];
   const int sizes_1 = sizes_i[1];
   const int output_offset = batch_id * output_sizes_1 * output_sizes_2;
-  for (int i0 = 0; i0 < output_sizes_1; i0++) {
+  int i0 = 0;
+  for (; i0 < sizes_0; i0++) {
+    int i1 = tid;
+    for (; i1 < sizes_1; i1 += num_threads) {
+      const int input_offset = offset + i0 * sizes_1 + i1;
+      output[output_offset + i0 * output_sizes_2 + i1] = input[input_offset];
+    }
+    for (; i1 < output_sizes_2; i1 += num_threads) {
+      output[output_offset + i0 * output_sizes_2 + i1] = padding_value;
+    }
+  }
+  for (; i0 < output_sizes_1; i0++) {
     for (int i1 = tid; i1 < output_sizes_2; i1 += num_threads) {
-      if (i0 < sizes_0 && i1 < sizes_1) {
-        const int input_offset = offset + i0 * sizes_1 + i1;
-        output[output_offset + i0 * output_sizes_2 + i1] = input[input_offset];
-      } else {
-        output[output_offset + i0 * output_sizes_2 + i1] = padding_value;
-      }
+      output[output_offset + i0 * output_sizes_2 + i1] = padding_value;
     }
   }
 }
@@ -157,7 +163,7 @@ void add_padding_kernelLauncher(
         batch_size);
   }
   if (input_dim == 2) {
-    add_padding_2<T, 256><<<grid, 256, 0, stream>>>(
+    add_padding_2<T, 256, 8><<<grid, 256, 0, stream>>>(
         input,
         output,
         padding_value,
