@@ -21,6 +21,19 @@ void add_padding_kernelLauncher(
     const cudaStream_t stream);
 
 template <typename T>
+void add_padding_nchw_kernelLauncher(
+    T* input,
+    T* output,
+    T padding_value,
+    const int* offsets,
+    const int* input_sizes,
+    int input_dim,
+    int num_channel,
+    const int* output_sizes,
+    const int batch_size,
+    const cudaStream_t stream);
+
+template <typename T>
 void add_padding_mask_kernelLauncher(
     T* input,
     T* output,
