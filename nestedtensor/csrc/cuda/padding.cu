@@ -293,24 +293,24 @@ void remove_padding(
   const int size_1_2 = size_1 * size_2;
   const int numel_i = size_0 * size_1_2;
   int input_offset = batch_id * input_sizes_1_2_3;
-  int num_chunks = numel_i / (grid_y * num_threads);
+  int num_chunks = input_sizes_1_2_3 / (grid_y * num_threads);
   for (int ii = 0; ii < num_chunks; ii++) {
     const int i = ii * grid_y * num_threads + tid;
-    const int i0 = i / (size_1_2);
-    const int i1 = (i % (size_1_2)) / size_2;
-    const int i2 = i % size_2;
-    const int i0_offset = i0 * input_sizes_2_3;
-    const int i1_offset = i1 * input_sizes_3;
-    output[offset + i] = input[input_offset + i0_offset + i1_offset + i2];
+    const int i0 = i / (input_sizes_2_3);
+    const int i1 = (i % (input_sizes_2_3)) / input_sizes_3;
+    const int i2 = i % input_sizes_3;
+    if (i0 < size_0 && i1 < size_1 && i2 < size_2) {
+      output[offset + i0 * size_1_2 + i1 * size_2 + i2] = input[input_offset + i];
+    }
   }
-  const int i = (numel_i / (grid_y * num_threads)) * (grid_y * num_threads) + tid;
-  if (i < numel_i) {
-    const int i0 = i / (size_1_2);
-    const int i1 = (i % (size_1_2)) / size_2;
-    const int i2 = i % size_2;
-    const int i0_offset = i0 * input_sizes_2_3;
-    const int i1_offset = i1 * input_sizes_3;
-    output[offset + i] = input[input_offset + i0_offset + i1_offset + i2];
+  const int i = (input_sizes_1_2_3 / (grid_y * num_threads)) * (grid_y * num_threads) + tid;
+  if (i < input_sizes_1_2_3) {
+    const int i0 = i / (input_sizes_2_3);
+    const int i1 = (i % (input_sizes_2_3)) / input_sizes_3;
+    const int i2 = i % input_sizes_3;
+    if (i0 < size_0 && i1 < size_1 && i2 < size_2) {
+      output[offset + i0 * size_1_2 + i1 * size_2 + i2] = input[input_offset + i];
+    }
   }
 }
 
