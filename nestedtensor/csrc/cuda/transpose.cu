@@ -22,15 +22,17 @@ void transpose_nchw_nhwc(
   const int tid2 = threadIdx.x / 32;
   const int tid3 = threadIdx.x % 32;
   const int block_offset = block_offsets[batch_id];
+  int offset = offsets[batch_id];
+  // int offset_output = offsets[batch_id];
+  input = input + offset;
+  output = output + offset;
+
+  const int next_offset = offsets[batch_id + 1];
+  const int size3 = (next_offset - offset) / num_channel;
+  const int num_chunks_3 = (size3  + grain_size - 1) / grain_size;
   for (int block_id = block_offset + blockIdx.y;
            block_id < block_offsets[batch_id + 1];
            block_id += 256) {
-  
-    const int offset = offsets[batch_id];
-    const int next_offset = offsets[batch_id + 1];
-    const int size3 = (next_offset - offset) / num_channel;
-  
-    const int num_chunks_3 = (size3  + grain_size - 1) / grain_size;
     const int current_block = block_id - block_offset;
     const int current_block_mod = (current_block % num_chunks_3) * grain_size;
     const int current_block_div = (current_block / num_chunks_3) * grain_size;
@@ -42,10 +44,9 @@ void transpose_nchw_nhwc(
   #pragma unroll
     for (int sub = 0; sub < 4; sub++) {
       const int ii2 = offset2_tid2 + sub * 8;
-      if (ii2 < num_channel && ii3 < size3) {
-        const int ii = ii2 * size3 + ii3;
-        tile[tid2 + sub * 8][tid3] = input[offset + ii];
-      }
+      bool valid = ii2 < num_channel && ii3 < size3;
+      const int ii = ii2 * size3 + ii3;
+      tile[tid2 + sub * 8][tid3] = valid ? input[ii] : T(0);
     }
   
     __syncthreads();
@@ -58,7 +59,7 @@ void transpose_nchw_nhwc(
         const int ii1 = ii21 * size3 + ii31;
         const int j = (ii1 % size3) * num_channel;
         const int i = (ii1 / size3);
-        output[offset + j + i] = tile[tid3][tid2 + sub * 8];
+        output[j + i] = tile[tid3][tid2 + sub * 8];
       }
     }
   }
