@@ -221,7 +221,7 @@ void add_padding_nchw(
     const int* input_sizes,
     int input_dim,
     int num_channel,
-    const int output_sizes_2,
+    const int output_sizes_2_3,
     const int output_sizes_3,
     const int batch_size)
 {
@@ -232,12 +232,12 @@ void add_padding_nchw(
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
   const int numel_i = num_channel * sizes_i[1] * sizes_i[2];
-  const int output_offset = batch_id * num_channel * output_sizes_2 * output_sizes_3;
-  const int output_numel = num_channel * output_sizes_2 * output_sizes_3;
+  const int output_offset = batch_id * num_channel * output_sizes_2_3;
+  const int output_numel = num_channel * output_sizes_2_3;
   for (int ii = 0; ii < (output_numel / grainsize); ii++) {
     const int i = ii * grainsize + tid;
-    const int i0 = i / (output_sizes_2 * output_sizes_3);
-    const int i1 = (i % (output_sizes_2 * output_sizes_3)) / output_sizes_3;
+    const int i0 = i / (output_sizes_2_3);
+    const int i1 = (i % (output_sizes_2_3)) / output_sizes_3;
     const int i2 = i % output_sizes_3;
     if (i0 < num_channel && i1 < sizes_i[1] && i2 < sizes_i[2]) {
       const int input_offset = offset + i0 * (sizes_i[1] * sizes_i[2]) + i1 * sizes_i[2] + i2;
@@ -248,8 +248,8 @@ void add_padding_nchw(
   }
   const int i = (output_numel / grainsize) * grainsize + tid;
   if (i < output_numel) {
-    const int i0 = i / (output_sizes_2 * output_sizes_3);
-    const int i1 = (i % (output_sizes_2 * output_sizes_3)) / output_sizes_3;
+    const int i0 = i / (output_sizes_2_3);
+    const int i1 = (i % (output_sizes_2_3)) / output_sizes_3;
     const int i2 = i % output_sizes_3;
     if (i0 < num_channel && i1 < sizes_i[1] && i2 < sizes_i[2]) {
       const int input_offset = offset + i0 * (sizes_i[1] * sizes_i[2]) + i1 * sizes_i[2] + i2;
@@ -284,7 +284,7 @@ void add_padding_nchw_kernelLauncher(
       input_sizes,
       input_dim,
       num_channel,
-      output_sizes[2],
+      output_sizes[2] * output_sizes[3],
       output_sizes[3],
       batch_size);
 }
