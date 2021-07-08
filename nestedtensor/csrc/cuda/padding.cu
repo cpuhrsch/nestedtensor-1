@@ -269,7 +269,7 @@ template void add_padding_mask_kernelLauncher<float>(
     const int inner_size,
     const cudaStream_t stream);
 
-template<typename T>
+template<typename T, int num_threads, int grid_y>
 __global__
 void remove_padding(
     const T* input,
@@ -282,30 +282,31 @@ void remove_padding(
     const int input_sizes_2_3,
     const int input_sizes_3)
 {
-  const int batch_id  = blockIdx.x;
-  const int grid_id  = blockIdx.y;
-  const int tid = threadIdx.x + grid_id * 256;
-  const int grainsize = 16 * 256;
+  const int batch_id  = blockIdx.x / grid_y;
+  const int grid_id  = blockIdx.x % grid_y;
+  const int tid = threadIdx.x + grid_id * num_threads;
   const int offset = offsets[batch_id];
   const int* sizes_i = output_sizes + batch_id * output_dim;
   const int size_0 = sizes_i[0];
   const int size_1 = sizes_i[1];
   const int size_2 = sizes_i[2];
-  const int numel_i = size_0 * size_1 * size_2;
+  const int size_1_2 = size_1 * size_2;
+  const int numel_i = size_0 * size_1_2;
   int input_offset = batch_id * input_sizes_1_2_3;
-  for (int ii = 0; ii < (numel_i / grainsize); ii++) {
-    const int i = ii * grainsize + tid;
-    const int i0 = i / (size_1 * size_2);
-    const int i1 = (i % (size_1 * size_2)) / size_2;
+  int num_chunks = numel_i / (grid_y * num_threads);
+  for (int ii = 0; ii < num_chunks; ii++) {
+    const int i = ii * grid_y * num_threads + tid;
+    const int i0 = i / (size_1_2);
+    const int i1 = (i % (size_1_2)) / size_2;
     const int i2 = i % size_2;
     const int i0_offset = i0 * input_sizes_2_3;
     const int i1_offset = i1 * input_sizes_3;
     output[offset + i] = input[input_offset + i0_offset + i1_offset + i2];
   }
-  const int i = (numel_i / grainsize) * grainsize + tid;
+  const int i = (numel_i / (grid_y * num_threads)) * (grid_y * num_threads) + tid;
   if (i < numel_i) {
-    const int i0 = i / (size_1 * size_2);
-    const int i1 = (i % (size_1 * size_2)) / size_2;
+    const int i0 = i / (size_1_2);
+    const int i1 = (i % (size_1_2)) / size_2;
     const int i2 = i % size_2;
     const int i0_offset = i0 * input_sizes_2_3;
     const int i1_offset = i1 * input_sizes_3;
@@ -325,13 +326,12 @@ void remove_padding_kernelLauncher(
     const cudaStream_t stream)
 {
   dim3 grid;
-  grid.x = batch_size;
-  grid.y = 16;
+  grid.x = batch_size * 16;
   const int input_sizes_1_2_3 = input_sizes[1] * input_sizes[2] * input_sizes[3];
   const int input_sizes_2_3 = input_sizes[2] * input_sizes[3];
   const int input_sizes_3 = input_sizes[3];
 
-  remove_padding<T><<<grid, 256, 0, stream>>>(
+  remove_padding<T, 256, 16><<<grid, 256, 0, stream>>>(
     input,
     output,
     offsets,
