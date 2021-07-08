@@ -435,8 +435,46 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
       "Target size has different dimension as input padded Tensor.");
 #ifdef WITH_CUDA
   if (padded.dim() > 1 && padded.dim() < 5 &&
-      get_is_contiguous(padded) && padded.is_cuda() &&
+      padded.is_cuda() &&
       padded.dtype() == torch::kFloat16) {
+    if (padded.is_contiguous(c10::MemoryFormat::ChannelsLast)) {
+      std::cout << "JDJD" << std::endl;
+      // nchw
+      padded = padded.permute({0, 2, 3, 1});
+      // nhwc
+      TORCH_CHECK(padded.is_contiguous(), "Expected padded to be contiguous after permutation.");
+      auto permuted_size = map_efficient_size([] (int64_t* size_ptr, int64_t size) {
+          // nchw
+          int64_t tmp = size_ptr[2];
+          size_ptr[2] = size_ptr[0];
+          size_ptr[0] = tmp;
+          // nwhc
+          tmp = size_ptr[1];
+          size_ptr[1] = size_ptr[0];
+          size_ptr[0] = tmp;
+          // nhwc
+          }, target_size);
+      Tensor transposed_nt = from_padded_tensor(padded, permuted_size);
+      auto new_strides = map_efficient_size([] (int64_t* size_ptr, int64_t size) {
+          int64_t tmp2 = size_ptr[2];
+          size_ptr[2] = size_ptr[0];
+          int64_t tmp1 = size_ptr[1];
+          size_ptr[1] = size_ptr[2] * tmp2;
+          size_ptr[0] = 1;
+          }, target_size);
+//       auto new_sizes = map_efficient_size([](int64_t* size_ptr, int64_t size) {
+//           // nchw
+//           int64_t tmp = size_ptr[0];
+//           size_ptr[0] = size_ptr[2];
+//           size_ptr[2] = tmp;
+//           // nwhc
+//           tmp = size_ptr[0];
+//           size_ptr[0] = size_ptr[1];
+//           size_ptr[1] = tmp;
+//           // nhwc
+//           }, target_size);
+      return wrap_buffer(get_buffer(transposed_nt), target_size, new_strides);
+    }
     Tensor target_offsets = batch_offsets_from_efficient_size(target_size);
     std::vector<int64_t> padded_sizes = padded.sizes().vec();
     Tensor padded_sizes_tensor = torch::tensor(padded_sizes);
