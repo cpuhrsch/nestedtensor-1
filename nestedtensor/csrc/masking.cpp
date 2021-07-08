@@ -499,6 +499,12 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
     auto nt_opt_size = get_opt_sizes(nt);
     Tensor nt_buffer = get_buffer(nt);
     if (nt_buffer.is_cuda()) {
+      if (nt_opt_size[1] && get_dim(nt) == 4) {
+        Tensor result = to_padded_tensor(_collapse_two_dims(nt, 0, 1), padding);
+        // std::cout << "result.sizes(): " << result.sizes() << std::endl;
+        result = result.view({*nt_opt_size[0], *nt_opt_size[1], result.size(1), result.size(2)});
+        return result;
+      }
       auto esize = get_efficient_nested_size(nt);
       at::Tensor nt_sizes = esize.sizes();
       Tensor offsets = batch_offsets_from_efficient_size(esize);

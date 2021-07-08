@@ -1,6 +1,7 @@
 #include <nestedtensor/csrc/nested_tensor_impl.h>
 #include <torch/extension.h>
 #include <torch/library.h>
+#include <nestedtensor/csrc/masking.h>
 
 namespace at {
 
