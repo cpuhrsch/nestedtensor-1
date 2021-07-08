@@ -455,6 +455,7 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
           // nhwc
           }, target_size);
       Tensor transposed_nt = from_padded_tensor(padded, permuted_size);
+      std::cout << "DONE TRANSPOSED" << std::endl;
       auto new_strides = map_efficient_size([] (int64_t* size_ptr, int64_t size) {
           int64_t tmp2 = size_ptr[2];
           size_ptr[2] = size_ptr[0];
@@ -473,8 +474,12 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
 //           size_ptr[1] = tmp;
 //           // nhwc
 //           }, target_size);
-      return wrap_buffer(get_buffer(transposed_nt), target_size, new_strides);
+      Tensor result = wrap_buffer(get_buffer(transposed_nt), target_size, new_strides);
+      TORCH_CHECK(get_is_contiguous(result, c10::MemoryFormat::ChannelsLast), "Expected result to be ChannelsList since input is.");
+      return result;
     }
+    std::cout << "AHDHDHD" << std::endl;
+    padded = padded.contiguous();
     Tensor target_offsets = batch_offsets_from_efficient_size(target_size);
     std::vector<int64_t> padded_sizes = padded.sizes().vec();
     Tensor padded_sizes_tensor = torch::tensor(padded_sizes);

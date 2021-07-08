@@ -187,6 +187,7 @@ struct PackedStorage : public NestedTensorStorage {
     TORCH_CHECK(
         _nested_stride.height(),
         "PackedStorage must be given NestedStride of at least height 1.");
+    std::cout << "_is_contiguous_channels_last: " << _is_contiguous_channels_last <<std::endl;
   }
 
   explicit PackedStorage(
