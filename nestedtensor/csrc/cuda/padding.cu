@@ -48,7 +48,7 @@ void add_padding_1(
   }
 }
 
-template<typename T, int grainsize>
+template<typename T, int num_threads>
 __global__
 void add_padding_2(
     const T* input,
@@ -57,43 +57,24 @@ void add_padding_2(
     const int* offsets,
     const int* input_sizes,
     int input_dim,
-    const int output_sizes_0,
     const int output_sizes_1,
-    const int output_sizes_2,
-    const int batch_size)
+    const int output_sizes_2)
 {
   const int batch_id  = blockIdx.x;
   const int tid = threadIdx.x;
-  // const int grainsize = 16 * 256;
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
   const int sizes_0 = sizes_i[0];
   const int sizes_1 = sizes_i[1];
-  const int numel_i = sizes_0 * sizes_1;
   const int output_offset = batch_id * output_sizes_1 * output_sizes_2;
-  const int output_numel = output_sizes_1 * output_sizes_2;
-  int i = tid;
-  for (int ii = 0; ii < (output_numel / grainsize); ii++) {
-    // const int i = ii * grainsize + tid;
-    const int i0 = i / (output_sizes_2);
-    const int i1 = i % output_sizes_2;
-    if (i0 < sizes_0 && i1 < sizes_1) {
-      const int input_offset = offset + i0 * sizes_1 + i1;
-      output[output_offset + i] = input[input_offset];
-    } else {
-      output[output_offset + i] = padding_value;
-    }
-    i += grainsize;
-  }
-  // i = (output_numel / grainsize) * grainsize + tid;
-  if (i < output_numel) {
-    const int i0 = i / (output_sizes_2);
-    const int i1 = i % output_sizes_2;
-    if (i0 < sizes_0 && i1 < sizes_1) {
-      const int input_offset = offset + i0 * sizes_1 + i1;
-      output[output_offset + i] = input[input_offset];
-    } else {
-      output[output_offset + i] = padding_value;
+  for (int i0 = 0; i0 < output_sizes_1; i0++) {
+    for (int i1 = tid; i1 < output_sizes_2; i1 += num_threads) {
+      if (i0 < sizes_0 && i1 < sizes_1) {
+        const int input_offset = offset + i0 * sizes_1 + i1;
+        output[output_offset + i0 * output_sizes_2 + i1] = input[input_offset];
+      } else {
+        output[output_offset + i0 * output_sizes_2 + i1] = padding_value;
+      }
     }
   }
 }
@@ -183,10 +164,8 @@ void add_padding_kernelLauncher(
         offsets,
         input_sizes,
         input_dim,
-        output_sizes[0],
         output_sizes[1],
-        output_sizes[2],
-        batch_size);
+        output_sizes[2]);
   }
   if (input_dim == 3) {
     grid.y = 16;
