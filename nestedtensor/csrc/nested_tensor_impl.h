@@ -351,8 +351,8 @@ constexpr auto trace(FuncPtr /*func_ptr*/) {
 #ifdef TRACEPACKED
 // #define nt_impl(M, NAME, FUNC) M.impl(NAME, trace(TORCH_FN(FUNC)))
 #else
-// #define nt_impl(M, NAME, FUNC) M.impl(NAME, trace(TORCH_FN(FUNC)))
-#define nt_impl(M, NAME, FUNC) M.impl(NAME, TORCH_FN(FUNC))
+#define nt_impl(M, NAME, FUNC) M.impl(NAME, trace(TORCH_FN(FUNC)))
+// #define nt_impl(M, NAME, FUNC) M.impl(NAME, TORCH_FN(FUNC))
 #endif
 
 } // namespace at

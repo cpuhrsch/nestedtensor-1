@@ -497,6 +497,21 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
 Tensor to_padded_tensor(Tensor nt, double padding) {
 #ifdef WITH_CUDA
   if ((get_dim(nt) >= 2 && get_dim(nt) <= 4)) {
+    if (get_is_contiguous(nt, c10::MemoryFormat::ChannelsLast)) {
+      auto new_sizes = map_efficient_size([](int64_t* size_ptr, int64_t size) {
+          // nchw
+          int64_t tmp = size_ptr[0];
+          size_ptr[0] = size_ptr[2];
+          size_ptr[2] = tmp;
+          // nwhc
+          tmp = size_ptr[0];
+          size_ptr[0] = size_ptr[1];
+          size_ptr[1] = tmp;
+          // nhwc
+          }, get_efficient_nested_size(nt));
+      Tensor result = to_padded_tensor(wrap_buffer(get_buffer(nt), new_sizes), padding);
+      return result.permute({0, 3, 1, 2});
+    }
     nt = NestedTensor_contiguous(nt, c10::MemoryFormat::Contiguous);
     auto nt_opt_size = get_opt_sizes(nt);
     Tensor nt_buffer = get_buffer(nt);

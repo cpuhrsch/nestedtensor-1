@@ -74,7 +74,24 @@ Tensor NestedTensor_conv2d(
 #endif
   if (input.dtype() == torch::kFloat16) {
     at::Tensor data = to_padded_tensor(input, 0);
+    std::cout << "data.sizes(): " << data.sizes() << std::endl;
+    std::cout << "data.strides(): " << data.strides() << std::endl;
     at::Tensor result_data = at::conv2d(data, weight, bias, stride, padding, dilation, groups);
+    std::cout << "0 result_data.sizes(): " << result_data.sizes() << std::endl;
+    std::cout << "0 result_data.strides(): " << result_data.strides() << std::endl;
+    at::Tensor cont_input = NestedTensor_contiguous(input);
+    at::Tensor cont_padded_input = to_padded_tensor(cont_input, 0);
+    std::cout << "cont_padded_input.sizes(): " << cont_padded_input.sizes() << std::endl;
+    std::cout << "cont_padded_input.strides(): " << cont_padded_input.strides() << std::endl;
+    at::Tensor cont_result_data = at::conv2d(cont_padded_input, weight, bias, stride, padding, dilation, groups);
+    std::cout << "cont_result_data.sizes(): " << cont_result_data.sizes() << std::endl;
+    std::cout << "cont_result_data.strides(): " << cont_result_data.strides() << std::endl;
+    if (!at::allclose(result_data, cont_result_data, 1e-3, 1e-3)) {
+      TORCH_CHECK(false, "HEEE");
+    }
+    result_data = result_data.contiguous();
+    std::cout << "1 result_data.sizes(): " << result_data.sizes() << std::endl;
+    std::cout << "1 result_data.strides(): " << result_data.strides() << std::endl;
     auto new_sizes = map_efficient_size([&weight, &stride, &padding, &groups, &dilation](int64_t* size_ptr, int64_t size) {
         size_ptr[0] = weight.size(0);
         size_ptr[1] = ((size_ptr[1] + 2 * padding[0] - dilation[0] * (weight.size(2) - 1) - 1) / stride[0]) + 1;

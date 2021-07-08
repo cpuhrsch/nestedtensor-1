@@ -17,8 +17,8 @@ def _iter_constructors():
 def ntnt(x): return nestedtensor.nested_tensor(x, requires_grad=True)
 
 
-def ntnt_nograd(x, device=None, dtype=None): return nestedtensor.nested_tensor(
-    x, requires_grad=False, device=device, dtype=dtype)
+def ntnt_nograd(x, device=None, dtype=None, channels_last=None): return nestedtensor.nested_tensor(
+    x, requires_grad=False, device=device, dtype=dtype, channels_last=channels_last)
 
 
 class TestFunctional(TestCase):
@@ -61,6 +61,17 @@ class TestFunctional(TestCase):
 
         def _test(ts, weight, stride, padding, dilation, groups):
             nt = ntnt_nograd(ts, device=device, dtype=dtype)
+            nt_out = torch.conv2d(nt, weight, stride=stride,
+                                  padding=padding, dilation=dilation,
+                                  groups=groups)
+            for i, (t, nt_out_i) in enumerate(zip(ts, nt_out.unbind())):
+                t_out = torch.conv2d(t.unsqueeze(0), weight,
+                                     stride=stride, padding=padding,
+                                     dilation=dilation,
+                                     groups=groups).squeeze(0)
+                self.assertEqual(t_out, nt_out_i)
+
+            nt = ntnt_nograd(ts, device=device, dtype=dtype, channels_last=True)
             nt_out = torch.conv2d(nt, weight, stride=stride,
                                   padding=padding, dilation=dilation,
                                   groups=groups)
