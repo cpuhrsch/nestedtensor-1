@@ -67,21 +67,13 @@ void add_padding_2(
   const int sizes_0 = sizes_i[0];
   const int sizes_1 = sizes_i[1];
   const int output_offset = batch_id * output_sizes_1 * output_sizes_2;
+  for (int i = tid; i < output_sizes_1 * output_sizes_2; i += num_threads) {
+    output[output_offset + i] = padding_value;
+  }
   for (int i0 = 0; i0 < sizes_0; i0++) {
     for (int i1 = tid; i1 < sizes_1; i1 += num_threads) {
       const int input_offset = offset + i0 * sizes_1 + i1;
       output[output_offset + i0 * output_sizes_2 + i1] = input[input_offset];
-    }
-  }
-  int i0 = 0;
-  for (; i0 < sizes_0; i0++) {
-    for (int i1 = tid + sizes_1; i1 < output_sizes_2; i1 += num_threads) {
-      output[output_offset + i0 * output_sizes_2 + i1] = padding_value;
-    }
-  }
-  for (; i0 < output_sizes_1; i0++) {
-    for (int i1 = tid; i1 < output_sizes_2; i1 += num_threads) {
-      output[output_offset + i0 * output_sizes_2 + i1] = padding_value;
     }
   }
 }
