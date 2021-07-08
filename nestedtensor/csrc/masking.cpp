@@ -439,23 +439,21 @@ Tensor from_padded_tensor(Tensor padded, EfficientSizeNode target_size) {
       padded.dtype() == torch::kFloat16) {
     Tensor target_offsets = batch_offsets_from_efficient_size(target_size);
     std::vector<int64_t> padded_sizes = padded.sizes().vec();
-    Tensor padded_sizes_tensor = torch::tensor(padded_sizes);
+    Tensor padded_sizes_tensor = torch::tensor(padded_sizes, torch::kInt32);
     Tensor output = torch::empty({target_size.numel()}, padded.options());
     Tensor target_size_sizes = target_size.sizes();
 
-    at::Tensor metadata = at::cat({target_size_sizes.reshape(-1), padded_sizes_tensor, target_offsets});
+    at::Tensor metadata = at::cat({target_size_sizes.reshape(-1), target_offsets});
     metadata = metadata.to(at::Device(kCUDA), torch::kInt32, true, true);
 
     std::vector<int64_t> split_sizes;
     split_sizes.push_back(target_size_sizes.numel());
-    split_sizes.push_back(padded_sizes_tensor.numel());
     split_sizes.push_back(target_offsets.numel());
 
     std::vector<Tensor> split = at::split_with_sizes(metadata, IntArrayRef(split_sizes), 0);
 
     target_size_sizes = split[0];
-    padded_sizes_tensor = split[1];
-    target_offsets = split[2];
+    target_offsets = split[1];
 
     at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
     nested_tensor::cuda::remove_padding_kernelLauncher(

@@ -275,10 +275,12 @@ void remove_padding(
     const T* input,
     T* output,
     const int* offsets,
-    const int* input_sizes,
     const int* output_sizes,
     int output_dim,
-    const int batch_size)
+    const int batch_size,
+    const int input_sizes_1_2_3,
+    const int input_sizes_2_3,
+    const int input_sizes_3)
 {
   const int batch_id  = blockIdx.x;
   const int grid_id  = blockIdx.y;
@@ -289,17 +291,14 @@ void remove_padding(
   const int size_0 = sizes_i[0];
   const int size_1 = sizes_i[1];
   const int size_2 = sizes_i[2];
-  const int input_sizes_1 = input_sizes[1];
-  const int input_sizes_2 = input_sizes[2];
-  const int input_sizes_3 = input_sizes[3];
   const int numel_i = size_0 * size_1 * size_2;
-  int input_offset = batch_id * input_sizes_1 * input_sizes_2 * input_sizes_3;
+  int input_offset = batch_id * input_sizes_1_2_3;
   for (int ii = 0; ii < (numel_i / grainsize); ii++) {
     const int i = ii * grainsize + tid;
     const int i0 = i / (size_1 * size_2);
     const int i1 = (i % (size_1 * size_2)) / size_2;
     const int i2 = i % size_2;
-    const int i0_offset = i0 * input_sizes_2 * input_sizes_3;
+    const int i0_offset = i0 * input_sizes_2_3;
     const int i1_offset = i1 * input_sizes_3;
     output[offset + i] = input[input_offset + i0_offset + i1_offset + i2];
   }
@@ -308,7 +307,7 @@ void remove_padding(
     const int i0 = i / (size_1 * size_2);
     const int i1 = (i % (size_1 * size_2)) / size_2;
     const int i2 = i % size_2;
-    const int i0_offset = i0 * input_sizes_2 * input_sizes_3;
+    const int i0_offset = i0 * input_sizes_2_3;
     const int i1_offset = i1 * input_sizes_3;
     output[offset + i] = input[input_offset + i0_offset + i1_offset + i2];
   }
@@ -328,15 +327,20 @@ void remove_padding_kernelLauncher(
   dim3 grid;
   grid.x = batch_size;
   grid.y = 16;
+  const int input_sizes_1_2_3 = input_sizes[1] * input_sizes[2] * input_sizes[3];
+  const int input_sizes_2_3 = input_sizes[2] * input_sizes[3];
+  const int input_sizes_3 = input_sizes[3];
 
   remove_padding<T><<<grid, 256, 0, stream>>>(
     input,
     output,
     offsets,
-    input_sizes,
     output_sizes,
     output_dim,
-    batch_size);
+    batch_size,
+    input_sizes_1_2_3,
+    input_sizes_2_3,
+    input_sizes_3);
 }
 
 template void remove_padding_kernelLauncher<float>(
