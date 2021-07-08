@@ -48,7 +48,7 @@ void add_padding_1(
   }
 }
 
-template<typename T>
+template<typename T, int grainsize>
 __global__
 void add_padding_2(
     const T* input,
@@ -65,7 +65,7 @@ void add_padding_2(
   const int batch_id  = blockIdx.x;
   const int grid_id  = blockIdx.y;
   const int tid = threadIdx.x + grid_id * 256;
-  const int grainsize = 16 * 256;
+  // const int grainsize = 16 * 256;
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
   const int numel_i = sizes_i[0] * sizes_i[1];
@@ -173,7 +173,7 @@ void add_padding_kernelLauncher(
         batch_size);
   }
   if (input_dim == 2) {
-    add_padding_2<T><<<grid, 256, 0, stream>>>(
+    add_padding_2<T, 16 * 256><<<grid, 256, 0, stream>>>(
         input,
         output,
         padding_value,
