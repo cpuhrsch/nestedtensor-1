@@ -231,7 +231,10 @@ void add_padding_nchw(
   const int grainsize = 16 * 256;
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
-  const int numel_i = num_channel * sizes_i[1] * sizes_i[2];
+  const int sizes_1_2 = sizes_i[1] * sizes_i[2];
+  const int sizes_1 = sizes_i[1];
+  const int sizes_2 = sizes_i[2];
+  const int numel_i = num_channel * sizes_1_2;
   const int output_offset = batch_id * num_channel * output_sizes_2_3;
   const int output_numel = num_channel * output_sizes_2_3;
   for (int ii = 0; ii < (output_numel / grainsize); ii++) {
@@ -239,8 +242,8 @@ void add_padding_nchw(
     const int i0 = i / (output_sizes_2_3);
     const int i1 = (i % (output_sizes_2_3)) / output_sizes_3;
     const int i2 = i % output_sizes_3;
-    if (i0 < num_channel && i1 < sizes_i[1] && i2 < sizes_i[2]) {
-      const int input_offset = offset + i0 * (sizes_i[1] * sizes_i[2]) + i1 * sizes_i[2] + i2;
+    if (i1 < sizes_1 && i2 < sizes_2) {
+      const int input_offset = offset + i0 * (sizes_1_2) + i1 * sizes_2 + i2;
       output[output_offset + i] = input[input_offset];
     } else {
       output[output_offset + i] = padding_value;
@@ -251,8 +254,8 @@ void add_padding_nchw(
     const int i0 = i / (output_sizes_2_3);
     const int i1 = (i % (output_sizes_2_3)) / output_sizes_3;
     const int i2 = i % output_sizes_3;
-    if (i0 < num_channel && i1 < sizes_i[1] && i2 < sizes_i[2]) {
-      const int input_offset = offset + i0 * (sizes_i[1] * sizes_i[2]) + i1 * sizes_i[2] + i2;
+    if (i1 < sizes_1 && i2 < sizes_2) {
+      const int input_offset = offset + i0 * (sizes_1_2) + i1 * sizes_2 + i2;
       output[output_offset + i] = input[input_offset];
     } else {
       output[output_offset + i] = padding_value;
