@@ -63,31 +63,34 @@ void add_padding_2(
     const int batch_size)
 {
   const int batch_id  = blockIdx.x;
-  const int grid_id  = blockIdx.y;
-  const int tid = threadIdx.x + grid_id * 256;
+  const int tid = threadIdx.x;
   // const int grainsize = 16 * 256;
   const int offset = offsets[batch_id];
   const int* sizes_i = input_sizes + batch_id * input_dim;
-  const int numel_i = sizes_i[0] * sizes_i[1];
+  const int sizes_0 = sizes_i[0];
+  const int sizes_1 = sizes_i[1];
+  const int numel_i = sizes_0 * sizes_1;
   const int output_offset = batch_id * output_sizes_1 * output_sizes_2;
   const int output_numel = output_sizes_1 * output_sizes_2;
+  int i = tid;
   for (int ii = 0; ii < (output_numel / grainsize); ii++) {
-    const int i = ii * grainsize + tid;
+    // const int i = ii * grainsize + tid;
     const int i0 = i / (output_sizes_2);
     const int i1 = i % output_sizes_2;
-    if (i0 < sizes_i[0] && i1 < sizes_i[1]) {
-      const int input_offset = offset + i0 * sizes_i[1] + i1;
+    if (i0 < sizes_0 && i1 < sizes_1) {
+      const int input_offset = offset + i0 * sizes_1 + i1;
       output[output_offset + i] = input[input_offset];
     } else {
       output[output_offset + i] = padding_value;
     }
+    i += grainsize;
   }
-  const int i = (output_numel / grainsize) * grainsize + tid;
+  // i = (output_numel / grainsize) * grainsize + tid;
   if (i < output_numel) {
     const int i0 = i / (output_sizes_2);
     const int i1 = i % output_sizes_2;
-    if (i0 < sizes_i[0] && i1 < sizes_i[1]) {
-      const int input_offset = offset + i0 * sizes_i[1] + i1;
+    if (i0 < sizes_0 && i1 < sizes_1) {
+      const int input_offset = offset + i0 * sizes_1 + i1;
       output[output_offset + i] = input[input_offset];
     } else {
       output[output_offset + i] = padding_value;
@@ -159,8 +162,8 @@ void add_padding_kernelLauncher(
 {
   dim3 grid;
   grid.x = batch_size;
-  grid.y = 16;
   if (input_dim == 1) {
+    grid.y = 16;
     add_padding_1<T><<<grid, 256, 0, stream>>>(
         input,
         output,
@@ -173,7 +176,7 @@ void add_padding_kernelLauncher(
         batch_size);
   }
   if (input_dim == 2) {
-    add_padding_2<T, 16 * 256><<<grid, 256, 0, stream>>>(
+    add_padding_2<T, 256><<<grid, 256, 0, stream>>>(
         input,
         output,
         padding_value,
@@ -186,6 +189,7 @@ void add_padding_kernelLauncher(
         batch_size);
   }
   if (input_dim == 3) {
+    grid.y = 16;
     add_padding_3<T><<<grid, 256, 0, stream>>>(
         input,
         output,
