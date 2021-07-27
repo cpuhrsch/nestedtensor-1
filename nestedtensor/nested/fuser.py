@@ -81,10 +81,10 @@ class NewModule(torch.nn.Module):
                                             self.layer3.dilation,
                                             self.layer3.groups)
         # inp0 = self.layer0(inp)  # Conv2d
-        # inp1 = self.layer1(inp0)  # BatchNorm2d
+        # # inp1 = self.layer1(inp0)  # BatchNorm2d
         # inp2 = self.layer2(inp0) # Relu
         # inp3 = self.layer3(inp2)  # Conv2d
-        # inp4 = self.layer4(inp3)  # BatchNorm2d
+        # # inp4 = self.layer4(inp3)  # BatchNorm2d
         # inp6 = self.layer5(inp3) # Relu
         inp6 = self.layer6(inp3)
         return inp6
