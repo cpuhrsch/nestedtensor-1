@@ -39,6 +39,9 @@ class NewModule(torch.nn.Module):
         # print("old_sequential_module")
         # print(old_sequential_module)
         self.layer0 = old_sequential_module[0]
+        if self.layer0.bias is None:
+            self.layer0_bias = torch.zeros((self.layer0.weight.size(0)),
+                    dtype=self.layer0.weight.dtype, device=torch.device('cuda'))
         self.layer1 = old_sequential_module[1]
         self.layer2 = old_sequential_module[2]
         self.layer3 = old_sequential_module[3]
@@ -64,29 +67,32 @@ class NewModule(torch.nn.Module):
         # import sys; sys.exit(1)
 
     def forward(self, inp):
-        assert self.layer0.padding_mode == "zeros"
-        assert self.layer3.padding_mode == "zeros"
-        inp0 = torch.cudnn_convolution_relu(inp,
-                                            self.layer0.weight,
-                                            self.layer0.bias,
-                                            self.layer0.stride,
-                                            self.layer0.padding,
-                                            self.layer0.dilation,
-                                            self.layer0.groups)
-        inp3 = torch.cudnn_convolution_relu(inp0,
-                                            self.layer3.weight,
-                                            self.layer3.bias,
-                                            self.layer3.stride,
-                                            self.layer3.padding,
-                                            self.layer3.dilation,
-                                            self.layer3.groups)
-        # inp0 = self.layer0(inp)  # Conv2d
-        # # inp1 = self.layer1(inp0)  # BatchNorm2d
-        # inp2 = self.layer2(inp0) # Relu
-        # inp3 = self.layer3(inp2)  # Conv2d
-        # # inp4 = self.layer4(inp3)  # BatchNorm2d
-        # inp6 = self.layer5(inp3) # Relu
-        inp6 = self.layer6(inp3)
+
+        if False:
+            inp2 = torch.cudnn_convolution_relu(inp,
+                                                self.layer0.weight,
+                                                self.layer0_bias,
+                                                self.layer0.stride,
+                                                self.layer0.padding,
+                                                self.layer0.dilation,
+                                                self.layer0.groups)
+        else:
+            inp1 = self.layer0(inp)  # Conv2d
+            # # inp4 = self.layer1(inp3)  # BatchNorm2d
+            inp2 = self.layer2(inp1) # Relu
+        if False and self.layer3.groups == 1:
+            inp5 = torch.cudnn_convolution_relu(inp2,
+                                                self.layer3.weight,
+                                                self.layer3.bias,
+                                                self.layer3.stride,
+                                                self.layer3.padding,
+                                                self.layer3.dilation,
+                                                self.layer3.groups)
+        else:
+            inp3 = self.layer3(inp2)  # Conv2d
+            # # inp4 = self.layer4(inp3)  # BatchNorm2d
+            inp5 = self.layer5(inp3) # Relu
+        inp6 = self.layer6(inp5)
         return inp6
 
 
