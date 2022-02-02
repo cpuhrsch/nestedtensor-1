@@ -92,6 +92,10 @@ def get_extensions():
             nvcc_flags = []
         else:
             nvcc_flags = nvcc_flags.split(" ")
+        nvcc_flags += ['-U__CUDA_NO_HALF_OPERATORS__']
+        nvcc_flags += ['-U__CUDA_NO_HALF_CONVERSIONS__']
+        nvcc_flags += ['-U__CUDA_NO_BFLOAT16_CONVERSIONS__']
+        nvcc_flags += ['-U__CUDA_NO_HALF2_OPERATORS__']
         extra_compile_args["nvcc"] = nvcc_flags
 
     if sys.platform == "win32":

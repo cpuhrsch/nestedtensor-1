@@ -1,6 +1,7 @@
 #include <c10/cuda/CUDAStream.h>
 #include <nestedtensor/csrc/creation.h>
 #include <nestedtensor/csrc/cuda/attention.h>
+#include <nestedtensor/csrc/cuda/softmax.h>
 #include <nestedtensor/csrc/cuda/cuda_kernels.h>
 #include <nestedtensor/csrc/masking.h>
 #include <nestedtensor/csrc/nested_tensor_impl.h>
@@ -56,7 +57,7 @@ at::Tensor bt_min_mha(
   int64_t head_num = num_heads;
   int64_t size_per_head = embedding_dim / head_num;
   auto float_options =
-      torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
+      torch::TensorOptions().dtype(torch::kHalf).device(torch::kCUDA);
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(defaultStream);
 
@@ -85,14 +86,26 @@ at::Tensor bt_min_mha(
   at::Tensor attr_mask = input_mask.view({-1, 1, 1, seq_len}).to(float_options);
   attr_mask = attr_mask * attr_mask.transpose(2, 3);
 
-  nteffectivetransformer::cuda::softmax_kernel_kernelLauncher<float>(
-      attn_output_weights.data_ptr<float>(),
-      attr_mask.data_ptr<float>(),
-      batch_size,
-      head_num,
-      seq_len,
-      (float)(scaling),
-      defaultStream);
+  if (attn_output_weights.dtype() == torch::kFloat16) {
+      fastertransformer::attn_softmax_kernelLauncher<c10::Half>(
+          attn_output_weights.data_ptr<c10::Half>(),
+          attr_mask.data_ptr<c10::Half>(),
+          batch_size,
+          seq_len,
+          head_num,
+          (c10::Half)(scaling),
+          defaultStream);
+  }
+  if (attn_output_weights.dtype() == torch::kFloat) {
+      fastertransformer::attn_softmax_kernelLauncher<float>(
+          attn_output_weights.data_ptr<float>(),
+          attr_mask.data_ptr<float>(),
+          batch_size,
+          seq_len,
+          head_num,
+          (float)(scaling),
+          defaultStream);
+  }
 
   auto attn_output = at::matmul(attn_output_weights, val_buf).contiguous();
   attn_output = attn_output.transpose(1, 2).reshape({batch_size, seq_len, embedding_dim}).contiguous();
