@@ -270,16 +270,30 @@ std::tuple<Tensor, Tensor> to_tensor_mask(
           {*nt_opt_size[0], max_size_1}, nt_buffer.options());
       output_mask = output_mask.to(torch::kInt32);
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
-      nested_tensor::cuda::add_padding_mask_kernelLauncher(
-          nt_buffer.data_ptr<float>(),
-          output.data_ptr<float>(),
-          output_mask.data_ptr<int>(),
-          nt_sizes.data_ptr<int>(),
-          *nt_opt_size[0],
-          output_mask.stride(0),
-          output.stride(0),
-          *nt_opt_size[2],
-          defaultStream);
+      if (nt_buffer.dtype() == torch::kFloat16) {
+        nested_tensor::cuda::add_padding_mask_kernelLauncher(
+            nt_buffer.data_ptr<c10::Half>(),
+            output.data_ptr<c10::Half>(),
+            output_mask.data_ptr<int>(),
+            nt_sizes.data_ptr<int>(),
+            *nt_opt_size[0],
+            output_mask.stride(0),
+            output.stride(0),
+            *nt_opt_size[2],
+            defaultStream);
+      }
+      if (nt_buffer.dtype() == torch::kFloat) {
+        nested_tensor::cuda::add_padding_mask_kernelLauncher(
+            nt_buffer.data_ptr<float>(),
+            output.data_ptr<float>(),
+            output_mask.data_ptr<int>(),
+            nt_sizes.data_ptr<int>(),
+            *nt_opt_size[0],
+            output_mask.stride(0),
+            output.stride(0),
+            *nt_opt_size[2],
+            defaultStream);
+      }
       return std::make_tuple(output, output_mask.to(torch::kBool));
     }
   }

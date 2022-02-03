@@ -56,8 +56,6 @@ at::Tensor bt_min_mha(
   int64_t embedding_dim = head_dim * num_heads; //*(opt_sizes[2]);
   int64_t head_num = num_heads;
   int64_t size_per_head = embedding_dim / head_num;
-  auto float_options =
-      torch::TensorOptions().dtype(torch::kHalf).device(torch::kCUDA);
   at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
   at::cuda::setCurrentCUDAStream(defaultStream);
 
@@ -83,6 +81,8 @@ at::Tensor bt_min_mha(
   key_buf = key_buf.transpose(2, 3);
   at::Tensor attn_output_weights = at::matmul(query_buf, key_buf).contiguous();
 
+  auto float_options =
+      torch::TensorOptions().dtype(attn_output_weights.dtype()).device(torch::kCUDA);
   at::Tensor attr_mask = input_mask.view({-1, 1, 1, seq_len}).to(float_options);
   attr_mask = attr_mask * attr_mask.transpose(2, 3);
 

@@ -3,6 +3,7 @@
 #include <cmath>
 #include <nestedtensor/csrc/cuda/padding.h>
 #include <stdio.h>
+#include <c10/util/Half.h>
 
 namespace nested_tensor {
 namespace cuda {
@@ -247,7 +248,7 @@ void add_padding_mask_kernelLauncher(
   dim3 grid;
   grid.x = batch_size;
 
-  add_padding_mask<float><<<grid, 1, 0, stream>>>(
+  add_padding_mask<T><<<grid, 1, 0, stream>>>(
       input,
       output,
       output_mask,
@@ -261,6 +262,17 @@ void add_padding_mask_kernelLauncher(
 template void add_padding_mask_kernelLauncher<float>(
     float* input,
     float* output,
+    int* output_mask,
+    const int* offsets,
+    const int batch_size,
+    const int mask_stride,
+    const int output_stride,
+    const int inner_size,
+    const cudaStream_t stream);
+
+template void add_padding_mask_kernelLauncher<c10::Half>(
+    c10::Half* input,
+    c10::Half* output,
     int* output_mask,
     const int* offsets,
     const int batch_size,
