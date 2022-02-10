@@ -221,10 +221,6 @@ struct PackedStorage : public NestedTensorStorage {
     return _nested_size.dim();
   }
   TensorNode get_structure() const override {
-    return std::get<0>(impl::build_structure(
-        _buffer.reshape({-1}),
-        _nested_size,
-        _nested_stride));
   }
   at::Tensor& get_buffer() {
     return _buffer;
@@ -271,14 +267,6 @@ struct PackedStorage : public NestedTensorStorage {
   }
 
  private:
-  at::Tensor _buffer;
-  EfficientSizeNode _nested_size;
-  EfficientSizeNode _nested_stride;
-  const caffe2::TypeMeta _data_type;
-  c10::Device _device;
-  bool _is_pinned;
-  const bool _is_contiguous;
-  const bool _is_contiguous_channels_last;
 };
 
 } // namespace nested_tensor
