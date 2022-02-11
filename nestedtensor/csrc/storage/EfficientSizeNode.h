@@ -101,14 +101,14 @@ struct EfficientSizeNode {
 
   SizeNode to_size_node() const {
     std::vector<std::vector<int64_t>> _tmp_sizes;
-    at::Tensor sizes_t = sizes();
-    if (sizes_t.dim() > 0) {
-      _tmp_sizes.resize(sizes_t.size(0));
-      int64_t* _sizes_ptr = sizes_t.data_ptr<int64_t>();
-      for (int64_t i = 0; i < sizes_t.size(0); i++) {
-        _tmp_sizes[i].resize(sizes_t.size(1));
-        for (int64_t j = 0; j < sizes_t.size(1); j++) {
-          _tmp_sizes[i][j] = _sizes_ptr[i * sizes_t.size(1) + j];
+    at::Tensor _sizes = sizes();
+    if (_sizes.dim() > 0) {
+      _tmp_sizes.resize(_sizes.size(0));
+      int64_t* _sizes_ptr = _sizes.data_ptr<int64_t>();
+      for (int64_t i = 0; i < _sizes.size(0); i++) {
+        _tmp_sizes[i].resize(_sizes.size(1));
+        for (int64_t j = 0; j < _sizes.size(1); j++) {
+          _tmp_sizes[i][j] = _sizes_ptr[i * _sizes.size(1) + j];
         }
       }
     }
@@ -154,19 +154,19 @@ struct EfficientSizeNode {
     return EfficientSizeNode(_structure, new_vector_sizes, _sizes_size_0, _sizes_size_1, _sizes_dim);
   }
   int64_t numel() const {
-    at::Tensor sizes_t = sizes();
-    if (sizes_t.dim() == 0 && _structure > 0) {
+    at::Tensor _sizes = sizes();
+    if (_sizes.dim() == 0 && _structure > 0) {
       return _structure;
     }
-    if (sizes_t.dim() > 0) {
-      if (sizes_t.numel() == 0) {
+    if (_sizes.dim() > 0) {
+      if (_sizes.numel() == 0) {
         return 0;
       }
       Tensor nt_sizes = at::native::narrow(
-          sizes_t, 1 /* dim */, 0 /* start */, 1 /* length */);
-      for (int64_t i = 1; i < sizes_t.size(1); i++) {
+          _sizes, 1 /* dim */, 0 /* start */, 1 /* length */);
+      for (int64_t i = 1; i < _sizes.size(1); i++) {
         Tensor tmp = at::native::narrow(
-            sizes_t, 1 /* dim */, i /* start */, 1 /* length */);
+            _sizes, 1 /* dim */, i /* start */, 1 /* length */);
         nt_sizes = nt_sizes * tmp;
       }
       return nt_sizes.sum().item<int64_t>();
