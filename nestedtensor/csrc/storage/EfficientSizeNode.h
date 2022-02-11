@@ -31,18 +31,20 @@ inline std::vector<c10::optional<int64_t>> construct_efficient_size(
   std::vector<c10::optional<int64_t>> result;
   result.push_back(out);
   size_t nested_dim = result.size();
-  int64_t size_0 = out;
-  int64_t size_1 = sizes.size() / out;
-  int64_t* sizes_ptr = sizes.data();
-  result.resize(nested_dim + size_1);
-  for (int64_t i = 0; i < size_1; i++) {
-    result[nested_dim + i] = sizes_ptr[i];
-  }
-  for (int64_t j = 0; j < size_1; j++) {
-    for (int64_t i = 0; i < size_0; i++) {
-      if (result[nested_dim + j] &&
-          (result[nested_dim + j] != sizes_ptr[i * size_1 + j])) {
-        result[nested_dim + j] = c10::nullopt;
+  if (sizes.size() > 0) {
+    int64_t size_0 = out;
+    int64_t size_1 = sizes.size() / out;
+    int64_t* sizes_ptr = sizes.data();
+    result.resize(nested_dim + size_1);
+    for (int64_t i = 0; i < size_1; i++) {
+      result[nested_dim + i] = sizes_ptr[i];
+    }
+    for (int64_t j = 0; j < size_1; j++) {
+      for (int64_t i = 0; i < size_0; i++) {
+        if (result[nested_dim + j] &&
+            (result[nested_dim + j] != sizes_ptr[i * size_1 + j])) {
+          result[nested_dim + j] = c10::nullopt;
+        }
       }
     }
   }
