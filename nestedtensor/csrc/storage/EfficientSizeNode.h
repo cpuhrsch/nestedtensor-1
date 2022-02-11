@@ -74,7 +74,11 @@ struct EfficientSizeNode {
         _sizes_size_0(sizes_size_0),
         _sizes_size_1(sizes_size_1),
         _sizes_dim(sizes_dim),
-        _opt_sizes(impl::construct_efficient_size(_structure, _sizes))
+        _opt_sizes(impl::construct_efficient_size(_structure,
+                                                  _sizes,
+                                                  _sizes_size_0,
+                                                  _sizes_size_1,
+                                                  _sizes_dim))
   {}
 
   explicit EfficientSizeNode(const SizeNode& size_node)
