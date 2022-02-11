@@ -36,7 +36,7 @@ inline std::vector<c10::optional<int64_t>> construct_efficient_size(
   if (sizes_dim > 0) {
     int64_t size_0 = sizes_size_0;
     int64_t size_1 = sizes_size_1;
-    int64_t* sizes_ptr = sizes.data();
+    int64_t* sizes_ptr = sizes_data.data();
     result.resize(nested_dim + size_1);
     for (int64_t i = 0; i < size_1; i++) {
       result[nested_dim + i] = sizes_ptr[i];
@@ -75,7 +75,7 @@ struct EfficientSizeNode {
         _sizes_size_1(sizes_size_1),
         _sizes_dim(sizes_dim),
         _opt_sizes(impl::construct_efficient_size(_structure,
-                                                  _sizes,
+                                                  _sizes_data,
                                                   _sizes_size_0,
                                                   _sizes_size_1,
                                                   _sizes_dim))
@@ -134,7 +134,7 @@ struct EfficientSizeNode {
     return _opt_sizes;
   }
   void refresh_opt_sizes() {
-    _opt_sizes = impl::construct_efficient_size(_structure, _sizes, _sizes_size_0, _sizes_size_1, _sizes_dim);
+    _opt_sizes = impl::construct_efficient_size(_structure, _sizes_data, _sizes_size_0, _sizes_size_1, _sizes_dim);
   }
   const at::Tensor sizes() const {
     auto result = torch::tensor(_sizes_data);
@@ -148,8 +148,8 @@ struct EfficientSizeNode {
   }
   EfficientSizeNode clone() const {
     std::vector<int64_t> new_vector_sizes;
-    for (size_t i = 0; i < _sizes.size(); i++) {
-      new_vector_sizes.push_back(_sizes[i]);
+    for (size_t i = 0; i < _sizes_data.size(); i++) {
+      new_vector_sizes.push_back(_sizes_data[i]);
     }
     return EfficientSizeNode(_structure, new_vector_sizes, _sizes_size_0, _sizes_size_1, _sizes_dim);
   }
@@ -179,6 +179,7 @@ struct EfficientSizeNode {
   std::vector<int64_t> _sizes_data;
   int64_t _sizes_size_0;
   int64_t _sizes_size_1;
+  int64_t _sizes_dim;
   bool _opt_sizes_set = false;
   std::vector<c10::optional<int64_t>> _opt_sizes;
 };
