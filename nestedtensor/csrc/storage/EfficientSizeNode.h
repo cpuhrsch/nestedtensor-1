@@ -129,7 +129,11 @@ struct EfficientSizeNode {
     return _structure;
   }
   EfficientSizeNode clone() const {
-    return EfficientSizeNode(_structure, _sizes);
+    std::vector<int64_t> new_vector_sizes;
+    for (size_t i = 0; i < _sizes.size(); i++) {
+      new_vector_sizes.push_back(_sizes[i]);
+    }
+    return EfficientSizeNode(_structure, new_vector_sizes);
   }
   int64_t numel() const {
     at::Tensor sizes_t = sizes();
