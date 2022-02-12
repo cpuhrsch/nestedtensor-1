@@ -20,11 +20,7 @@ Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
                 at::matmul(self_buffer.reshape({-1, other.size(0)}), other);
             result_buffer = result_buffer.reshape({-1});
             int64_t other_size_1 = other.size(1);
-            EfficientSizeNode new_nested_size =
-                get_efficient_nested_size(self).clone();
-            EfficientSizeNode new_nested_stride =
-                get_efficient_nested_stride(self).clone();
-            apply_efficient_size(
+            auto new_size_nodes = map_efficient_size_stride(
                 [other_size_1](
                     int64_t* size_ptr,
                     int64_t size_size,
@@ -34,10 +30,10 @@ Tensor NestedTensor_matmul(const Tensor& self, const Tensor& other) {
                   stride_ptr[1] = 1;
                   stride_ptr[0] = other_size_1;
                 },
-                new_nested_size,
-                new_nested_stride);
+                get_efficient_nested_size(self),
+                get_efficient_nested_stride(self));
             return wrap_buffer(
-                std::move(result_buffer), new_nested_size, new_nested_stride);
+                std::move(result_buffer), std::get<0>(new_size_nodes), std::get<1>(new_size_nodes));
           }
         }
       }

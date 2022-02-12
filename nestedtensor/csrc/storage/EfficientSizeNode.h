@@ -133,14 +133,14 @@ struct EfficientSizeNode {
   const std::vector<c10::optional<int64_t>>& opt_sizes() const {
     return _opt_sizes;
   }
-  void refresh_opt_sizes() {
-    _opt_sizes = impl::construct_efficient_size(_structure, _sizes_data, _sizes_size_0, _sizes_size_1, _sizes_dim);
-  }
+  // void refresh_opt_sizes() {
+  //   _opt_sizes = impl::construct_efficient_size(_structure, _sizes_data, _sizes_size_0, _sizes_size_1, _sizes_dim);
+  // }
   const at::Tensor sizes() const {
-    auto result = torch::tensor(_sizes_data);
-    if (_sizes_dim == 0) {
+    if (_sizes_dim == 0 && _sizes_size_0 == 0 && _sizes_size_1 == 0) {
       return torch::zeros({}, torch::kInt64);
     }
+    auto result = torch::tensor(_sizes_data);
     return result.reshape({_sizes_size_0, _sizes_size_1});
   }
   const int64_t structure() const {
@@ -241,26 +241,59 @@ inline EfficientSizeNode map_efficient_size(
 }
 
 template <class F>
-inline void apply_efficient_size(
+inline std::tuple<
+EfficientSizeNode,
+EfficientSizeNode>
+  map_efficient_size_stride(
     F&& fn,
-    EfficientSizeNode& size_node0,
-    EfficientSizeNode& size_node1) {
-  at::Tensor sizes0 = size_node0.sizes();
-  at::Tensor sizes1 = size_node1.sizes();
-  int64_t* sizes0_ptr = sizes0.data_ptr<int64_t>();
-  int64_t* sizes1_ptr = sizes1.data_ptr<int64_t>();
+    const EfficientSizeNode& size_node0,
+    const EfficientSizeNode& size_node1) {
   TORCH_CHECK(
       efficient_size_structure_matches(size_node0, size_node1),
-      "apply_efficient_size: Length doesn't match.");
+      "map_efficient_size: Length doesn't match.");
+  at::Tensor sizes0 = size_node0.sizes().clone();
+  at::Tensor sizes1 = size_node1.sizes().clone();
+  TORCH_CHECK(sizes0.dim() == sizes1.dim(), "Sizes need to match in dim.");
+  if (sizes0.dim() == 0) {
+    return std::make_tuple(EfficientSizeNode(size_node0.structure(), sizes0),
+                           EfficientSizeNode(size_node0.structure(), sizes0));
+  }
+  TORCH_CHECK(sizes0.size(0) == sizes1.size(0), "Sizes need to match in size(0).");
+  TORCH_CHECK(sizes0.size(1) == sizes1.size(1), "Sizes need to match in size(1).");
+  int64_t* sizes0_ptr = sizes0.data_ptr<int64_t>();
+  int64_t* sizes1_ptr = sizes1.data_ptr<int64_t>();
   for (int64_t i = 0; i < sizes0.size(0); i++) {
     fn(sizes0_ptr + i * sizes0.size(1),
        sizes0.size(1),
        sizes1_ptr + i * sizes1.size(1),
        sizes1.size(1));
   }
-  size_node0.refresh_opt_sizes();
-  size_node1.refresh_opt_sizes();
+  return std::make_tuple(
+      EfficientSizeNode(size_node0.structure(), sizes0),
+      EfficientSizeNode(size_node1.structure(), sizes1));
 }
+
+// template <class F>
+// inline void apply_efficient_size(
+//     F&& fn,
+//     EfficientSizeNode& size_node0,
+//     EfficientSizeNode& size_node1) {
+//   at::Tensor sizes0 = size_node0.sizes();
+//   at::Tensor sizes1 = size_node1.sizes();
+//   int64_t* sizes0_ptr = sizes0.data_ptr<int64_t>();
+//   int64_t* sizes1_ptr = sizes1.data_ptr<int64_t>();
+//   TORCH_CHECK(
+//       efficient_size_structure_matches(size_node0, size_node1),
+//       "apply_efficient_size: Length doesn't match.");
+//   for (int64_t i = 0; i < sizes0.size(0); i++) {
+//     fn(sizes0_ptr + i * sizes0.size(1),
+//        sizes0.size(1),
+//        sizes1_ptr + i * sizes1.size(1),
+//        sizes1.size(1));
+//   }
+//   size_node0.refresh_opt_sizes();
+//   size_node1.refresh_opt_sizes();
+// }
 
 } // namespace nested_tensor
 } // namespace torch
