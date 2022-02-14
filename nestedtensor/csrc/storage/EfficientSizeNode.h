@@ -59,9 +59,63 @@ inline std::vector<int64_t> _tensor_to_vec(at::Tensor tensor) {
   return std::vector<int64_t>(tensor_data, tensor_data + tensor.numel());
 }
 
+inline int64_t calculate_numel(int64_t _structure,
+                               const std::vector<int64_t>& _sizes_data,
+                               int64_t _sizes_size_0,
+                               int64_t _sizes_size_1,
+                               int64_t _sizes_dim) {
+ if (_sizes_dim == 0 && _structure > 0) {
+   return _structure;
+ }
+ if (_sizes_dim > 0) {
+   if (_sizes_size_0 * _sizes_size_1 == 0) {
+     return 0;
+   }
+   int64_t numel = 0;
+   for (int64_t i = 0; i < _sizes_size_0; i++) {
+     int64_t numel_i = 0;
+     if (_sizes_size_1 > 0) {
+       numel_i = 1;
+     }
+     for (int64_t j = 0; j < _sizes_size_1; j++) {
+       numel_i = numel_i * _sizes_data[i * _sizes_size_1 + j];
+     }
+     numel = numel + numel_i;
+   }
+   return numel;
+   // at::Tensor _sizes = sizes();
+   // Tensor nt_sizes = at::native::narrow(
+   //     _sizes, 1 /* dim */, 0 /* start */, 1 /* length */);
+   // for (int64_t i = 1; i < _sizes.size(1); i++) {
+   //   Tensor tmp = at::native::narrow(
+   //       _sizes, 1 /* dim */, i /* start */, 1 /* length */);
+   //   nt_sizes = nt_sizes * tmp;
+   // }
+   // return nt_sizes.sum().item<int64_t>();
+ }
+ return 0;
+}
+
 } // namespace impl
 
 struct EfficientSizeNode {
+
+  explicit EfficientSizeNode(
+      int64_t structure,
+      const std::vector<int64_t>& sizes_data,
+      int64_t sizes_size_0,
+      int64_t sizes_size_1,
+      int64_t sizes_dim,
+      const std::vector<c10::optional<int64_t>>& opt_sizes,
+      int64_t numel) 
+      : _structure(structure),
+        _sizes_data(sizes_data),
+        _sizes_size_0(sizes_size_0),
+        _sizes_size_1(sizes_size_1),
+        _sizes_dim(sizes_dim),
+        _opt_sizes(opt_sizes),
+        _numel(numel)
+  {}
 
   explicit EfficientSizeNode(
       int64_t structure,
@@ -69,16 +123,21 @@ struct EfficientSizeNode {
       int64_t sizes_size_0,
       int64_t sizes_size_1,
       int64_t sizes_dim)
-      : _structure(structure),
-        _sizes_data(sizes_data),
-        _sizes_size_0(sizes_size_0),
-        _sizes_size_1(sizes_size_1),
-        _sizes_dim(sizes_dim),
-        _opt_sizes(impl::construct_efficient_size(_structure,
-                                                  _sizes_data,
-                                                  _sizes_size_0,
-                                                  _sizes_size_1,
-                                                  _sizes_dim))
+      : EfficientSizeNode(structure,
+                          sizes_data,
+                          sizes_size_0,
+                          sizes_size_1,
+                          sizes_dim,
+                          impl::construct_efficient_size(structure,
+                                                         sizes_data,
+                                                         sizes_size_0,
+                                                         sizes_size_1,
+                                                         sizes_dim),
+                          impl::calculate_numel(structure,
+                                                sizes_data,
+                                                sizes_size_0,
+                                                sizes_size_1,
+                                                sizes_dim))
   {}
 
   explicit EfficientSizeNode(const SizeNode& size_node)
@@ -151,24 +210,27 @@ struct EfficientSizeNode {
     return EfficientSizeNode(_structure, new_vector_sizes, _sizes_size_0, _sizes_size_1, _sizes_dim);
   }
   int64_t numel() const {
-    if (_sizes_dim == 0 && _structure > 0) {
-      return _structure;
-    }
-    if (_sizes_dim > 0) {
-      if (_sizes_size_0 * _sizes_size_1 == 0) {
-        return 0;
-      }
-      at::Tensor _sizes = sizes();
-      Tensor nt_sizes = at::native::narrow(
-          _sizes, 1 /* dim */, 0 /* start */, 1 /* length */);
-      for (int64_t i = 1; i < _sizes.size(1); i++) {
-        Tensor tmp = at::native::narrow(
-            _sizes, 1 /* dim */, i /* start */, 1 /* length */);
-        nt_sizes = nt_sizes * tmp;
-      }
-      return nt_sizes.sum().item<int64_t>();
-    }
-    return 0;
+    return _numel;
+  }
+
+  int64_t sizes_size_0() const {
+    return _sizes_size_0;
+  }
+
+  int64_t sizes_size_1() const {
+    return _sizes_size_1;
+  }
+
+  int64_t sizes_dim() const {
+    return _sizes_dim;
+  }
+
+  int64_t sizes_at(int64_t i) const {
+    return _sizes_data[i];
+  }
+
+  std::vector<int64_t> sizes_data() const {
+    return _sizes_data;
   }
 
  private:
@@ -179,6 +241,7 @@ struct EfficientSizeNode {
   int64_t _sizes_dim;
   bool _opt_sizes_set = false;
   std::vector<c10::optional<int64_t>> _opt_sizes;
+  int64_t _numel;
 };
 
 inline bool efficient_size_structure_matches(
@@ -193,9 +256,27 @@ inline bool efficient_size_matches(
   if (!efficient_size_structure_matches(size_node0, size_node1)) {
     return false;
   }
-  at::Tensor sizes0 = size_node0.sizes();
-  at::Tensor sizes1 = size_node1.sizes();
-  return at::equal(sizes0, sizes1);
+  if (size_node0.sizes_dim() != size_node1.sizes_dim()) {
+    return false;
+  }
+  if (size_node0.sizes_dim() == 0) {
+    return true;
+  }
+  if (size_node0.sizes_size_0() != size_node1.sizes_size_0()) {
+    return false;
+  }
+  if (size_node0.sizes_size_1() != size_node1.sizes_size_1()) {
+    return false;
+  }
+  if (size_node0.numel() != size_node1.numel()) {
+    return false;
+  }
+  for (int64_t i = 0; i < size_node0.numel(); i++) {
+    if (size_node0.sizes_at(i) != size_node1.sizes_at(i)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 template <class F>
@@ -221,20 +302,35 @@ inline EfficientSizeNode map_efficient_size(
   TORCH_CHECK(
       efficient_size_structure_matches(size_node0, size_node1),
       "map_efficient_size: Length doesn't match.");
-  at::Tensor sizes0 = size_node0.sizes().clone();
-  at::Tensor sizes1 = size_node1.sizes().clone();
-  TORCH_CHECK(sizes0.dim() == sizes1.dim(), "Sizes need to match in dim.");
-  if (sizes0.dim() == 0) {
-    return EfficientSizeNode(size_node0.structure(), sizes0);
+  std::vector<int64_t> sizes0_data = size_node0.sizes_data();
+  std::vector<int64_t> sizes1_data = size_node1.sizes_data();
+  
+  TORCH_CHECK(size_node0.dim() == size_node1.dim(), "Sizes need to match in dim.");
+  if (size_node0.sizes_dim() == 0) {
+    return EfficientSizeNode(size_node0.structure(),
+                             sizes0_data,
+                             size_node0.sizes_size_0(),
+                             size_node0.sizes_size_1(),
+                             size_node0.sizes_dim(),
+                             size_node0.opt_sizes(),
+                             size_node0.numel());
   }
-  TORCH_CHECK(sizes0.size(0) == sizes1.size(0), "Sizes need to match in size(0).");
-  TORCH_CHECK(sizes0.size(1) == sizes1.size(1), "Sizes need to match in size(1).");
-  int64_t* sizes_ptr0 = sizes0.data_ptr<int64_t>();
-  int64_t* sizes_ptr1 = sizes1.data_ptr<int64_t>();
-  for (int64_t i = 0; i < sizes0.size(0); i++) {
-    fn(sizes_ptr0 + i * sizes0.size(1), sizes_ptr1 + i * sizes1.size(1), sizes0.size(1));
+  TORCH_CHECK(size_node0.sizes_size_0() == size_node1.sizes_size_0(), "Sizes need to match in size(0).");
+  TORCH_CHECK(size_node0.sizes_size_1() == size_node1.sizes_size_1(), "Sizes need to match in size(1).");
+  int64_t sizes_size_0 = size_node0.sizes_size_0();
+  int64_t sizes_size_1 = size_node0.sizes_size_1();
+  int64_t* sizes_ptr0 = sizes0_data.data();
+  int64_t* sizes_ptr1 = sizes1_data.data();
+  for (int64_t i = 0; i < sizes_size_0; i++) {
+    fn(sizes_ptr0 + i * sizes_size_1, sizes_ptr1 + i * sizes_size_1, sizes_size_1);
   }
-  return EfficientSizeNode(size_node0.structure(), sizes0);
+  return EfficientSizeNode(size_node0.structure(),
+                           sizes0_data,
+                           size_node0.sizes_size_0(),
+                           size_node0.sizes_size_1(),
+                           size_node0.sizes_dim(),
+                           size_node0.opt_sizes(),
+                           size_node0.numel());
 }
 
 template <class F>
