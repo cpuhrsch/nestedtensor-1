@@ -83,15 +83,6 @@ inline int64_t calculate_numel(int64_t _structure,
      numel = numel + numel_i;
    }
    return numel;
-   // at::Tensor _sizes = sizes();
-   // Tensor nt_sizes = at::native::narrow(
-   //     _sizes, 1 /* dim */, 0 /* start */, 1 /* length */);
-   // for (int64_t i = 1; i < _sizes.size(1); i++) {
-   //   Tensor tmp = at::native::narrow(
-   //       _sizes, 1 /* dim */, i /* start */, 1 /* length */);
-   //   nt_sizes = nt_sizes * tmp;
-   // }
-   // return nt_sizes.sum().item<int64_t>();
  }
  return 0;
 }
@@ -119,7 +110,7 @@ struct EfficientSizeNode {
 
   explicit EfficientSizeNode(
       int64_t structure,
-      std::vector<int64_t> sizes_data,
+      const std::vector<int64_t>& sizes_data,
       int64_t sizes_size_0,
       int64_t sizes_size_1,
       int64_t sizes_dim)
@@ -344,26 +335,51 @@ EfficientSizeNode>
   TORCH_CHECK(
       efficient_size_structure_matches(size_node0, size_node1),
       "map_efficient_size: Length doesn't match.");
-  at::Tensor sizes0 = size_node0.sizes().clone();
-  at::Tensor sizes1 = size_node1.sizes().clone();
-  TORCH_CHECK(sizes0.dim() == sizes1.dim(), "Sizes need to match in dim.");
-  if (sizes0.dim() == 0) {
-    return std::make_tuple(EfficientSizeNode(size_node0.structure(), sizes0),
-                           EfficientSizeNode(size_node0.structure(), sizes0));
+  std::vector<int64_t> sizes0_data = size_node0.sizes_data();
+  std::vector<int64_t> sizes1_data = size_node1.sizes_data();
+  TORCH_CHECK(size_node0.dim() == size_node1.dim(), "Sizes need to match in dim.");
+  if (size_node0.sizes_dim() == 0) {
+    return std::make_tuple(EfficientSizeNode(size_node0.structure(),
+                                             sizes0_data,
+                                             size_node0.sizes_size_0(),
+                                             size_node0.sizes_size_1(),
+                                             size_node0.sizes_dim(),
+                                             size_node0.opt_sizes(),
+                                             size_node0.numel()),
+                           EfficientSizeNode(size_node0.structure(),
+                                             sizes0_data,
+                                             size_node0.sizes_size_0(),
+                                             size_node0.sizes_size_1(),
+                                             size_node0.sizes_dim(),
+                                             size_node0.opt_sizes(),
+                                             size_node0.numel()));
   }
-  TORCH_CHECK(sizes0.size(0) == sizes1.size(0), "Sizes need to match in size(0).");
-  TORCH_CHECK(sizes0.size(1) == sizes1.size(1), "Sizes need to match in size(1).");
-  int64_t* sizes0_ptr = sizes0.data_ptr<int64_t>();
-  int64_t* sizes1_ptr = sizes1.data_ptr<int64_t>();
-  for (int64_t i = 0; i < sizes0.size(0); i++) {
-    fn(sizes0_ptr + i * sizes0.size(1),
-       sizes0.size(1),
-       sizes1_ptr + i * sizes1.size(1),
-       sizes1.size(1));
+  TORCH_CHECK(size_node0.sizes_size_0() == size_node1.sizes_size_0(), "Sizes need to match in size(0).");
+  TORCH_CHECK(size_node0.sizes_size_1() == size_node1.sizes_size_1(), "Sizes need to match in size(1).");
+  int64_t sizes_size_0 = size_node0.sizes_size_0();
+  int64_t sizes_size_1 = size_node0.sizes_size_1();
+  int64_t* sizes_ptr0 = sizes0_data.data();
+  int64_t* sizes_ptr1 = sizes1_data.data();
+  for (int64_t i = 0; i < sizes_size_0; i++) {
+    fn(sizes_ptr0 + i * sizes_size_1,
+       sizes_size_1,
+       sizes_ptr1 + i * sizes_size_1,
+       sizes_size_1);
   }
-  return std::make_tuple(
-      EfficientSizeNode(size_node0.structure(), sizes0),
-      EfficientSizeNode(size_node1.structure(), sizes1));
+  return std::make_tuple(EfficientSizeNode(size_node0.structure(),
+                                           sizes0_data,
+                                           size_node0.sizes_size_0(),
+                                           size_node0.sizes_size_1(),
+                                           size_node0.sizes_dim(),
+                                           size_node0.opt_sizes(),
+                                           size_node0.numel()),
+                         EfficientSizeNode(size_node0.structure(),
+                                           sizes1_data,
+                                           size_node0.sizes_size_0(),
+                                           size_node0.sizes_size_1(),
+                                           size_node0.sizes_dim(),
+                                           size_node0.opt_sizes(),
+                                           size_node0.numel()));
 }
 
 } // namespace nested_tensor
