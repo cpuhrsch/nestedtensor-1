@@ -555,12 +555,12 @@ Tensor to_padded_tensor(Tensor nt, double padding) {
         nt = _collapse_two_dims_3(nt, 1, 2);
       }
       auto esize = get_efficient_nested_size(nt);
-      at::Tensor nt_sizes = esize.sizes();
       Tensor offsets = batch_offsets_from_efficient_size(esize);
       std::vector<int64_t> new_size = padded_size_from_efficient_size(esize);
       at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
       Tensor output = at::empty(IntArrayRef(new_size), nt_buffer.options());
 
+      at::Tensor nt_sizes = esize.sizes();
       int64_t input_dim = nt_sizes.size(1);
       int64_t batch_size = nt_sizes.size(0);
       at::Tensor metadata = at::cat({offsets, nt_sizes.reshape(-1)});
