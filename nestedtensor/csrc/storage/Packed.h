@@ -107,15 +107,21 @@ inline bool storage_is_contiguous(
   if (buffer.numel() == 0) {
     return true;
   }
-  const at::Tensor& sizes_sizes = nested_size.sizes();
-  const at::Tensor& strides_sizes = nested_stride.sizes();
-  int64_t* sizes_sizes_ptr = sizes_sizes.data_ptr<int64_t>();
-  int64_t* strides_sizes_ptr = strides_sizes.data_ptr<int64_t>();
-  for (int64_t i = 0; i < sizes_sizes.size(0); i++) {
+
+  const int64_t* sizes_sizes_ptr = nested_size.sizes_data_ptr();
+  const int64_t* strides_sizes_ptr = nested_stride.sizes_data_ptr();
+
+  auto nested_size_size_0 = nested_size.sizes_size_0();
+  auto nested_stride_size_0 = nested_stride.sizes_size_0();
+
+  auto nested_size_size_1 = nested_size.sizes_size_1();
+  auto nested_stride_size_1 = nested_stride.sizes_size_1();
+
+  for (int64_t i = 0; i < nested_size_size_0; i++) {
     if (!_is_cont_stride(
-            sizes_sizes_ptr + i * sizes_sizes.size(1),
-            strides_sizes_ptr + i * strides_sizes.size(1),
-            sizes_sizes.size(1))) {
+            sizes_sizes_ptr + i * nested_size_size_1,
+            strides_sizes_ptr + i * nested_stride_size_1,
+            nested_size_size_1)) {
       return false;
     }
   }

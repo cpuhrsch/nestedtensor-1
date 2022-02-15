@@ -224,6 +224,10 @@ struct EfficientSizeNode {
     return _sizes_data;
   }
 
+  const int64_t* sizes_data_ptr() const {
+    return _sizes_data.data();
+  }
+
  private:
   int64_t _structure;
   std::vector<int64_t> _sizes_data;

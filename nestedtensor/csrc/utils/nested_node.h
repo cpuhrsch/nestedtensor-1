@@ -381,7 +381,7 @@ inline std::vector<int64_t> _cont_stride(int64_t* size_ptr, int64_t size) {
   return _cont_stride(size_vector);
 }
 
-inline bool _is_cont_stride(int64_t* size, int64_t* stride, size_t length) {
+inline bool _is_cont_stride(const int64_t* size, const int64_t* stride, size_t length) {
   int64_t p = 1;
   size_t p_i = length;
   for (size_t i = 0; i < length; i++) {
