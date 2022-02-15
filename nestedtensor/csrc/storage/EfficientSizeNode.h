@@ -184,7 +184,7 @@ struct EfficientSizeNode {
     return _opt_sizes;
   }
   const at::Tensor sizes() const {
-    // TORCH_CHECK(false, "Using sizes.");
+    std::cout << "Using sizes()." << std::endl;
     if (_sizes_dim == 0 && _sizes_size_0 == 0 && _sizes_size_1 == 0) {
       return torch::zeros({}, torch::kInt64);
     }
@@ -196,6 +196,7 @@ struct EfficientSizeNode {
   }
   EfficientSizeNode clone() const {
     std::vector<int64_t> new_vector_sizes;
+    new_vector_sizes.reserve(_sizes_data.size());
     for (size_t i = 0; i < _sizes_data.size(); i++) {
       new_vector_sizes.push_back(_sizes_data[i]);
     }

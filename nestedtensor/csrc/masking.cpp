@@ -523,17 +523,22 @@ Tensor _collapse_two_dims_3(Tensor input, int64_t dim1, int64_t dim2) {
   TORCH_CHECK(dim1 == 1, "dim1 must be 1.")
   TORCH_CHECK(get_dim(input) == 3, "Expected input to be 3 dim.");
   auto input_esizes = get_efficient_nested_size(input);
-  Tensor nt_sizes = input_esizes.sizes();
-
-  Tensor sizes_dim1 = at::native::narrow(nt_sizes, 1, 0, 1).contiguous();
-  Tensor sizes_dim2 = at::native::narrow(nt_sizes, 1, 1, 1).contiguous();
-
-  Tensor new_nt_sizes;
-  if (dim1 == 1) {
-    Tensor collapsed_sizes = sizes_dim1 * sizes_dim2;
-    new_nt_sizes = collapsed_sizes;
+  std::vector<int64_t> sizes_data = input_esizes.sizes_data();
+  int64_t* sizes_data_ptr = sizes_data.data();
+  int64_t sizes_size_0 = input_esizes.sizes_size_0();
+  int64_t sizes_size_1 = input_esizes.sizes_size_1();
+  int64_t sizes_dim = input_esizes.sizes_dim();
+  std::vector<int64_t> new_sizes_data;
+  new_sizes_data.reserve(sizes_size_0);
+  for (int64_t i = 0; i < sizes_size_0; i++) {
+       new_sizes_data.push_back(
+           sizes_data[i * sizes_size_1 + 0] * sizes_data[i * sizes_size_1 + 1]);
   }
-  auto new_esizes = torch::nested_tensor::EfficientSizeNode(input_esizes.structure(), new_nt_sizes);
+  auto new_esizes = torch::nested_tensor::EfficientSizeNode(input_esizes.structure(),
+                                                            new_sizes_data,
+                                                            sizes_size_0,
+                                                            1,
+                                                            2);
   Tensor result = wrap_buffer(get_buffer(input), new_esizes);
   TORCH_CHECK(get_dim(result) == 2, "Expected result to be 2 dimensional.");
   return result;
