@@ -184,6 +184,7 @@ struct EfficientSizeNode {
     return _opt_sizes;
   }
   const at::Tensor sizes() const {
+    // TORCH_CHECK(false, "Using sizes.");
     if (_sizes_dim == 0 && _sizes_size_0 == 0 && _sizes_size_1 == 0) {
       return torch::zeros({}, torch::kInt64);
     }
@@ -278,15 +279,21 @@ template <class F>
 inline EfficientSizeNode map_efficient_size(
     F&& fn,
     const EfficientSizeNode& size_node) {
-  at::Tensor sizes = size_node.sizes().clone();
-  if (sizes.dim() == 0) {
-    return EfficientSizeNode(size_node.structure(), sizes);
+  if (size_node.sizes_dim() == 0) {
+    return size_node.clone();
   }
-  int64_t* sizes_ptr = sizes.data_ptr<int64_t>();
-  for (int64_t i = 0; i < sizes.size(0); i++) {
-    fn(sizes_ptr + i * sizes.size(1), sizes.size(1));
+  std::vector<int64_t> sizes_data = size_node.sizes_data();
+  int64_t* sizes_ptr = sizes_data.data();
+  int64_t sizes_size_0 = size_node.sizes_size_0();
+  int64_t sizes_size_1 = size_node.sizes_size_1();
+  for (int64_t i = 0; i < sizes_size_0; i++) {
+    fn(sizes_ptr + i * sizes_size_1, sizes_size_1);
   }
-  return EfficientSizeNode(size_node.structure(), sizes);
+  return EfficientSizeNode(size_node.structure(),
+                           sizes_data,
+                           size_node.sizes_size_0(),
+                           size_node.sizes_size_1(),
+                           size_node.sizes_dim());
 }
 
 template <class F>
@@ -302,13 +309,7 @@ inline EfficientSizeNode map_efficient_size(
   
   TORCH_CHECK(size_node0.dim() == size_node1.dim(), "Sizes need to match in dim.");
   if (size_node0.sizes_dim() == 0) {
-    return EfficientSizeNode(size_node0.structure(),
-                             sizes0_data,
-                             size_node0.sizes_size_0(),
-                             size_node0.sizes_size_1(),
-                             size_node0.sizes_dim(),
-                             size_node0.opt_sizes(),
-                             size_node0.numel());
+    return size_node0.clone();
   }
   TORCH_CHECK(size_node0.sizes_size_0() == size_node1.sizes_size_0(), "Sizes need to match in size(0).");
   TORCH_CHECK(size_node0.sizes_size_1() == size_node1.sizes_size_1(), "Sizes need to match in size(1).");
@@ -323,9 +324,7 @@ inline EfficientSizeNode map_efficient_size(
                            sizes0_data,
                            size_node0.sizes_size_0(),
                            size_node0.sizes_size_1(),
-                           size_node0.sizes_dim(),
-                           size_node0.opt_sizes(),
-                           size_node0.numel());
+                           size_node0.sizes_dim());
 }
 
 template <class F>
@@ -347,16 +346,12 @@ EfficientSizeNode>
                                              sizes0_data,
                                              size_node0.sizes_size_0(),
                                              size_node0.sizes_size_1(),
-                                             size_node0.sizes_dim(),
-                                             size_node0.opt_sizes(),
-                                             size_node0.numel()),
+                                             size_node0.sizes_dim()),
                            EfficientSizeNode(size_node0.structure(),
                                              sizes0_data,
                                              size_node0.sizes_size_0(),
                                              size_node0.sizes_size_1(),
-                                             size_node0.sizes_dim(),
-                                             size_node0.opt_sizes(),
-                                             size_node0.numel()));
+                                             size_node0.sizes_dim()));
   }
   TORCH_CHECK(size_node0.sizes_size_0() == size_node1.sizes_size_0(), "Sizes need to match in size(0).");
   TORCH_CHECK(size_node0.sizes_size_1() == size_node1.sizes_size_1(), "Sizes need to match in size(1).");
@@ -374,16 +369,12 @@ EfficientSizeNode>
                                            sizes0_data,
                                            size_node0.sizes_size_0(),
                                            size_node0.sizes_size_1(),
-                                           size_node0.sizes_dim(),
-                                           size_node0.opt_sizes(),
-                                           size_node0.numel()),
+                                           size_node0.sizes_dim()),
                          EfficientSizeNode(size_node0.structure(),
                                            sizes1_data,
                                            size_node0.sizes_size_0(),
                                            size_node0.sizes_size_1(),
-                                           size_node0.sizes_dim(),
-                                           size_node0.opt_sizes(),
-                                           size_node0.numel()));
+                                           size_node0.sizes_dim()));
 }
 
 } // namespace nested_tensor
