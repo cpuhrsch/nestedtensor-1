@@ -184,7 +184,6 @@ struct EfficientSizeNode {
     return _opt_sizes;
   }
   const at::Tensor sizes() const {
-    std::cout << "Using sizes()." << std::endl;
     if (_sizes_dim == 0 && _sizes_size_0 == 0 && _sizes_size_1 == 0) {
       return torch::zeros({}, torch::kInt64);
     }
