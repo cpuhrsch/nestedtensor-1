@@ -80,13 +80,12 @@ std::vector<int64_t> _get_max_size(const SizeNode& size_node) {
   return result;
 }
 
-std::vector<int64_t> get_max_size_from_efficient_size(EfficientSizeNode esize) {
+std::vector<int64_t> get_max_size_from_efficient_size(const EfficientSizeNode& esize) {
   auto nt_opt_sizes = esize.opt_sizes();
   if (nt_opt_sizes.size() > 0 && *nt_opt_sizes[0] > 0) {
-    auto sizes = esize.sizes();
-    int64_t* sizes_ptr = sizes.data_ptr<int64_t>();
-    int64_t sizes_size_0 = sizes.size(0);
-    int64_t sizes_size_1 = sizes.size(1);
+    const int64_t* sizes_ptr = esize.sizes_data_ptr();
+    int64_t sizes_size_0 = esize.sizes_size_0();
+    int64_t sizes_size_1 = esize.sizes_size_1();
     std::vector<int64_t> results(sizes_size_1, 0);
     TORCH_CHECK(sizes_size_1 > 0, "Internal error: Expected sizes_size_1 to be greater than 0.");
     for (int64_t i = 0; i < sizes_size_0; i++) {
@@ -107,14 +106,14 @@ std::vector<int64_t> get_max_size(const Tensor& nt) {
 }
 
 
-Tensor batch_offsets_from_efficient_size(EfficientSizeNode ef) {
-  Tensor ef_sizes = ef.sizes();
-  int64_t* nt_sizes_ptr = ef_sizes.data_ptr<int64_t>();
-  Tensor offsets = torch::empty({1 + ef_sizes.size(0)}, torch::kInt64);
+Tensor batch_offsets_from_efficient_size(const EfficientSizeNode& ef) {
+  const int64_t* nt_sizes_ptr = ef.sizes_data_ptr();
+  Tensor offsets = torch::empty({1 + ef.sizes_size_0()}, torch::kInt64);
   int64_t* offsets_ptr = offsets.data_ptr<int64_t>();
   offsets_ptr[0] = 0;
-  int64_t ef_sizes_size_1 = ef_sizes.size(1);
-  for (int64_t i = 0; i < ef_sizes.size(0); i++) {
+  int64_t ef_sizes_size_0 = ef.sizes_size_0();
+  int64_t ef_sizes_size_1 = ef.sizes_size_1();
+  for (int64_t i = 0; i < ef_sizes_size_0; i++) {
     int64_t prod = 1;
     for (int64_t j = 0; j < ef_sizes_size_1; j++) {
       prod = prod * nt_sizes_ptr[i * ef_sizes_size_1 + j];
@@ -125,10 +124,11 @@ Tensor batch_offsets_from_efficient_size(EfficientSizeNode ef) {
 }
 
 std::vector<int64_t> padded_size_from_efficient_size(EfficientSizeNode ef_size) {
-  Tensor nt_sizes = ef_size.sizes();
+  // Tensor nt_sizes = ef_size.sizes();
   auto max_size = get_max_size_from_efficient_size(ef_size);
   std::vector<int64_t> new_size;
-  new_size.push_back(nt_sizes.size(0));
+  new_size.reserve(1 + max_size.size());
+  new_size.push_back(ef_size.sizes_size_0());
   for (int64_t i = 0; i < max_size.size(); i++) {
     new_size.push_back(max_size[i]);
   }
