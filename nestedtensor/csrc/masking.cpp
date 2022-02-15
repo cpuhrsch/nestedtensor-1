@@ -124,7 +124,6 @@ Tensor batch_offsets_from_efficient_size(const EfficientSizeNode& ef) {
 }
 
 std::vector<int64_t> padded_size_from_efficient_size(EfficientSizeNode ef_size) {
-  // Tensor nt_sizes = ef_size.sizes();
   auto max_size = get_max_size_from_efficient_size(ef_size);
   std::vector<int64_t> new_size;
   new_size.reserve(1 + max_size.size());
@@ -391,12 +390,12 @@ Tensor _create_nt_mask(SizeNode nt_size, std::vector<int64_t> shape) {
 Tensor _create_nt_mask(EfficientSizeNode nt_size, std::vector<int64_t> shape) {
   if (nt_size.height() == 1) {
     std::vector<at::Tensor> tmp_masks;
-    auto esizes = nt_size.sizes();
-    int64_t* esizes_ptr = esizes.data_ptr<int64_t>();
-    for(int64_t i = 0; i < esizes.size(0); i++) {
+    // auto esizes = nt_size.sizes();
+    const int64_t* esizes_ptr = nt_size.sizes_data_ptr();
+    for(int64_t i = 0; i < nt_size.sizes_size_0(); i++) {
       std::vector<int64_t> tmp_sizes;
       for(size_t j = 0; j < shape.size(); j++) {
-        tmp_sizes.push_back(esizes_ptr[i * esizes.stride(0) + j]);
+        tmp_sizes.push_back(esizes_ptr[i * nt_size.sizes_size_1() + j]);
       }
       tmp_masks.push_back(_create_nt_mask(tmp_sizes, shape));
     }
