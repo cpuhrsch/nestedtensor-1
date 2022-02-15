@@ -36,17 +36,17 @@ NestedTensorImpl::NestedTensorImpl(at::Tensor&& buffer,
           buffer.dtype(),
           buffer.device()),
       _buffer(buffer),
-      _nested_size(nested_size),
-      _nested_stride(nested_stride),
+      _nested_size(c10::make_intrusive<EfficientSizeNode>(nested_size)),
+      _nested_stride(c10::make_intrusive<EfficientSizeNode>(nested_stride)),
       _is_pinned(_buffer.is_pinned()),
       _is_contiguous(torch::nested_tensor::impl::storage_is_contiguous(
           _buffer,
-          _nested_size,
-          _nested_stride)),
+          *_nested_size,
+          *_nested_stride)),
       _is_contiguous_channels_last(torch::nested_tensor::impl::storage_is_contiguous_channels_last(
           _buffer,
-          _nested_size,
-          _nested_stride)) {
+          *_nested_size,
+          *_nested_stride)) {
   remove_autograd_key();
   key_set_ = key_set_ - c10::DispatchKeySet({c10::DispatchKey::ADInplaceOrView});
 }

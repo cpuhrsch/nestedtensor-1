@@ -72,17 +72,17 @@ struct NestedTensorImpl : public c10::TensorImpl {
   TensorNode get_structure() const {
     return std::get<0>(torch::nested_tensor::impl::build_structure(
         _buffer.reshape({-1}),
-        _nested_size,
-        _nested_stride));
+        *_nested_size,
+        *_nested_stride));
   }
   EfficientSizeNode get_nested_size() {
-    return _nested_size;
+    return *_nested_size;
   }
   EfficientSizeNode get_nested_stride() {
-    return _nested_stride;
+    return *_nested_stride;
   }
   int64_t nested_dim() const {
-    return _nested_size.height();
+    return _nested_size->height();
   }
   bool is_pinned() const {
     return _buffer.is_pinned();
@@ -109,13 +109,13 @@ struct NestedTensorImpl : public c10::TensorImpl {
   // That means, if the list is not empty it is either a list of
   // lists of numbers or a list of empty lists.
   SizeNode nested_size() const {
-    return _nested_size.to_size_node();
+    return _nested_size->to_size_node();
   }
   SizeNode nested_stride() const {
-    return _nested_stride.to_size_node();
+    return _nested_stride->to_size_node();
   }
   const std::vector<c10::optional<int64_t>> opt_sizes() const {
-    return _nested_size.opt_sizes();
+    return _nested_size->opt_sizes();
   }
 #ifndef C10_DISABLE_TENSORIMPL_EXTENSIBILITY
   IntArrayRef sizes() const override {
@@ -165,8 +165,8 @@ struct NestedTensorImpl : public c10::TensorImpl {
 
  private:
   at::Tensor _buffer;
-  const EfficientSizeNode _nested_size;
-  const EfficientSizeNode _nested_stride;
+  const c10::intrusive_ptr<EfficientSizeNode> _nested_size;
+  const c10::intrusive_ptr<EfficientSizeNode> _nested_stride;
   bool _is_pinned;
   const bool _is_contiguous;
   const bool _is_contiguous_channels_last;

@@ -89,7 +89,7 @@ inline int64_t calculate_numel(int64_t _structure,
 
 } // namespace impl
 
-struct EfficientSizeNode {
+struct EfficientSizeNode : public c10::intrusive_ptr_target {
 
   explicit EfficientSizeNode(
       int64_t structure,
@@ -168,16 +168,16 @@ struct EfficientSizeNode {
     }
     return SizeNode(std::move(_tmp_size_nodes));
   }
-  int64_t height() const {
+  inline int64_t height() const {
     return 1;
   }
-  int64_t degree() const {
+  inline int64_t degree() const {
     if (_sizes_dim == 0) {
       return 0;
     }
     return _sizes_size_0;
   }
-  int64_t dim() const {
+  inline int64_t dim() const {
     return _sizes_dim > 0 ? 1 + _sizes_size_1 : 1;
   }
   const std::vector<c10::optional<int64_t>>& opt_sizes() const {
@@ -190,7 +190,7 @@ struct EfficientSizeNode {
     auto result = torch::tensor(_sizes_data);
     return result.reshape({_sizes_size_0, _sizes_size_1});
   }
-  const int64_t structure() const {
+  inline int64_t structure() const {
     return _structure;
   }
   EfficientSizeNode clone() const {
@@ -201,43 +201,42 @@ struct EfficientSizeNode {
     }
     return EfficientSizeNode(_structure, new_vector_sizes, _sizes_size_0, _sizes_size_1, _sizes_dim);
   }
-  int64_t numel() const {
+  inline int64_t numel() const {
     return _numel;
   }
 
-  int64_t sizes_size_0() const {
+  inline int64_t sizes_size_0() const {
     return _sizes_size_0;
   }
 
-  int64_t sizes_size_1() const {
+  inline int64_t sizes_size_1() const {
     return _sizes_size_1;
   }
 
-  int64_t sizes_dim() const {
+  inline int64_t sizes_dim() const {
     return _sizes_dim;
   }
 
-  int64_t sizes_at(int64_t i) const {
+  inline int64_t sizes_at(int64_t i) const {
     return _sizes_data[i];
   }
 
-  std::vector<int64_t> sizes_data() const {
+  inline std::vector<int64_t> sizes_data() const {
     return _sizes_data;
   }
 
-  const int64_t* sizes_data_ptr() const {
+  inline const int64_t* sizes_data_ptr() const {
     return _sizes_data.data();
   }
 
  private:
-  int64_t _structure;
-  std::vector<int64_t> _sizes_data;
-  int64_t _sizes_size_0;
-  int64_t _sizes_size_1;
-  int64_t _sizes_dim;
-  bool _opt_sizes_set = false;
-  std::vector<c10::optional<int64_t>> _opt_sizes;
-  int64_t _numel;
+  const int64_t _structure;
+  const std::vector<int64_t> _sizes_data;
+  const int64_t _sizes_size_0;
+  const int64_t _sizes_size_1;
+  const int64_t _sizes_dim;
+  const std::vector<c10::optional<int64_t>> _opt_sizes;
+  const int64_t _numel;
 };
 
 inline bool efficient_size_structure_matches(
