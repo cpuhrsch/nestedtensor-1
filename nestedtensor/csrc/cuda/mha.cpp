@@ -109,6 +109,8 @@ at::Tensor bt_min_mha(
   // attn_output_nt = attn_output_nt.squeeze(1);
   std::cout << "get_efficient_nested_size(attn_output_nt).sizes(): " << get_efficient_nested_size(attn_output_nt).sizes() << std::endl;
   std::cout << "val_buf.sizes(): " << val_buf.sizes() << std::endl;
+  auto val_nt = from_padded_tensor(val_buf, get_efficient_nested_size(query));
+  std::cout << "get_efficient_nested_size(val_nt).sizes(): " << get_efficient_nested_size(val_nt).sizes() << std::endl;
 
   attn_output_nt = attn_output_nt.transpose(1, 2).reshape({batch_size, -1, embedding_dim}); // .contiguous();
   // attn_output_nt = attn_output_nt.reshape({batch_size, -1, embedding_dim}); // .contiguous();
