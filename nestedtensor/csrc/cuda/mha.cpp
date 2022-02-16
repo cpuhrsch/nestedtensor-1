@@ -77,6 +77,7 @@ at::Tensor bt_min_mha(
   input_mask = input_mask.to(options);
   at::Tensor attr_mask = input_mask.view({-1, 1, 1, seq_len}).to(mask_options);
   attr_mask = attr_mask * attr_mask.transpose(2, 3);
+  // std::cout << "attr_mask: " << attr_mask << std::endl;
 
   if (query.dtype() == torch::kFloat16) {
     nteffectivetransformer::cuda::softmax_kernel_kernelLauncher<c10::Half>(
@@ -99,11 +100,25 @@ at::Tensor bt_min_mha(
         (float)(scaling),
         defaultStream);
   }
+  std::cout << "attn_output_weights.sizes(): " << attn_output_weights.sizes() << std::endl;
+  attr_mask = attr_mask.repeat({1, attn_output_weights.size(1), 1, 1}).contiguous();
+  std::cout << "attr_mask.sizes(): " << attr_mask.sizes() << std::endl;
+  auto attn_output_nt = *nt_from_tensor_mask(attn_output_weights, attr_mask, 1);
+  // TORCH_CHECK(attn_output_nt, "Can't constructo nt.");
+  // attn_output_nt = attn_output_nt.transpose(2, 3);
+  // attn_output_nt = attn_output_nt.squeeze(1);
+  std::cout << "get_efficient_nested_size(attn_output_nt).sizes(): " << get_efficient_nested_size(attn_output_nt).sizes() << std::endl;
+  std::cout << "val_buf.sizes(): " << val_buf.sizes() << std::endl;
 
-  auto attn_output = at::matmul(attn_output_weights, val_buf);
-  attn_output = attn_output.transpose(1, 2).reshape({batch_size, seq_len, embedding_dim}).contiguous();
-  at::Tensor attr_out = from_padded_tensor(attn_output, get_efficient_nested_size(query));
-  return at::matmul(attr_out, out_proj_weight.t());
+  attn_output_nt = attn_output_nt.transpose(1, 2).reshape({batch_size, -1, embedding_dim}); // .contiguous();
+  // attn_output_nt = attn_output_nt.reshape({batch_size, -1, embedding_dim}); // .contiguous();
+  // auto attn_output = at::matmul(attn_output_weights, val_buf);
+  auto attn_output_packed = at::matmul(attn_output_nt, val_buf);
+  // attn_output = attn_output.transpose(1, 2).reshape({batch_size, seq_len, embedding_dim}).contiguous();
+  // attn_output_packed = attn_output_packed.transpose(1, 2).reshape({batch_size, -1, embedding_dim}); // .contiguous();
+  // at::Tensor attr_out = from_padded_tensor(attn_output, get_efficient_nested_size(query));
+  // return at::matmul(attr_out, out_proj_weight.t());
+  return at::matmul(attn_output_packed, out_proj_weight.t());
 }
 
 TORCH_LIBRARY_FRAGMENT(nestedtensor, m) {
